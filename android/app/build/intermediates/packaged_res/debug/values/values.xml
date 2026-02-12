@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#3B82F6</color>
+    <color name="accent_variant">#2563EB</color>
+    <color name="error">#DC2626</color>
+    <color name="on_accent">#FFFFFF</color>
+    <color name="on_error">#FFFFFF</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_surface">#0F172A</color>
+    <color name="on_surface_variant">#475569</color>
+    <color name="outline">#94A3B8</color>
+    <color name="primary">#1E293B</color>
+    <color name="primary_variant">#0F172A</color>
+    <color name="surface">#F8FAFC</color>
+    <color name="surface_variant">#F1F5F9</color>
+    <string name="app_name">Car Sharing</string>
+    <string name="email">Email</string>
+    <string name="logging_in">Logging in…</string>
+    <string name="login">Login</string>
+    <string name="login_error">Invalid email or password</string>
+    <string name="password">Password</string>
+    <style name="Theme.CarSharing" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorSecondaryVariant">@color/accent_variant</item>
+        <item name="colorOnSecondary">@color/on_accent</item>
+        <item name="android:colorBackground">@color/surface</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/on_surface_variant</item>
+        <item name="colorOutline">@color/outline</item>
+        <item name="colorError">@color/error</item>
+        <item name="colorOnError">@color/on_error</item>
+    </style>
+</resources>

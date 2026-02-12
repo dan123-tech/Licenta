@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Car Sharing</string>
+    <string name="login">Login</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="logging_in">Logging in…</string>
+    <string name="login_error">Invalid email or password</string>
+    <string name="create_account">Create account</string>
+    <string name="register">Register</string>
+    <string name="register_subtitle">Sign up to use car sharing. You can join a company after logging in.</string>
+    <string name="name">Name</string>
+    <string name="confirm_password">Confirm password</string>
+    <string name="already_have_account">Already have an account? Log in</string>
+    <string name="create_account_link">Create account</string>
+</resources>

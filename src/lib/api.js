@@ -1,0 +1,238 @@
+/**
+ * Client-side API helpers. All requests use credentials: 'include' for session cookie.
+ */
+
+const getOpts = (method = "GET", body) => {
+  const opts = { method, credentials: "include", headers: {} };
+  if (body) {
+    opts.headers["Content-Type"] = "application/json";
+    opts.body = JSON.stringify(body);
+  }
+  return opts;
+};
+
+export async function apiLogin(email, password) {
+  const res = await fetch("/api/auth/login", getOpts("POST", { email, password }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Login failed");
+  return data;
+}
+
+export async function apiLogout() {
+  await fetch("/api/auth/logout", getOpts("POST"));
+}
+
+export async function apiRegister(email, password, name) {
+  const res = await fetch("/api/auth/register", getOpts("POST", { email, password, name }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Registration failed");
+  return data;
+}
+
+export async function apiSession() {
+  const res = await fetch("/api/auth/session", getOpts("GET"));
+  if (res.status === 401) return null;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Session failed");
+  return data;
+}
+
+export async function apiCreateCompany(name, domain) {
+  const res = await fetch("/api/companies", getOpts("POST", { name, domain: domain || null }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Create company failed");
+  return data;
+}
+
+export async function apiJoinCompany(joinCode) {
+  const res = await fetch("/api/companies/join", getOpts("POST", { joinCode }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Join failed");
+  return data;
+}
+
+export async function apiCompaniesCurrent() {
+  const res = await fetch("/api/companies/current", getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load company");
+  return data;
+}
+
+export async function apiUpdateCompanyCurrent(payload) {
+  const res = await fetch("/api/companies/current", getOpts("PATCH", payload));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to update company");
+  return data;
+}
+
+export async function apiCars(status) {
+  const url = status ? `/api/cars?status=${encodeURIComponent(status)}` : "/api/cars";
+  const res = await fetch(url, getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load cars");
+  return data;
+}
+
+export async function apiAddCar(payload) {
+  const res = await fetch("/api/cars", getOpts("POST", payload));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to add car");
+  return data;
+}
+
+export async function apiUpdateCar(id, payload) {
+  const res = await fetch(`/api/cars/${id}`, getOpts("PATCH", payload));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to update car");
+  return data;
+}
+
+export async function apiDeleteCar(id) {
+  const res = await fetch(`/api/cars/${id}`, getOpts("DELETE"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to delete car");
+  return data;
+}
+
+export async function apiUsers(status) {
+  const url = status ? `/api/users?status=${encodeURIComponent(status)}` : "/api/users";
+  const res = await fetch(url, getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load users");
+  return data;
+}
+
+export async function apiInviteUser(email, name, role) {
+  const res = await fetch("/api/users/invite", getOpts("POST", { email, name, role }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to invite");
+  return data;
+}
+
+export async function apiUpdateUserRole(userId, role) {
+  const res = await fetch(`/api/users/${userId}`, getOpts("PATCH", { role }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to update user");
+  return data;
+}
+
+/** Upload driving licence image (File). */
+export async function apiUploadDrivingLicence(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch("/api/users/me/driving-licence", {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Upload failed");
+  return data;
+}
+
+/** Admin: set user driving licence status. */
+export async function apiSetUserDrivingLicenceStatus(userId, drivingLicenceStatus) {
+  const res = await fetch(`/api/users/${userId}`, getOpts("PATCH", { drivingLicenceStatus }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to update");
+  return data;
+}
+
+export async function apiRemoveUser(userId) {
+  const res = await fetch(`/api/users/${userId}`, getOpts("DELETE"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to remove user");
+  return data;
+}
+
+export async function apiReservations(status) {
+  const url = status ? `/api/reservations?status=${encodeURIComponent(status)}` : "/api/reservations";
+  const res = await fetch(url, getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load reservations");
+  return data;
+}
+
+export async function apiReservationHistory() {
+  const res = await fetch("/api/reservations/history", getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load history");
+  return data;
+}
+
+/** Create a reservation. Omit startDate/endDate for instant (until released). Use ISO 8601 for startDate/endDate to book in advance. */
+export async function apiCreateReservation(carId, purpose, startDate, endDate) {
+  const body = { carId, purpose: purpose || null };
+  if (startDate != null) body.startDate = typeof startDate === "string" ? startDate : startDate?.toISOString?.();
+  if (endDate != null) body.endDate = typeof endDate === "string" ? endDate : endDate?.toISOString?.();
+  const res = await fetch("/api/reservations", getOpts("POST", body));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to create reservation");
+  return data;
+}
+
+/** Verify pickup code (30-min window). Admin can pass bypass: true to skip time check. */
+export async function apiVerifyPickupCode(pickup_code, bypass) {
+  const res = await fetch("/api/reservations/verify-pickup-code", getOpts("POST", { pickup_code: String(pickup_code).trim(), bypass: !!bypass }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Verification failed");
+  return data;
+}
+
+export async function apiCancelReservation(id) {
+  const res = await fetch(`/api/reservations/${id}`, getOpts("PATCH", { action: "cancel" }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to cancel");
+  return data;
+}
+
+export async function apiReleaseReservation(id, newKm, exceededReason) {
+  const km = typeof newKm === "number" ? newKm : parseInt(String(newKm), 10);
+  if (isNaN(km) || km < 0) throw new Error("Invalid new km");
+  const body = { action: "release", newKm: km };
+  if (exceededReason != null && String(exceededReason).trim()) body.exceededReason = String(exceededReason).trim();
+  const res = await fetch(`/api/reservations/${id}`, getOpts("PATCH", body));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to release");
+  return data;
+}
+
+export async function apiInvites() {
+  const res = await fetch("/api/invites", getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load invites");
+  return data;
+}
+
+export async function apiExtendReservation(id, endDate) {
+  const res = await fetch(`/api/reservations/${id}`, getOpts("PATCH", { action: "extend", endDate }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to extend");
+  return data;
+}
+
+/** Admin: list reservations with pending km-exceeded approval. */
+export async function apiPendingExceededApprovals() {
+  const res = await fetch("/api/reservations/pending-approvals", getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load");
+  return data;
+}
+
+/** Admin: approve or reject exceeded km reason (observations visible to user). */
+export async function apiSetExceededApproval(reservationId, action, observations) {
+  const body = { action };
+  if (observations != null && String(observations).trim()) body.observations = String(observations).trim();
+  const res = await fetch(`/api/reservations/${reservationId}`, getOpts("PATCH", body));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to update");
+  return data;
+}
+
+/** Admin: refresh pickup and release codes for an active reservation. */
+export async function apiRefreshReservationCodes(reservationId) {
+  const res = await fetch(`/api/reservations/${reservationId}`, getOpts("PATCH", { action: "refreshCodes" }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to refresh codes");
+  return data;
+}

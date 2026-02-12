@@ -1,0 +1,733 @@
+"use client";
+
+import { useState, useEffect, Fragment } from "react";
+import { Sidebar, NavItem } from "./Sidebar";
+import {
+  apiCars,
+  apiReservations,
+  apiReservationHistory,
+  apiCreateReservation,
+  apiCancelReservation,
+  apiReleaseReservation,
+  apiExtendReservation,
+  apiUploadDrivingLicence,
+} from "@/lib/api";
+
+const SECTIONS = [
+  { id: "dashboard", label: "Dashboard", icon: "📊" },
+  { id: "drivingLicence", label: "Driving licence", icon: "🪪" },
+  { id: "myReservations", label: "My Reservations", icon: "📅" },
+  { id: "availableCars", label: "Available Cars", icon: "🚗" },
+  { id: "unavailableCars", label: "Unavailable Cars", icon: "🔧" },
+  { id: "history", label: "History", icon: "📜" },
+];
+
+function formatDate(d) {
+  const x = new Date(d);
+  return x.toLocaleString();
+}
+
+const PICKUP_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+
+/** Pickup code status: pending (before window), active (within 30 min), expired (after window). */
+function getPickupCodeStatus(reservation, now = new Date()) {
+  if (!reservation?.pickup_code || (reservation.status || "").toLowerCase() !== "active") return null;
+  const effectiveStart = reservation.code_valid_from ? new Date(reservation.code_valid_from) : new Date(reservation.startDate);
+  const windowEnd = new Date(effectiveStart.getTime() + PICKUP_WINDOW_MS);
+  let status, countdownText;
+  if (now < effectiveStart) {
+    status = "pending";
+    const ms = effectiveStart - now;
+    const mins = Math.floor(ms / 60000);
+    const hours = Math.floor(mins / 60);
+    countdownText = hours >= 1 ? `Starts in ${hours}h ${mins % 60}m` : `Starts in ${mins}m`;
+  } else if (now <= windowEnd) {
+    status = "active";
+    const ms = windowEnd - now;
+    const mins = Math.ceil(ms / 60000);
+    countdownText = `Valid for ${mins} more min`;
+  } else {
+    status = "expired";
+    countdownText = "Window closed";
+  }
+  return { status, effectiveStart, windowEnd, countdownText };
+}
+
+function statusClass(s) {
+  const v = (s || "").toLowerCase();
+  if (v === "available" || v === "active") return "bg-emerald-100 text-emerald-800";
+  if (v === "completed") return "bg-[#3B82F6]/10 text-[#2563EB]";
+  if (v === "reserved") return "bg-amber-100 text-amber-800";
+  if (v === "cancelled") return "bg-red-100 text-red-800";
+  if (v === "in_maintenance" || v === "maintenance") return "bg-red-100 text-red-800";
+  return "bg-slate-100 text-slate-800";
+}
+
+export default function UserDashboard({ user, company, onUserUpdated, viewAs, setViewAs }) {
+  const [section, setSection] = useState("dashboard");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [cars, setCars] = useState([]);
+  const [reservations, setReservations] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reservingCarId, setReservingCarId] = useState(null);
+  const [releaseModal, setReleaseModal] = useState(null);
+  const [releaseNewKm, setReleaseNewKm] = useState("");
+  const [releaseExceededReason, setReleaseExceededReason] = useState("");
+  const [releaseSubmitting, setReleaseSubmitting] = useState(false);
+  const [dlUploading, setDlUploading] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  const [scheduleModal, setScheduleModal] = useState(null);
+  const [scheduleStart, setScheduleStart] = useState("");
+  const [scheduleEnd, setScheduleEnd] = useState("");
+  const [schedulePurpose, setSchedulePurpose] = useState("");
+  const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
+  const dlStatus = user?.drivingLicenceStatus ?? null;
+  const canReserve = dlStatus === "APPROVED";
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const [carsRes, resRes, histRes] = await Promise.all([
+        apiCars(),
+        apiReservations(),
+        apiReservationHistory(),
+      ]);
+      setCars(Array.isArray(carsRes) ? carsRes : []);
+      setReservations(Array.isArray(resRes) ? resRes : []);
+      setHistory(Array.isArray(histRes) ? histRes : []);
+    } catch (err) {
+      setError(err.message || "Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const availableCars = cars.filter((c) => (c.status || "").toLowerCase() === "available");
+  const unavailableCars = cars.filter((c) => (c.status || "").toLowerCase() !== "available");
+  const activeReservations = reservations.filter((r) => (r.status || "").toLowerCase() === "active");
+
+  async function reserveInstant(carId) {
+    setReservingCarId(carId);
+    setError("");
+    try {
+      await apiCreateReservation(carId);
+      load();
+    } catch (err) {
+      setError(err.message || "Failed to reserve");
+    } finally {
+      setReservingCarId(null);
+    }
+  }
+
+  function openScheduleModal(car) {
+    const start = new Date();
+    start.setMinutes(start.getMinutes() + 30);
+    const end = new Date(start);
+    end.setHours(end.getHours() + 2);
+    setScheduleModal(car || null);
+    setScheduleStart(start.toISOString().slice(0, 16));
+    setScheduleEnd(end.toISOString().slice(0, 16));
+    setSchedulePurpose("");
+    setScheduleSubmitting(false);
+  }
+
+  async function submitSchedule(e) {
+    e.preventDefault();
+    if (!scheduleModal?.id) return;
+    setScheduleSubmitting(true);
+    setError("");
+    try {
+      const start = new Date(scheduleStart).toISOString();
+      const end = new Date(scheduleEnd).toISOString();
+      if (new Date(scheduleEnd) <= new Date(scheduleStart)) {
+        setError("End must be after start");
+        setScheduleSubmitting(false);
+        return;
+      }
+      await apiCreateReservation(scheduleModal.id, schedulePurpose || null, start, end);
+      setScheduleModal(null);
+      load();
+    } catch (err) {
+      setError(err.message || "Failed to book");
+    } finally {
+      setScheduleSubmitting(false);
+    }
+  }
+
+  async function cancelRes(id) {
+    try {
+      await apiCancelReservation(id);
+      load();
+    } catch (err) {
+      setError(err.message || "Failed to cancel");
+    }
+  }
+
+  async function handleDlUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDlUploading(true);
+    setError("");
+    try {
+      await apiUploadDrivingLicence(file);
+      onUserUpdated?.();
+    } catch (err) {
+      setError(err.message || "Upload failed");
+    } finally {
+      setDlUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  const defaultKm = company?.defaultKmUsage ?? 100;
+
+  function openReleaseModal(r) {
+    setReleaseModal({ id: r.id, car: r.car });
+    setReleaseNewKm("");
+    setReleaseExceededReason("");
+  }
+
+  const releaseCurrentKm = releaseModal?.car?.km ?? 0;
+  const releaseKmUsed = (() => {
+    const n = parseInt(releaseNewKm, 10);
+    if (isNaN(n) || n < releaseCurrentKm) return null;
+    return n - releaseCurrentKm;
+  })();
+  const releaseExceedsLimit = defaultKm != null && releaseKmUsed != null && releaseKmUsed > defaultKm;
+
+  async function submitRelease(e) {
+    e.preventDefault();
+    if (!releaseModal) return;
+    const newKm = parseInt(releaseNewKm, 10);
+    if (isNaN(newKm) || newKm < 0) {
+      setError("Please enter the current odometer reading (new km of the car).");
+      return;
+    }
+    if (newKm < releaseCurrentKm) {
+      setError("New km cannot be less than the car's km when you started (" + releaseCurrentKm + " km).");
+      return;
+    }
+    if (releaseExceedsLimit && !releaseExceededReason.trim()) {
+      setError("You exceeded the company limit (" + defaultKm + " km). Please provide a reason.");
+      return;
+    }
+    setReleaseSubmitting(true);
+    setError("");
+    try {
+      await apiReleaseReservation(releaseModal.id, newKm, releaseExceedsLimit ? releaseExceededReason : undefined);
+      setReleaseModal(null);
+      load();
+    } catch (err) {
+      setError(err.message || "Failed to release");
+    } finally {
+      setReleaseSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen w-full bg-[#F8FAFC]">
+      <Sidebar user={user} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} viewAs={viewAs} setViewAs={setViewAs}>
+        {SECTIONS.map((s) => (
+          <NavItem
+            key={s.id}
+            active={section === s.id}
+            onClick={() => { setSection(s.id); setMobileOpen(false); }}
+            icon={s.icon}
+            label={s.label}
+          />
+        ))}
+      </Sidebar>
+      <main className="flex-1 w-full min-w-0 flex flex-col p-6 sm:p-8 md:p-10 overflow-auto overflow-x-hidden">
+        <header className="md:hidden flex items-center gap-3 py-3 mb-2">
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="p-2 rounded-xl bg-white shadow-sm text-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center border border-slate-100 hover:bg-slate-50 transition-colors"
+            aria-label="Open menu"
+          >
+            ☰
+          </button>
+          <h1 className="text-lg font-bold text-slate-800 truncate">Car Sharing</h1>
+        </header>
+        {error && (
+          <div className="mb-6 p-3 rounded-xl bg-red-50 text-red-700 text-sm border border-red-100">{error}</div>
+        )}
+
+        {section === "dashboard" && (
+          <section className="w-full min-w-0">
+            <h2 className="text-2xl font-bold text-slate-800 mb-6">Dashboard</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+              <div className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] border border-slate-100/80 p-6 flex items-center gap-4">
+                <span className="text-3xl w-12 h-12 flex items-center justify-center rounded-xl bg-[#3B82F6]/10 text-[#3B82F6]" aria-hidden>🚗</span>
+                <div>
+                  <p className="text-2xl font-bold text-slate-800">{activeReservations.length}</p>
+                  <p className="text-sm text-slate-500">Active Reservations</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] border border-slate-100/80 p-6 flex items-center gap-4">
+                <span className="text-3xl w-12 h-12 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600" aria-hidden>📜</span>
+                <div>
+                  <p className="text-2xl font-bold text-slate-800">{history.length}</p>
+                  <p className="text-sm text-slate-500">Total Reservations</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] border border-slate-100/80 p-6 flex items-center gap-4">
+                <span className="text-3xl w-12 h-12 flex items-center justify-center rounded-xl bg-[#3B82F6]/10 text-[#3B82F6]" aria-hidden>✅</span>
+                <div>
+                  <p className="text-2xl font-bold text-slate-800">{availableCars.length}</p>
+                  <p className="text-sm text-slate-500">Available Cars</p>
+                </div>
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-slate-800 mb-3">Recent activity</h3>
+            <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50 text-left">
+                    <th className="py-4 px-4 font-semibold text-slate-700">Date</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Car</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-800">
+                  {history.slice(0, 10).map((r) => (
+                    <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
+                      <td className="py-4 px-4">{formatDate(r.startDate)}</td>
+                      <td className="py-4 px-4">{r.car?.brand} {r.car?.registrationNumber}</td>
+                      <td className="py-4 px-4">
+                        <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${statusClass(r.status)}`}>
+                          {r.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {history.length === 0 && !loading && (
+                    <tr><td colSpan={3} className="py-10 px-4 text-center text-slate-500">No activity yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {section === "drivingLicence" && (
+          <section className="w-full min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 sm:mb-6">Driving licence</h2>
+            <p className="text-sm text-slate-500 mb-4">Upload a photo of your driving licence. An admin must approve it before you can reserve a car.</p>
+            <div className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] border border-slate-100/80 p-4 sm:p-6 max-w-lg">
+              <div className="mb-4">
+                <span className="text-sm font-semibold text-slate-600">Status: </span>
+                <span className={`px-2 py-0.5 rounded-lg text-sm font-medium ${
+                  dlStatus === "APPROVED" ? "bg-emerald-100 text-emerald-800" :
+                  dlStatus === "PENDING" ? "bg-amber-100 text-amber-800" :
+                  dlStatus === "REJECTED" ? "bg-red-100 text-red-800" :
+                  "bg-slate-100 text-slate-800"
+                }`}>
+                  {dlStatus === "APPROVED" ? "Approved" : dlStatus === "PENDING" ? "Pending approval" : dlStatus === "REJECTED" ? "Rejected" : "Not uploaded"}
+                </span>
+              </div>
+              {user?.drivingLicenceUrl && (
+                <div className="mb-4">
+                  <p className="text-sm text-slate-500 mb-2">Uploaded photo:</p>
+                  <a href={user.drivingLicenceUrl} target="_blank" rel="noopener noreferrer" className="block rounded-xl overflow-hidden border border-slate-200 max-w-xs">
+                    <img src={user.drivingLicenceUrl} alt="Driving licence" className="w-full h-auto max-h-48 object-contain bg-slate-50" />
+                  </a>
+                </div>
+              )}
+              <label className="block">
+                <span className="sr-only">Choose image</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleDlUpload}
+                  disabled={dlUploading}
+                  className="block w-full text-sm text-slate-800 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-[#3B82F6] file:text-white file:font-semibold file:cursor-pointer file:shadow-sm"
+                />
+              </label>
+              {dlUploading && <p className="text-sm text-[#7f8c8d] mt-2">Uploading…</p>}
+              {!canReserve && dlStatus !== "PENDING" && dlStatus !== "REJECTED" && (
+                <p className="text-sm text-amber-700 mt-3">Upload your driving licence and wait for admin approval to reserve cars.</p>
+              )}
+              {dlStatus === "REJECTED" && (
+                <p className="text-sm text-red-700 mt-3">Your licence was rejected. You can upload a new photo for review.</p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {section === "myReservations" && (
+          <section className="w-full min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 sm:mb-6">My Reservations</h2>
+            <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden overflow-x-auto">
+              <table className="w-full min-w-[280px]">
+                <thead>
+                  <tr className="bg-slate-50 text-left">
+                    <th className="py-4 px-4 font-semibold text-slate-700">Car</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Reserved at</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Status</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-800">
+                  {reservations.map((r) => (
+                    <Fragment key={r.id}>
+                      <tr className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
+                        <td className="py-4 px-4">{r.car?.brand} {r.car?.registrationNumber}</td>
+                        <td className="py-4 px-4">{formatDate(r.startDate)}</td>
+                        <td className="py-4 px-4">
+                          <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${statusClass(r.status)}`}>
+                            {r.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4">
+                          {(r.status || "").toLowerCase() === "active" && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openReleaseModal(r)}
+                                className="px-3 py-2 min-h-[44px] sm:min-h-0 bg-[#3B82F6] text-white text-sm font-semibold rounded-xl hover:bg-[#2563EB] shadow-sm transition-colors"
+                              >
+                                Release
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => cancelRes(r.id)}
+                                className="px-3 py-2 min-h-[44px] sm:min-h-0 bg-red-600 text-white text-sm font-semibold rounded-xl hover:bg-red-700 shadow-sm transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                      {((r.status || "").toLowerCase() === "active" && (r.pickup_code != null || r.release_code != null)) || ((r.status || "").toLowerCase() === "completed" && r.release_code != null) ? (
+                        <tr key={`${r.id}-codes`} className="border-t-0 bg-slate-50/60">
+                          <td colSpan={4} className="py-4 px-4">
+                            <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                              <h3 className="text-sm font-semibold text-slate-700 mb-3">Access Codes</h3>
+                              <div className="flex flex-wrap gap-4 items-start">
+                                {r.pickup_code != null && (
+                                  <div className="min-w-[140px] rounded-xl border-2 border-[#1E293B]/20 bg-[#1E293B]/5 px-4 py-3 text-center shadow-sm">
+                                    <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-1">Start Rental Code</p>
+                                    <p className="text-2xl font-bold tabular-nums tracking-widest text-[#1E293B]">{r.pickup_code}</p>
+                                    {(r.status || "").toLowerCase() === "active" && (() => {
+                                      const pickupStatus = getPickupCodeStatus(r, now);
+                                      if (!pickupStatus) return null;
+                                      const badgeClass = pickupStatus.status === "pending" ? "bg-slate-100 text-slate-700" : pickupStatus.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800";
+                                      return (
+                                        <div className="mt-2 flex flex-col gap-1 items-center">
+                                          <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${badgeClass}`}>
+                                            {pickupStatus.status === "pending" ? "Pending" : pickupStatus.status === "active" ? "Active" : "Expired"}
+                                          </span>
+                                          <span className="text-xs text-slate-500">{pickupStatus.countdownText}</span>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
+                                {r.release_code != null && (
+                                  <div className="min-w-[140px] rounded-xl border-2 border-[#1E293B]/20 bg-[#1E293B]/5 px-4 py-3 text-center shadow-sm">
+                                    <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-1">End Rental Code</p>
+                                    <p className="text-2xl font-bold tabular-nums tracking-widest text-[#1E293B]">{r.release_code}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  ))}
+                  {reservations.length === 0 && !loading && (
+                    <tr><td colSpan={4} className="py-10 px-4 text-center text-slate-500">No reservations</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {section === "availableCars" && (
+          <section className="w-full min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 sm:mb-6">Available Cars</h2>
+            {!canReserve && (
+              <div className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-800 text-sm">
+                You need an approved driving licence to reserve a car. Go to <button type="button" onClick={() => setSection("drivingLicence")} className="underline font-semibold">Driving licence</button> to upload and wait for approval.
+              </div>
+            )}
+            <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden overflow-x-auto">
+              <table className="w-full min-w-[280px]">
+                <thead>
+                  <tr className="bg-slate-50 text-left">
+                    <th className="py-4 px-4 font-semibold text-slate-700">Brand</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Registration</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Km</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700 hidden sm:table-cell">Status</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-800">
+                  {availableCars.map((c) => (
+                    <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
+                      <td className="py-4 px-4">{c.brand}</td>
+                      <td className="py-4 px-4">{c.registrationNumber}</td>
+                      <td className="py-4 px-4">{c.km ?? 0} km</td>
+                      <td className="py-4 px-4 hidden sm:table-cell">
+                        <span className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800">Available</span>
+                      </td>
+                      <td className="py-4 px-4 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => canReserve && reserveInstant(c.id)}
+                          disabled={reservingCarId === c.id || !canReserve}
+                          className="px-3 py-2 min-h-[44px] sm:min-h-0 bg-[#3B82F6] text-white text-sm font-semibold rounded-xl hover:bg-[#2563EB] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+                        >
+                          {reservingCarId === c.id ? "Reserving…" : "Reserve now"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => canReserve && openScheduleModal(c)}
+                          disabled={!canReserve}
+                          className="px-3 py-2 min-h-[44px] sm:min-h-0 bg-[#1E293B] text-white text-sm font-semibold rounded-xl hover:bg-[#334155] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+                        >
+                          Schedule
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {availableCars.length === 0 && !loading && (
+                    <tr><td colSpan={5} className="py-10 px-4 text-center text-slate-500">No available cars</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {section === "unavailableCars" && (
+          <section className="w-full min-w-0">
+            <h2 className="text-2xl font-bold text-slate-800 mb-6">Unavailable Cars</h2>
+            <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50 text-left">
+                    <th className="py-4 px-4 font-semibold text-slate-700">Brand</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Registration</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Km</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-800">
+                  {unavailableCars.map((c) => (
+                    <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
+                      <td className="py-4 px-4">{c.brand}</td>
+                      <td className="py-4 px-4">{c.registrationNumber}</td>
+                      <td className="py-4 px-4">{c.km ?? 0} km</td>
+                      <td className="py-4 px-4">
+                        <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${statusClass(c.status)}`}>
+                          {c.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {unavailableCars.length === 0 && !loading && (
+                    <tr><td colSpan={4} className="py-10 px-4 text-center text-slate-500">No unavailable cars</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {section === "history" && (
+          <section className="w-full min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 sm:mb-6">Reservation History</h2>
+            {(() => {
+              const byYear = {};
+              history.forEach((r) => {
+                const year = r.startDate ? new Date(r.startDate).getFullYear() : new Date().getFullYear();
+                if (!byYear[year]) byYear[year] = { count: 0, km: 0 };
+                byYear[year].count += 1;
+                if (r.releasedKmUsed != null && r.releasedKmUsed >= 0) byYear[year].km += r.releasedKmUsed;
+              });
+              const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
+              if (years.length === 0) return null;
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
+                  {years.map((year) => (
+                    <div key={year} className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] p-4 border border-slate-100/80">
+                      <div className="text-sm font-semibold text-slate-500">{year}</div>
+                      <div className="mt-1 text-xl font-bold text-slate-800">{byYear[year].count} reservation{byYear[year].count !== 1 ? "s" : ""}</div>
+                      <div className="text-sm text-[#3B82F6] font-medium">{byYear[year].km.toLocaleString()} km total</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+            <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden overflow-x-auto">
+              <table className="w-full min-w-[320px]">
+                <thead>
+                  <tr className="bg-slate-50 text-left">
+                    <th className="py-4 px-4 font-semibold text-slate-700">Reserved at</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Car</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Purpose</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Status</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700">Admin note</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-800">
+                  {history.map((r) => (
+                    <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
+                      <td className="py-4 px-4">{formatDate(r.startDate)}</td>
+                      <td className="py-4 px-4">{r.car?.brand} {r.car?.registrationNumber}</td>
+                      <td className="py-4 px-4">{r.purpose || "—"}</td>
+                      <td className="py-4 px-4">
+                        <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${statusClass(r.status)}`}>
+                          {r.status}
+                        </span>
+                        {r.releasedKmUsed != null && (
+                          <span className="block text-xs text-slate-500 mt-1">{r.releasedKmUsed} km</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 text-sm">
+                        {r.releasedExceededAdminComment ? (
+                          <span className="text-slate-800">{r.releasedExceededAdminComment}</span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {history.length === 0 && !loading && (
+                    <tr><td colSpan={5} className="py-10 px-4 text-center text-slate-500">No history</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {loading && section === "dashboard" && <p className="text-slate-500">Loading…</p>}
+      </main>
+
+      {/* Schedule booking – start/end date-time */}
+      {scheduleModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-100">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">Book in advance</h3>
+            <p className="text-sm text-slate-500 mb-4">{scheduleModal.brand} {scheduleModal.registrationNumber}</p>
+            <form onSubmit={submitSchedule} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-600 mb-1">Start date & time</label>
+                <input
+                  type="datetime-local"
+                  value={scheduleStart}
+                  onChange={(e) => setScheduleStart(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-600 mb-1">End date & time</label>
+                <input
+                  type="datetime-local"
+                  value={scheduleEnd}
+                  onChange={(e) => setScheduleEnd(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-600 mb-1">Purpose (optional)</label>
+                <input
+                  type="text"
+                  value={schedulePurpose}
+                  onChange={(e) => setSchedulePurpose(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  placeholder="e.g. Client visit"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button type="button" onClick={() => setScheduleModal(null)} className="px-4 py-2 bg-slate-100 text-slate-800 font-semibold rounded-xl hover:bg-slate-200 transition-colors">Cancel</button>
+                <button type="submit" disabled={scheduleSubmitting} className="px-4 py-2 bg-[#1E293B] text-white font-semibold rounded-xl hover:bg-[#334155] disabled:opacity-50 shadow-sm transition-colors">{scheduleSubmitting ? "Booking…" : "Book"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Release car – new km (odometer) + reason if exceeded */}
+      {releaseModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 border border-slate-100">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">Release car</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              {releaseModal.car?.brand} {releaseModal.car?.registrationNumber}
+              {releaseCurrentKm != null && (
+                <span className="block mt-1">Current odometer when reserved: {releaseCurrentKm} km</span>
+              )}
+            </p>
+            <form onSubmit={submitRelease} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-600 mb-1">New km (odometer reading)</label>
+                <input
+                  type="number"
+                  min={releaseCurrentKm}
+                  value={releaseNewKm}
+                  onChange={(e) => setReleaseNewKm(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  placeholder={String(releaseCurrentKm)}
+                  required
+                />
+                {releaseKmUsed != null && releaseKmUsed >= 0 && (
+                  <p className="text-xs text-slate-500 mt-1">Km used: {releaseKmUsed} km {defaultKm != null && releaseKmUsed > defaultKm && "(exceeds company limit of " + defaultKm + " km)"}</p>
+                )}
+              </div>
+              {releaseExceedsLimit && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 mb-1">Reason for exceeding company limit (required)</label>
+                  <textarea
+                    value={releaseExceededReason}
+                    onChange={(e) => setReleaseExceededReason(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                    placeholder="Why did you exceed the allowed km?"
+                    rows={3}
+                    required
+                  />
+                </div>
+              )}
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setReleaseModal(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-800 font-semibold rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={releaseSubmitting}
+                  className="px-4 py-2 bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] disabled:opacity-50 shadow-sm transition-colors"
+                >
+                  {releaseSubmitting ? "Releasing…" : "Release"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

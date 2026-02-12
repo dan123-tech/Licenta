@@ -1,0 +1,16 @@
+# Dependencies and build output (rebuilt in container)
+node_modules
+.next
+npm-debug.log*
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+# Docs and local dev
+docs
+*.md
+!README.md
+Dockerfile
+docker-compose*.yml
+.dockerignore

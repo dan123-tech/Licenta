@@ -1,0 +1,51 @@
+/**
+ * Shared helpers for API routes: JSON responses and session/role checks.
+ */
+
+import { NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
+import { isCompanyAdmin } from "@/lib/companies";
+
+export function jsonResponse(data, status = 200) {
+  return NextResponse.json(data, { status });
+}
+
+export function errorResponse(message, status = 400) {
+  return NextResponse.json({ error: message }, { status });
+}
+
+/**
+ * Get current session or return 401 JSON response.
+ * @returns {{ session: Object } | { response: NextResponse }}
+ */
+export async function requireSession() {
+  const session = await getSession();
+  if (!session) return { response: errorResponse("Unauthorized", 401) };
+  return { session };
+}
+
+/**
+ * Require session and that the user is in a company (companyId set).
+ * Use for routes that need a company context (cars, reservations, users, etc.).
+ * @returns {{ session: Object } | { response: NextResponse }}
+ */
+export async function requireCompany() {
+  const out = await requireSession();
+  if ("response" in out) return out;
+  if (!out.session.companyId) {
+    return { response: errorResponse("Join or create a company first", 403) };
+  }
+  return out;
+}
+
+/**
+ * Require session and that the user is ADMIN for their company.
+ * @returns {{ session: Object } | { response: NextResponse }}
+ */
+export async function requireAdmin() {
+  const out = await requireCompany();
+  if ("response" in out) return out;
+  const admin = await isCompanyAdmin(out.session.userId, out.session.companyId);
+  if (!admin) return { response: errorResponse("Forbidden", 403) };
+  return out;
+}

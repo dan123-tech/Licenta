@@ -1,0 +1,62 @@
+/**
+ * POST /api/auth/set-password
+ * Body: { token, newPassword }
+ * For invite flow: set password and enroll (token = invite token).
+ */
+
+import { z } from "zod";
+import { getInviteByToken, acceptInvite, findUserByEmail } from "@/lib/users";
+import { hashPassword, setSession } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { jsonResponse, errorResponse } from "@/lib/api-helpers";
+
+const bodySchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export async function POST(request) {
+  const parsed = bodySchema.safeParse(await request.json());
+  if (!parsed.success) {
+    const msg = parsed.error.flatten().fieldErrors?.newPassword?.[0] ?? "Invalid input";
+    return errorResponse(msg, 422);
+  }
+  const { token, newPassword } = parsed.data;
+
+  const invite = await getInviteByToken(token);
+  if (!invite || invite.usedAt || invite.expiresAt < new Date()) {
+    return errorResponse("Invalid or expired token", 400);
+  }
+
+  let user = await findUserByEmail(invite.email);
+  if (user) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: await hashPassword(newPassword) },
+    });
+  } else {
+    user = await prisma.user.create({
+      data: {
+        email: invite.email,
+        password: await hashPassword(newPassword),
+        name: invite.email.split("@")[0],
+      },
+    });
+  }
+
+  const member = await acceptInvite(token, user.id);
+  if (!member) return errorResponse("Could not enroll", 400);
+
+  await setSession({
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    companyId: member.companyId,
+    role: member.role,
+  });
+
+  return jsonResponse({
+    user: { id: user.id, email: user.email, name: user.name, role: member.role, companyId: member.companyId },
+    company: { id: member.company.id, name: member.company.name },
+  });
+}

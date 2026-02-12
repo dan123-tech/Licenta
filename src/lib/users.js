@@ -1,0 +1,240 @@
+/**
+ * User and invite domain logic.
+ * Handles user lookup, invite creation, and accepting invites (enrollment).
+ */
+
+import { prisma } from "@/lib/db";
+import { hashPassword } from "@/lib/auth";
+import { randomBytes } from "crypto";
+
+/**
+ * Find user by email (for login).
+ * @param {string} email - User email
+ * @returns {Promise<Object|null>} User with id, email, password, name or null
+ */
+export async function findUserByEmail(email) {
+  return prisma.user.findUnique({
+    where: { email: email.toLowerCase().trim() },
+  });
+}
+
+/**
+ * Create a new user and optionally attach to a company with ENROLLED status.
+ * @param {Object} data - { email, password (plain), name }
+ * @param {Object} [options] - optional { companyId, role } for immediate enrollment
+ * @returns {Promise<Object>} Created user
+ */
+export async function createUser(data, options) {
+  const hashed = await hashPassword(data.password);
+  const email = data.email.toLowerCase().trim();
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email,
+        password: hashed,
+        name: data.name.trim(),
+      },
+    });
+    if (options?.companyId) {
+      await tx.companyMember.create({
+        data: {
+          userId: user.id,
+          companyId: options.companyId,
+          role: options.role,
+          status: "ENROLLED",
+        },
+      });
+    }
+    return user;
+  });
+}
+
+/**
+ * Create an invite for an email to join a company. Creates a PENDING_INVITE member if not already present.
+ * @param {string} companyId - Company id
+ * @param {string} email - Invitee email
+ * @param {string} role - Role: "ADMIN" or "USER"
+ * @param {string} [name] - Optional display name
+ * @returns {Promise<Object>} Invite with token
+ */
+export async function createInvite(companyId, email, role, name) {
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  const emailNorm = email.toLowerCase().trim();
+
+  return prisma.$transaction(async (tx) => {
+    const invite = await tx.invite.create({
+      data: { token, email: emailNorm, companyId, expiresAt },
+    });
+    const existing = await tx.user.findUnique({ where: { email: emailNorm } });
+    if (existing) {
+      const existingMember = await tx.companyMember.findUnique({
+        where: { userId_companyId: { userId: existing.id, companyId } },
+      });
+      if (!existingMember) {
+        await tx.companyMember.create({
+          data: {
+            userId: existing.id,
+            companyId,
+            role,
+            status: "PENDING_INVITE",
+          },
+        });
+      }
+    }
+    return invite;
+  });
+}
+
+/**
+ * Consume an invite token: mark invite as used and set member status to ENROLLED.
+ * @param {string} token - Invite token from email/link
+ * @param {string} userId - User id (after register or existing user)
+ * @returns {Promise<Object|null>} Updated CompanyMember or null if token invalid/expired
+ */
+export async function acceptInvite(token, userId) {
+  const invite = await prisma.invite.findUnique({
+    where: { token },
+    include: { company: true },
+  });
+  if (!invite || invite.usedAt || invite.expiresAt < new Date()) return null;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.invite.update({
+      where: { id: invite.id },
+      data: { usedAt: new Date() },
+    });
+    await tx.companyMember.upsert({
+      where: {
+        userId_companyId: { userId, companyId: invite.companyId },
+      },
+      create: {
+        userId,
+        companyId: invite.companyId,
+        role: "USER",
+        status: "ENROLLED",
+      },
+      update: { status: "ENROLLED" },
+    });
+  });
+
+  return prisma.companyMember.findUnique({
+    where: { userId_companyId: { userId, companyId: invite.companyId } },
+    include: { company: true },
+  });
+}
+
+/**
+ * Get invite by token (for set-password or register page).
+ * @param {string} token
+ * @returns {Promise<Object|null>}
+ */
+export async function getInviteByToken(token) {
+  return prisma.invite.findUnique({
+    where: { token },
+    include: { company: true },
+  });
+}
+
+/**
+ * List invites for a company (admin view: who was invited, joined or pending).
+ * @param {string} companyId
+ * @returns {Promise<Object[]>}
+ */
+export async function listInvites(companyId) {
+  return prisma.invite.findMany({
+    where: { companyId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/**
+ * List company members with user details (for admin Manage Users).
+ * @param {string} companyId
+ * @param {"ENROLLED"|"PENDING_INVITE"} [status]
+ * @returns {Promise<Object[]>}
+ */
+export async function listCompanyMembers(companyId, status) {
+  return prisma.companyMember.findMany({
+    where: { companyId, ...(status ? { status } : {}) },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          drivingLicenceUrl: true,
+          drivingLicenceStatus: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/**
+ * Update a member's role (e.g. promote to ADMIN). Caller must ensure current user is admin.
+ * @param {string} companyId
+ * @param {string} userId
+ * @param {string} role - "ADMIN" or "USER"
+ */
+export async function updateMemberRole(companyId, userId, role) {
+  return prisma.companyMember.update({
+    where: { userId_companyId: { userId, companyId } },
+    data: { role },
+  });
+}
+
+/**
+ * Remove a user from the company (delete CompanyMember). Does not delete the User.
+ * @param {string} companyId
+ * @param {string} userId
+ */
+export async function removeMember(companyId, userId) {
+  return prisma.companyMember.delete({
+    where: { userId_companyId: { userId, companyId } },
+  });
+}
+
+/**
+ * Update current user's driving licence (upload: set URL and status PENDING).
+ * @param {string} userId
+ * @param {{ drivingLicenceUrl: string }}
+ */
+export async function setUserDrivingLicenceUrl(userId, { drivingLicenceUrl }) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      drivingLicenceUrl,
+      drivingLicenceStatus: "PENDING",
+    },
+  });
+}
+
+/**
+ * Update user's driving licence status (admin: APPROVED or REJECTED).
+ * @param {string} userId
+ * @param {"APPROVED"|"REJECTED"} status
+ */
+export async function setUserDrivingLicenceStatus(userId, status) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { drivingLicenceStatus: status },
+  });
+}
+
+/**
+ * Get user by id (for session with DL status).
+ */
+export async function getUserById(userId) {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      drivingLicenceStatus: true,
+      drivingLicenceUrl: true,
+    },
+  });
+}

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Edit car" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/on_surface" />
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/dialog_edit_km"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:hint="Current km"
+        app:boxStrokeColor="@color/accent">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_edit_km_et"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="number" />
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/dialog_edit_consumption"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="Consumption L/100km (optional)"
+        app:boxStrokeColor="@color/accent">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_edit_consumption_et"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal" />
+    </com.google.android.material.textfield.TextInputLayout>
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="12dp" android:text="Status" android:textColor="@color/on_surface_variant" android:textSize="14sp" />
+    <Spinner android:id="@+id/dialog_edit_status"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp" />
+    <TextView android:id="@+id/dialog_edit_car_error" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="@color/error" android:visibility="gone" android:layout_marginTop="8dp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:orientation="horizontal">
+        <com.google.android.material.button.MaterialButton android:id="@+id/dialog_edit_cancel"
+            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginEnd="8dp"
+            android:text="Cancel" app:backgroundTint="@color/on_surface_variant" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/dialog_edit_save"
+            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="Save" app:backgroundTint="@color/accent" />
+    </LinearLayout>
+</LinearLayout>
