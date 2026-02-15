@@ -62,6 +62,7 @@ export async function updateCompany(companyId, data) {
   const allowed = [
     "name", "domain", "joinCode", "defaultKmUsage", "averageFuelPricePerLiter",
     "defaultConsumptionL100km", "priceBenzinePerLiter", "priceDieselPerLiter", "priceElectricityPerKwh",
+    "dataSourceConfig",
   ];
   const update = {};
   for (const key of allowed) {

@@ -7,7 +7,8 @@ import { z } from "zod";
 import { getReservationById, cancelReservation, extendReservation, completeReservation, updateExceededApprovalStatus, refreshReservationCodes } from "@/lib/reservations";
 import { updateCar } from "@/lib/cars";
 import { getCompanyById } from "@/lib/companies";
-import { requireCompany, jsonResponse, errorResponse } from "@/lib/api-helpers";
+import { getProvider, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
+import { requireCompany, jsonResponse, errorResponse, dataSourceNotConfiguredResponse } from "@/lib/api-helpers";
 
 const patchSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("cancel") }),
@@ -25,6 +26,13 @@ const patchSchema = z.discriminatedUnion("action", [
 export async function PATCH(request, { params }) {
   const out = await requireCompany();
   if ("response" in out) return out.response;
+  try {
+    const provider = await getProvider(out.session.companyId, LAYERS.RESERVATIONS);
+    if (provider !== PROVIDERS.LOCAL) return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS);
+  } catch (err) {
+    console.error("PATCH /api/reservations/[id] (data source) error:", err);
+    return errorResponse(err?.message || "Failed to update reservation", 500);
+  }
   const { id } = await params;
   let body;
   try {

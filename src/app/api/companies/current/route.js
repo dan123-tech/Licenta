@@ -66,7 +66,11 @@ export async function PATCH(request) {
   }
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
-    const msg = parsed.error.errors?.map((e) => e.message).join("; ") || "Invalid input";
+    let msg = "Invalid input";
+    try {
+      const err = parsed.error;
+      if (err?.errors?.length) msg = err.errors.map((e) => e.message).filter(Boolean).join("; ");
+    } catch (_) {}
     return errorResponse(msg, 422);
   }
   const data = {};

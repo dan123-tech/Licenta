@@ -6,7 +6,9 @@
 import { z } from "zod";
 import { listReservations, createReservation, createInstantReservation, ensureReservationHasCodes } from "@/lib/reservations";
 import { updateCar } from "@/lib/cars";
-import { requireCompany, jsonResponse, errorResponse } from "@/lib/api-helpers";
+import { getProvider, getLayerTable, getStoredCredentials, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
+import { listSqlServerReservations } from "@/lib/connectors/sql-server-reservations";
+import { requireCompany, jsonResponse, errorResponse, dataSourceNotConfiguredResponse } from "@/lib/api-helpers";
 
 const postSchema = z.object({
   carId: z.string().min(1),
@@ -18,18 +20,80 @@ const postSchema = z.object({
 export async function GET(request) {
   const out = await requireCompany();
   if ("response" in out) return out.response;
+  let provider;
+  try {
+    provider = await getProvider(out.session.companyId, LAYERS.RESERVATIONS);
+  } catch (err) {
+    console.error("GET /api/reservations (data source) error:", err);
+    return errorResponse(err?.message || "Failed to load reservations", 500);
+  }
+
   const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status");
+  const status = searchParams.get("status") ?? undefined;
   const carId = searchParams.get("carId") ?? undefined;
+  const isAdmin = out.session.role === "ADMIN";
+
+  if (provider === PROVIDERS.SQL_SERVER) {
+    const tableName = await getLayerTable(out.session.companyId, LAYERS.RESERVATIONS);
+    if (!tableName) {
+      return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS, "Select a data table in Database Settings for the Reservations layer.");
+    }
+    const creds = await getStoredCredentials(out.session.companyId, LAYERS.RESERVATIONS, PROVIDERS.SQL_SERVER);
+    if (!creds?.host || !creds?.username || !creds?.password) {
+      return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS, "SQL Server credentials not saved. Connect again in Database Settings.");
+    }
+    try {
+      const options = { status, carId };
+      if (!isAdmin) options.userId = out.session.userId;
+      const list = await listSqlServerReservations(out.session.companyId, options);
+      if (list == null) {
+        return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS, "Could not load reservations from SQL Server. Check table and credentials.");
+      }
+      return jsonResponse(
+        list.map((r) => {
+          const isOwner = r.userId === out.session.userId;
+          const showCodes = isOwner || isAdmin;
+          return {
+            id: r.id,
+            carId: r.carId,
+            car: r.car,
+            userId: r.userId,
+            user: r.user,
+            startDate: r.startDate,
+            endDate: r.endDate,
+            purpose: r.purpose,
+            status: r.status,
+            pickup_code: showCodes ? r.pickup_code : undefined,
+            code_valid_from: showCodes ? r.code_valid_from : undefined,
+            release_code: showCodes ? r.release_code : undefined,
+            releasedKmUsed: r.releasedKmUsed,
+            releasedExceededReason: r.releasedExceededReason,
+            releasedExceededStatus: r.releasedExceededStatus,
+            releasedExceededAdminComment: r.releasedExceededAdminComment,
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt,
+          };
+        })
+      );
+    } catch (err) {
+      console.error("GET /api/reservations (SQL Server) error:", err);
+      const msg = err?.message || String(err) || "Failed to load reservations from SQL Server";
+      return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS, msg);
+    }
+  }
+
+  if (provider !== PROVIDERS.LOCAL) {
+    return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS);
+  }
+
   const options = {
     companyId: out.session.companyId,
-    status: status ?? undefined,
+    status,
     carId,
   };
-  if (out.session.role !== "ADMIN") options.userId = out.session.userId;
+  if (!isAdmin) options.userId = out.session.userId;
   const list = await listReservations(options);
   const withCodes = await Promise.all(list.map(ensureReservationHasCodes));
-  const isAdmin = out.session.role === "ADMIN";
   return jsonResponse(
     withCodes.map((r) => {
       const isOwner = r.userId === out.session.userId;
@@ -61,6 +125,13 @@ export async function GET(request) {
 export async function POST(request) {
   const out = await requireCompany();
   if ("response" in out) return out.response;
+  try {
+    const provider = await getProvider(out.session.companyId, LAYERS.RESERVATIONS);
+    if (provider !== PROVIDERS.LOCAL) return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS);
+  } catch (err) {
+    console.error("POST /api/reservations (data source) error:", err);
+    return errorResponse(err?.message || "Failed to create reservation", 500);
+  }
   const { getUserById } = await import("@/lib/users");
   const currentUser = await getUserById(out.session.userId);
   if (currentUser?.drivingLicenceStatus !== "APPROVED") {

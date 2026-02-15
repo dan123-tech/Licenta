@@ -11,6 +11,7 @@ import {
   apiReleaseReservation,
   apiExtendReservation,
   apiUploadDrivingLicence,
+  apiDeleteDrivingLicence,
 } from "@/lib/api";
 
 const SECTIONS = [
@@ -77,6 +78,9 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
   const [releaseExceededReason, setReleaseExceededReason] = useState("");
   const [releaseSubmitting, setReleaseSubmitting] = useState(false);
   const [dlUploading, setDlUploading] = useState(false);
+  const [dlDeleting, setDlDeleting] = useState(false);
+  const [selectedDlFile, setSelectedDlFile] = useState(null);
+  const [dlPreviewUrl, setDlPreviewUrl] = useState(null);
   const [now, setNow] = useState(() => new Date());
   const [scheduleModal, setScheduleModal] = useState(null);
   const [scheduleStart, setScheduleStart] = useState("");
@@ -175,19 +179,49 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
     }
   }
 
-  async function handleDlUpload(e) {
+  function handleDlFileSelect(e) {
     const file = e.target.files?.[0];
+    if (dlPreviewUrl) URL.revokeObjectURL(dlPreviewUrl);
+    setDlPreviewUrl(null);
+    setSelectedDlFile(null);
     if (!file) return;
+    setSelectedDlFile(file);
+    setDlPreviewUrl(URL.createObjectURL(file));
+    e.target.value = "";
+  }
+
+  useEffect(() => {
+    return () => { if (dlPreviewUrl) URL.revokeObjectURL(dlPreviewUrl); };
+  }, [dlPreviewUrl]);
+
+  async function handleDlSave() {
+    if (!selectedDlFile) return;
     setDlUploading(true);
     setError("");
     try {
-      await apiUploadDrivingLicence(file);
+      await apiUploadDrivingLicence(selectedDlFile);
+      if (dlPreviewUrl) URL.revokeObjectURL(dlPreviewUrl);
+      setDlPreviewUrl(null);
+      setSelectedDlFile(null);
       onUserUpdated?.();
     } catch (err) {
       setError(err.message || "Upload failed");
     } finally {
       setDlUploading(false);
-      e.target.value = "";
+    }
+  }
+
+  async function handleDlDelete() {
+    if (!user?.drivingLicenceUrl) return;
+    setDlDeleting(true);
+    setError("");
+    try {
+      await apiDeleteDrivingLicence();
+      onUserUpdated?.();
+    } catch (err) {
+      setError(err.message || "Delete failed");
+    } finally {
+      setDlDeleting(false);
     }
   }
 
@@ -237,7 +271,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-[#F8FAFC]">
+    <div className="flex h-full w-full bg-[#F8FAFC]">
       <Sidebar user={user} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} viewAs={viewAs} setViewAs={setViewAs}>
         {SECTIONS.map((s) => (
           <NavItem
@@ -249,18 +283,19 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
           />
         ))}
       </Sidebar>
-      <main className="flex-1 w-full min-w-0 flex flex-col p-6 sm:p-8 md:p-10 overflow-auto overflow-x-hidden">
-        <header className="md:hidden flex items-center gap-3 py-3 mb-2">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 md:ml-2 my-2 md:my-3 md:mr-3 bg-white rounded-l-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <header className="shrink-0 flex items-center gap-3 py-3 px-4 sm:px-6 md:px-8 border-b border-slate-200/80 bg-white shadow-sm z-10">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-xl bg-white shadow-sm text-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center border border-slate-100 hover:bg-slate-50 transition-colors"
+            className="md:hidden p-2 rounded-xl bg-white shadow-sm text-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center border border-slate-100 hover:bg-slate-50 transition-colors"
             aria-label="Open menu"
           >
             ☰
           </button>
           <h1 className="text-lg font-bold text-slate-800 truncate">Car Sharing</h1>
         </header>
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 sm:p-8 md:p-10 flex flex-col">
         {error && (
           <div className="mb-6 p-3 rounded-xl bg-red-50 text-red-700 text-sm border border-red-100">{error}</div>
         )}
@@ -351,11 +386,37 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  onChange={handleDlUpload}
-                  disabled={dlUploading}
-                  className="block w-full text-sm text-slate-800 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-[#3B82F6] file:text-white file:font-semibold file:cursor-pointer file:shadow-sm"
+                  onChange={handleDlFileSelect}
+                  disabled={dlUploading || dlDeleting}
+                  className="block w-full text-sm text-slate-800 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-slate-200 file:text-slate-800 file:font-semibold file:cursor-pointer file:shadow-sm"
                 />
               </label>
+              {selectedDlFile && (
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-slate-700 mb-1">New file: {selectedDlFile.name}</p>
+                  {dlPreviewUrl && (
+                    <img src={dlPreviewUrl} alt="Preview" className="rounded-xl border border-slate-200 max-h-32 object-contain bg-slate-50 mb-3" />
+                  )}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={handleDlSave}
+                  disabled={dlUploading || dlDeleting || !selectedDlFile}
+                  className="px-5 py-2.5 rounded-xl font-semibold text-white bg-[#3B82F6] hover:bg-[#2563EB] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+                >
+                  {dlUploading ? "Saving…" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDlDelete}
+                  disabled={dlUploading || dlDeleting || !user?.drivingLicenceUrl}
+                  className="px-5 py-2.5 rounded-xl font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+                >
+                  {dlDeleting ? "Deleting…" : "Delete"}
+                </button>
+              </div>
               {dlUploading && <p className="text-sm text-[#7f8c8d] mt-2">Uploading…</p>}
               {!canReserve && dlStatus !== "PENDING" && dlStatus !== "REJECTED" && (
                 <p className="text-sm text-amber-700 mt-3">Upload your driving licence and wait for admin approval to reserve cars.</p>
@@ -620,7 +681,8 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
         )}
 
         {loading && section === "dashboard" && <p className="text-slate-500">Loading…</p>}
-      </main>
+        </main>
+      </div>
 
       {/* Schedule booking – start/end date-time */}
       {scheduleModal && (

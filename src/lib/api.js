@@ -11,6 +11,59 @@ const getOpts = (method = "GET", body) => {
   return opts;
 };
 
+function throwIfDataSourceNotConfigured(res, data) {
+  if (res.status === 503 && data?.code === "DATA_SOURCE_NOT_CONFIGURED") {
+    const err = new Error(data.error || "Data source not configured for this layer.");
+    err.code = data.code;
+    err.layer = data.layer;
+    throw err;
+  }
+}
+
+export async function apiDataSourceConfigGet() {
+  const res = await fetch("/api/companies/current/data-source-config", getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load data source config");
+  return data;
+}
+
+export async function apiDataSourceConfigSave(payload) {
+  const res = await fetch("/api/companies/current/data-source-config", getOpts("PATCH", payload));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to save data source config");
+  return data;
+}
+
+/** POST body: { provider, host, port, databaseName, username, password }. Returns { tables: string[] }. */
+export async function apiDataSourceTablesFetch(body) {
+  const res = await fetch("/api/admin/data-source/tables", getOpts("POST", body));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = typeof data?.error === "string" ? data.error : data?.error?.message || res.statusText || "Failed to list tables";
+    throw new Error(msg);
+  }
+  return data;
+}
+
+/** POST body: { layer, provider, credentials, tableName? }. Stores credentials for layer+provider. */
+export async function apiDataSourceCredentialsSave(body) {
+  const res = await fetch("/api/companies/current/data-source-credentials", getOpts("POST", body));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = typeof data?.error === "string" ? data.error : data?.error?.message || res.statusText || "Failed to save credentials";
+    throw new Error(msg);
+  }
+  return data;
+}
+
+/** POST body: { credentials: { serviceAccountJson } }. Tests Firebase with provided service account JSON. */
+export async function apiDataSourceTestFirebase(body) {
+  const res = await fetch("/api/companies/current/data-source/test-firebase", getOpts("POST", body));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Firebase connection failed");
+  return data;
+}
+
 export async function apiLogin(email, password) {
   const res = await fetch("/api/auth/login", getOpts("POST", { email, password }));
   const data = await res.json().catch(() => ({}));
@@ -69,7 +122,13 @@ export async function apiCars(status) {
   const url = status ? `/api/cars?status=${encodeURIComponent(status)}` : "/api/cars";
   const res = await fetch(url, getOpts("GET"));
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Failed to load cars");
+  throwIfDataSourceNotConfigured(res, data);
+  if (!res.ok) {
+    const err = new Error(typeof data?.error === "string" ? data.error : "Failed to load cars");
+    if (data?.code) err.code = data.code;
+    if (data?.layer) err.layer = data.layer;
+    throw err;
+  }
   return data;
 }
 
@@ -98,7 +157,13 @@ export async function apiUsers(status) {
   const url = status ? `/api/users?status=${encodeURIComponent(status)}` : "/api/users";
   const res = await fetch(url, getOpts("GET"));
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Failed to load users");
+  throwIfDataSourceNotConfigured(res, data);
+  if (!res.ok) {
+    const err = new Error(typeof data?.error === "string" ? data.error : "Failed to load users");
+    if (data?.code) err.code = data.code;
+    if (data?.layer) err.layer = data.layer;
+    throw err;
+  }
   return data;
 }
 
@@ -106,6 +171,14 @@ export async function apiInviteUser(email, name, role) {
   const res = await fetch("/api/users/invite", getOpts("POST", { email, name, role }));
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Failed to invite");
+  return data;
+}
+
+/** Create user directly (admin). POST /api/users. For LOCAL adds to company; for SQL Server inserts into Users table. */
+export async function apiCreateUser(email, name, password, role) {
+  const res = await fetch("/api/users", getOpts("POST", { email, name, password: password || undefined, role: role || "USER" }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to create user");
   return data;
 }
 
@@ -130,6 +203,17 @@ export async function apiUploadDrivingLicence(file) {
   return data;
 }
 
+/** Delete current user's driving licence (remove photo and status). */
+export async function apiDeleteDrivingLicence() {
+  const res = await fetch("/api/users/me/driving-licence", {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Delete failed");
+  return data;
+}
+
 /** Admin: set user driving licence status. */
 export async function apiSetUserDrivingLicenceStatus(userId, drivingLicenceStatus) {
   const res = await fetch(`/api/users/${userId}`, getOpts("PATCH", { drivingLicenceStatus }));
@@ -149,13 +233,20 @@ export async function apiReservations(status) {
   const url = status ? `/api/reservations?status=${encodeURIComponent(status)}` : "/api/reservations";
   const res = await fetch(url, getOpts("GET"));
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Failed to load reservations");
+  throwIfDataSourceNotConfigured(res, data);
+  if (!res.ok) {
+    const err = new Error(typeof data?.error === "string" ? data.error : "Failed to load reservations");
+    if (data?.code) err.code = data.code;
+    if (data?.layer) err.layer = data.layer;
+    throw err;
+  }
   return data;
 }
 
 export async function apiReservationHistory() {
   const res = await fetch("/api/reservations/history", getOpts("GET"));
   const data = await res.json().catch(() => ({}));
+  throwIfDataSourceNotConfigured(res, data);
   if (!res.ok) throw new Error(data.error || "Failed to load history");
   return data;
 }

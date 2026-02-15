@@ -165,6 +165,7 @@ export async function listCompanyMembers(companyId, status) {
           name: true,
           drivingLicenceUrl: true,
           drivingLicenceStatus: true,
+          drivingLicenceVerifiedBy: true,
         },
       },
     },
@@ -216,10 +217,23 @@ export async function setUserDrivingLicenceUrl(userId, { drivingLicenceUrl }) {
  * @param {string} userId
  * @param {"APPROVED"|"REJECTED"} status
  */
-export async function setUserDrivingLicenceStatus(userId, status) {
+export async function setUserDrivingLicenceStatus(userId, status, options = {}) {
+  const data = { drivingLicenceStatus: status };
+  if (options.verifiedBy) data.drivingLicenceVerifiedBy = options.verifiedBy;
   return prisma.user.update({
     where: { id: userId },
-    data: { drivingLicenceStatus: status },
+    data,
+  });
+}
+
+/**
+ * Clear current user's driving licence (remove photo and status).
+ * @param {string} userId
+ */
+export async function clearUserDrivingLicence(userId) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { drivingLicenceUrl: null, drivingLicenceStatus: null },
   });
 }
 

@@ -1,0 +1,25 @@
+# SharePoint-style database (SQL Server) for development / testing.
+# Use when you want a database that mimics SharePoint content DB structure
+# (sites, webs, lists, user info, documents, etc.).
+#
+# Start:  docker compose -f docker-compose.sharepoint-db.yml up -d
+# Stop:   docker compose -f docker-compose.sharepoint-db.yml down
+#
+# CONNECTION: Host localhost, Port 1434, Database WSS_Content, User sa, Pass YourStrong!Pass123
+# After first start:  SQLSERVER_PORT=1434 node scripts/run-sharepoint-schema.js
+
+services:
+  sqlserver-sharepoint:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: fleetstream-sharepoint-db
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "YourStrong!Pass123"
+    ports:
+      - "1434:1433"
+    volumes:
+      - sharepoint_db_data:/var/opt/mssql
+
+volumes:
+  sharepoint_db_data:

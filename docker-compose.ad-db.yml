@@ -1,0 +1,24 @@
+# Active Directory / Entra-style user database (SQL Server) for development.
+# Use when you want a directory of users that mimics AD/Entra (e.g. for Users layer).
+#
+# Start:  docker compose -f docker-compose.ad-db.yml up -d
+# Stop:   docker compose -f docker-compose.ad-db.yml down
+#
+# CONNECTION: Host localhost, Port 1435, Database ADDirectory, User sa, Pass YourStrong!Pass123
+# After first start:  SQLSERVER_PORT=1435 node scripts/run-ad-schema.js
+
+services:
+  sqlserver-ad:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: fleetstream-ad-db
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "YourStrong!Pass123"
+    ports:
+      - "1435:1433"
+    volumes:
+      - ad_db_data:/var/opt/mssql
+
+volumes:
+  ad_db_data:

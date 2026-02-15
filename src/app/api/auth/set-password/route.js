@@ -18,7 +18,11 @@ const bodySchema = z.object({
 export async function POST(request) {
   const parsed = bodySchema.safeParse(await request.json());
   if (!parsed.success) {
-    const msg = parsed.error.flatten().fieldErrors?.newPassword?.[0] ?? "Invalid input";
+    let msg = "Invalid input";
+    try {
+      const err = parsed.error;
+      if (err?.errors?.[0]?.message) msg = err.errors[0].message;
+    } catch (_) {}
     return errorResponse(msg, 422);
   }
   const { token, newPassword } = parsed.data;

@@ -70,24 +70,26 @@ function AdminDashboardOrUserToggle({ session, company, loadSession }) {
   const [viewAs, setViewAs] = useState("admin"); // "admin" | "user"
 
   return (
-    <div className="min-h-screen w-full flex bg-[#F8FAFC]">
-      {viewAs === "user" ? (
-        <UserDashboard
-          user={session}
-          company={company}
-          onUserUpdated={loadSession}
-          viewAs={viewAs}
-          setViewAs={setViewAs}
-        />
-      ) : (
-        <AdminDashboard
-          user={session}
-          company={company}
-          onCompanyUpdated={loadSession}
-          viewAs={viewAs}
-          setViewAs={setViewAs}
-        />
-      )}
+    <div className="h-screen w-full flex overflow-hidden bg-[#F8FAFC]">
+      <div className="flex-1 flex min-h-0 min-w-0">
+        {viewAs === "user" ? (
+          <UserDashboard
+            user={session}
+            company={company}
+            onUserUpdated={loadSession}
+            viewAs={viewAs}
+            setViewAs={setViewAs}
+          />
+        ) : (
+          <AdminDashboard
+            user={session}
+            company={company}
+            onCompanyUpdated={loadSession}
+            viewAs={viewAs}
+            setViewAs={setViewAs}
+          />
+        )}
+      </div>
     </div>
   );
 }

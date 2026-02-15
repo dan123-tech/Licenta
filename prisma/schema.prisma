@@ -65,8 +65,9 @@ model User {
   password              String               // hashed (bcrypt)
   name                 String
   avatarUrl            String?
-  drivingLicenceUrl    String?              // photo of driving licence
-  drivingLicenceStatus DrivingLicenceStatus? // PENDING | APPROVED | REJECTED; null = not uploaded
+  drivingLicenceUrl         String?              // photo of driving licence
+  drivingLicenceStatus      DrivingLicenceStatus? // PENDING | APPROVED | REJECTED; null = not uploaded
+  drivingLicenceVerifiedBy  String?              // "AI" | "ADMIN" – who set the status
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
@@ -91,6 +92,8 @@ model Company {
   priceBenzinePerLiter      Float?   // global pricing: Benzine (currency/L)
   priceDieselPerLiter       Float?   // global pricing: Diesel (currency/L)
   priceElectricityPerKwh    Float?   // global pricing: Electricity (currency/kWh)
+  dataSourceConfig          Json?    // { users, cars, reservations, usersTable?, carsTable?, reservationsTable? }
+  dataSourceCredentials     Json?    // encrypted { "users:SQL_SERVER": { tableName, ...credentials } } per layer:provider
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 

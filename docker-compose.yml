@@ -35,6 +35,8 @@ services:
     environment:
       DATABASE_URL: "postgresql://postgres:postgres@db:5432/company_car_sharing?schema=public"
       AUTH_SECRET: "${AUTH_SECRET:-dev-secret-at-least-32-chars-long-change-me}"
+      AI_VERIFICATION_URL: "http://host.docker.internal:8080"
+      AI_VERIFY_PATH: "/validate"
     ports:
       - "3000:3000"
     volumes:

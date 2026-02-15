@@ -1,5 +1,7 @@
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { DatabaseOrchestratorProvider } from "@/orchestrator";
+import AiChatBubble from "@/components/AiChatBubble";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,7 +24,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${inter.variable} ${geistMono.variable} antialiased font-sans`}>
-        {children}
+        <DatabaseOrchestratorProvider>
+          {children}
+          <AiChatBubble />
+        </DatabaseOrchestratorProvider>
       </body>
     </html>
   );

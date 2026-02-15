@@ -26,9 +26,10 @@ export function Sidebar({ user, children, mobileOpen, onClose, viewAs, setViewAs
       )}
       <aside
         className={`
-          w-[260px] min-w-[260px] min-h-screen flex flex-col py-5 text-white shrink-0 overflow-x-hidden
+          w-[260px] min-w-[260px] h-screen flex flex-col py-5 text-white shrink-0 overflow-x-hidden
           fixed md:relative left-0 top-0 z-50 md:z-auto
           transform transition-transform duration-200 ease-out
+          border-r border-slate-600/50 shadow-lg
           ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
         style={{ backgroundColor: "var(--sidebar-bg)" }}

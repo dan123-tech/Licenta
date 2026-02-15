@@ -6,7 +6,9 @@
 
 import { z } from "zod";
 import { getCarById, updateCar, deleteCar } from "@/lib/cars";
-import { requireCompany, requireAdmin, jsonResponse, errorResponse } from "@/lib/api-helpers";
+import { getProvider, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
+import { getSqlServerCarById, updateSqlServerCar, deleteSqlServerCar } from "@/lib/connectors/sql-server-cars";
+import { requireCompany, requireAdmin, jsonResponse, errorResponse, dataSourceNotConfiguredResponse } from "@/lib/api-helpers";
 
 const FUEL_TYPES = ["Benzine", "Diesel", "Electric", "Hybrid"];
 const patchSchema = z.object({
@@ -27,6 +29,31 @@ export async function GET(_request, { params }) {
   const out = await requireCompany();
   if ("response" in out) return out.response;
   const { id } = await params;
+  try {
+    const provider = await getProvider(out.session.companyId, LAYERS.CARS);
+    if (provider === PROVIDERS.SQL_SERVER) {
+      const car = await getSqlServerCarById(out.session.companyId, id);
+      if (!car) return errorResponse("Car not found", 404);
+      return jsonResponse({
+        id: car.id,
+        brand: car.brand,
+        model: car.model,
+        registrationNumber: car.registrationNumber,
+        km: car.km,
+        status: car.status,
+        fuelType: car.fuelType ?? "Benzine",
+        averageConsumptionL100km: car.averageConsumptionL100km ?? null,
+        averageConsumptionKwh100km: car.averageConsumptionKwh100km ?? null,
+        batteryLevel: car.batteryLevel ?? null,
+        batteryCapacityKwh: car.batteryCapacityKwh ?? null,
+        lastServiceMileage: car.lastServiceMileage ?? null,
+      });
+    }
+    if (provider !== PROVIDERS.LOCAL) return dataSourceNotConfiguredResponse(LAYERS.CARS);
+  } catch (err) {
+    console.error("GET /api/cars/[id] error:", err);
+    return errorResponse(err?.message || "Failed to load car", 500);
+  }
   const car = await getCarById(id, out.session.companyId);
   if (!car) return errorResponse("Car not found", 404);
   const canSeeHistory = out.session.role === "ADMIN";
@@ -62,7 +89,22 @@ export async function PATCH(request, { params }) {
   const { id } = await params;
   const parsed = patchSchema.safeParse(await request.json());
   if (!parsed.success) return errorResponse("Invalid input", 422);
-  const result = await updateCar(id, out.session.companyId, parsed.data);
+  const data = parsed.data;
+
+  try {
+    const provider = await getProvider(out.session.companyId, LAYERS.CARS);
+    if (provider === PROVIDERS.SQL_SERVER) {
+      const car = await updateSqlServerCar(out.session.companyId, id, data);
+      if (!car) return errorResponse("Car not found", 404);
+      return jsonResponse(car);
+    }
+    if (provider !== PROVIDERS.LOCAL) return dataSourceNotConfiguredResponse(LAYERS.CARS);
+  } catch (err) {
+    console.error("PATCH /api/cars/[id] error:", err);
+    return errorResponse(err?.message || "Failed to update car", 500);
+  }
+
+  const result = await updateCar(id, out.session.companyId, data);
   if (result.count === 0) return errorResponse("Car not found", 404);
   const car = await getCarById(id, out.session.companyId);
   return jsonResponse(car ?? { id });
@@ -72,6 +114,18 @@ export async function DELETE(_request, { params }) {
   const out = await requireAdmin();
   if ("response" in out) return out.response;
   const { id } = await params;
+  try {
+    const provider = await getProvider(out.session.companyId, LAYERS.CARS);
+    if (provider === PROVIDERS.SQL_SERVER) {
+      const result = await deleteSqlServerCar(out.session.companyId, id);
+      if (result.count === 0) return errorResponse("Car not found", 404);
+      return jsonResponse({ ok: true });
+    }
+    if (provider !== PROVIDERS.LOCAL) return dataSourceNotConfiguredResponse(LAYERS.CARS);
+  } catch (err) {
+    console.error("DELETE /api/cars/[id] error:", err);
+    return errorResponse(err?.message || "Failed to delete car", 500);
+  }
   const result = await deleteCar(id, out.session.companyId);
   if (result.count === 0) return errorResponse("Car not found", 404);
   return jsonResponse({ ok: true });

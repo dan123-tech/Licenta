@@ -14,6 +14,11 @@ export function errorResponse(message, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
+/** 503 when layer uses external provider (not yet connected). Client can show "Data Source Not Configured". */
+export function dataSourceNotConfiguredResponse(layer, message = "Data source not configured for this layer.") {
+  return NextResponse.json({ error: message, code: "DATA_SOURCE_NOT_CONFIGURED", layer }, { status: 503 });
+}
+
 /**
  * Get current session or return 401 JSON response.
  * @returns {{ session: Object } | { response: NextResponse }}
