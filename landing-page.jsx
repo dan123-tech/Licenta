@@ -137,7 +137,7 @@ export default function Home() {
                 className="w-9 h-9 rounded-xl flex items-center justify-center mb-4"
                 style={{ background: "rgba(29,78,216,0.25)", border: "1px solid rgba(29,78,216,0.35)" }}
               >
-                <Icon className="w-[18px] h-[18px]" style={{ color: "#93c5fd" }} strokeWidth={1.6} />
+                <Icon className="w-4.5 h-4.5" style={{ color: "#93c5fd" }} strokeWidth={1.6} />
               </div>
               <h3 className="text-white font-semibold text-[15px] mb-1.5">{title}</h3>
               <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>

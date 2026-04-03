@@ -98,4 +98,12 @@ public interface ApiService {
     Call<List<Reservation>> getPendingExceededApprovals();
     @POST("api/reservations/verify-pickup-code")
     Call<Map<String, Object>> verifyPickupCode(@Body Map<String, Object> body);
+
+    // Audit logs (admin only)
+    @GET("api/audit-logs")
+    Call<Map<String, Object>> getAuditLogs(
+        @Query("page") int page,
+        @Query("limit") int limit,
+        @Query("entityType") String entityType
+    );
 }

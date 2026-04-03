@@ -9,6 +9,7 @@ import { getCarById, updateCar, deleteCar } from "@/lib/cars";
 import { getProvider, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
 import { getSqlServerCarById, updateSqlServerCar, deleteSqlServerCar } from "@/lib/connectors/sql-server-cars";
 import { requireCompany, requireAdmin, jsonResponse, errorResponse, dataSourceNotConfiguredResponse } from "@/lib/api-helpers";
+import { writeAuditLog } from "@/lib/audit";
 
 const FUEL_TYPES = ["Benzine", "Diesel", "Electric", "Hybrid"];
 const patchSchema = z.object({
@@ -91,11 +92,26 @@ export async function PATCH(request, { params }) {
   if (!parsed.success) return errorResponse("Invalid input", 422);
   const data = parsed.data;
 
+  // Fetch current car state for before/after comparison
+  let carBefore = null;
+  try {
+    carBefore = await getCarById(id, out.session.companyId);
+  } catch (_) {}
+
   try {
     const provider = await getProvider(out.session.companyId, LAYERS.CARS);
     if (provider === PROVIDERS.SQL_SERVER) {
       const car = await updateSqlServerCar(out.session.companyId, id, data);
       if (!car) return errorResponse("Car not found", 404);
+      const action = data.status && carBefore?.status !== data.status ? "CAR_STATUS_CHANGED" : "CAR_UPDATED";
+      await writeAuditLog({
+        companyId: out.session.companyId,
+        actorId: out.session.userId,
+        action,
+        entityType: "CAR",
+        entityId: id,
+        meta: { before: carBefore ? { status: carBefore.status, km: carBefore.km } : null, after: data },
+      });
       return jsonResponse(car);
     }
     if (provider !== PROVIDERS.LOCAL) return dataSourceNotConfiguredResponse(LAYERS.CARS);
@@ -107,6 +123,15 @@ export async function PATCH(request, { params }) {
   const result = await updateCar(id, out.session.companyId, data);
   if (result.count === 0) return errorResponse("Car not found", 404);
   const car = await getCarById(id, out.session.companyId);
+  const action = data.status && carBefore?.status !== data.status ? "CAR_STATUS_CHANGED" : "CAR_UPDATED";
+  await writeAuditLog({
+    companyId: out.session.companyId,
+    actorId: out.session.userId,
+    action,
+    entityType: "CAR",
+    entityId: id,
+    meta: { before: carBefore ? { status: carBefore.status, km: carBefore.km } : null, after: data },
+  });
   return jsonResponse(car ?? { id });
 }
 
@@ -114,11 +139,26 @@ export async function DELETE(_request, { params }) {
   const out = await requireAdmin();
   if ("response" in out) return out.response;
   const { id } = await params;
+
+  // Snapshot the car before deletion for the audit record
+  let carSnap = null;
+  try {
+    carSnap = await getCarById(id, out.session.companyId);
+  } catch (_) {}
+
   try {
     const provider = await getProvider(out.session.companyId, LAYERS.CARS);
     if (provider === PROVIDERS.SQL_SERVER) {
       const result = await deleteSqlServerCar(out.session.companyId, id);
       if (result.count === 0) return errorResponse("Car not found", 404);
+      await writeAuditLog({
+        companyId: out.session.companyId,
+        actorId: out.session.userId,
+        action: "CAR_DELETED",
+        entityType: "CAR",
+        entityId: id,
+        meta: carSnap ? { brand: carSnap.brand, model: carSnap.model, registrationNumber: carSnap.registrationNumber } : null,
+      });
       return jsonResponse({ ok: true });
     }
     if (provider !== PROVIDERS.LOCAL) return dataSourceNotConfiguredResponse(LAYERS.CARS);
@@ -128,5 +168,13 @@ export async function DELETE(_request, { params }) {
   }
   const result = await deleteCar(id, out.session.companyId);
   if (result.count === 0) return errorResponse("Car not found", 404);
+  await writeAuditLog({
+    companyId: out.session.companyId,
+    actorId: out.session.userId,
+    action: "CAR_DELETED",
+    entityType: "CAR",
+    entityId: id,
+    meta: carSnap ? { brand: carSnap.brand, model: carSnap.model, registrationNumber: carSnap.registrationNumber } : null,
+  });
   return jsonResponse({ ok: true });
 }

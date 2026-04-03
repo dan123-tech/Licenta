@@ -13,6 +13,7 @@ import {
   Bot,
   Database,
   Plus,
+  ShieldCheck,
 } from "lucide-react";
 import { Sidebar, NavItem, NavSection, NavLabel } from "./Sidebar";
 import StatisticsDashboard from "./StatisticsDashboard";
@@ -42,6 +43,7 @@ import {
 } from "@/lib/api";
 import DatabaseSettingsSection from "./DatabaseSettingsSection";
 import DataSourceNotConfiguredEmptyState from "./DataSourceNotConfiguredEmptyState";
+import AuditLogsSection from "./AuditLogsSection";
 import { getProviderLabelWithTable } from "@/orchestrator/config";
 
 const ICON = { s: "w-4 h-4 shrink-0 stroke-[1.5]" };
@@ -70,6 +72,7 @@ const ADMIN_NAV_GROUPS = [
       { id: "invites", label: "Invites", icon: <Mail className={ICON.s} aria-hidden /> },
       { id: "aiVerification", label: "AI verification", icon: <Bot className={ICON.s} aria-hidden /> },
       { id: "databaseSettings", label: "Database settings", icon: <Database className={ICON.s} aria-hidden /> },
+      { id: "auditLogs", label: "Audit logs", icon: <ShieldCheck className={ICON.s} aria-hidden /> },
     ],
   },
 ];
@@ -85,6 +88,7 @@ const ADMIN_PAGE_META = {
   myReservations: { title: "My reservations", sub: "Your bookings" },
   aiVerification: { title: "AI verification", sub: "Driving licence checks" },
   databaseSettings: { title: "Database settings", sub: "External data sources" },
+  auditLogs: { title: "Audit logs", sub: "Immutable record of all important actions" },
 };
 
 const FUEL_BADGE = {
@@ -1743,6 +1747,12 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
         {section === "databaseSettings" && (
           <section className="w-full min-w-0">
             <DatabaseSettingsSection />
+          </section>
+        )}
+
+        {section === "auditLogs" && (
+          <section className="w-full min-w-0">
+            <AuditLogsSection />
           </section>
         )}
 

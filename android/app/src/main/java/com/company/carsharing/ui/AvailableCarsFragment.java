@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ListView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -16,7 +15,6 @@ import com.company.carsharing.databinding.FragmentAvailableCarsBinding;
 import com.company.carsharing.models.Car;
 import com.company.carsharing.network.RetrofitClient;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,12 +42,26 @@ public class AvailableCarsFragment extends Fragment {
                 .getCars("AVAILABLE").enqueue(new Callback<List<Car>>() {
             @Override
             public void onResponse(Call<List<Car>> call, Response<List<Car>> response) {
+                if (binding == null) return;
                 if (response.isSuccessful() && response.body() != null) {
                     adapter.setCars(response.body());
+                    boolean empty = response.body().isEmpty();
+                    binding.availableCarsEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+                    binding.availableCarsList.setVisibility(empty ? View.GONE : View.VISIBLE);
+                } else {
+                    binding.availableCarsEmpty.setText("Could not load cars (HTTP " + response.code() + ")");
+                    binding.availableCarsEmpty.setVisibility(View.VISIBLE);
+                    binding.availableCarsList.setVisibility(View.GONE);
                 }
             }
             @Override
-            public void onFailure(Call<List<Car>> call, Throwable t) { }
+            public void onFailure(Call<List<Car>> call, Throwable t) {
+                if (binding == null || getActivity() == null) return;
+                binding.availableCarsEmpty.setText("Network error: " + (t.getMessage() != null ? t.getMessage() : "check connection"));
+                binding.availableCarsEmpty.setVisibility(View.VISIBLE);
+                binding.availableCarsList.setVisibility(View.GONE);
+                Toast.makeText(requireContext(), "Failed to load available cars", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -73,5 +85,11 @@ public class AvailableCarsFragment extends Fragment {
                 }
             });
         } else Toast.makeText(requireContext(), "Driving licence must be approved to reserve", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
     }
 }

@@ -1,7 +1,7 @@
-# Company Car Sharing – database + app
+# Company Car Sharing – database + app + HTTPS (Caddy)
 # Run:  docker compose up -d
 # Stop: docker compose down
-# App:  http://localhost:3000
+# App:  http://localhost:3000  |  https://localhost:8443 (see deploy/Caddyfile if you use 443)
 # DB:   postgresql://postgres:postgres@localhost:5432/company_car_sharing
 
 services:
@@ -44,9 +44,27 @@ services:
       HELPBOT_URL: "http://host.docker.internal:8501"
     ports:
       - "3000:3000"
+      - "3001:3001"
     volumes:
       - uploads_data:/app/public/uploads
+
+  # Terminates TLS; forwards to Next.js on app:3000 (same content as direct :3000).
+  caddy:
+    image: caddy:2-alpine
+    container_name: company-car-sharing-caddy
+    restart: unless-stopped
+    # Host port 80 is often reserved on Windows; use 8443→443. Change to "443:443" if free.
+    ports:
+      - "8443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
 
 volumes:
   postgres_data:
   uploads_data:
+  caddy_data:
+  caddy_config:

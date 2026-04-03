@@ -14,5 +14,8 @@
         <item name="colorOutline">@color/outline</item>
         <item name="colorError">@color/error</item>
         <item name="colorOnError">@color/on_error</item>
+        <!-- Input field tint -->
+        <item name="colorControlActivated">@color/primary</item>
+        <item name="colorControlHighlight">@color/join_badge_bg</item>
     </style>
 </resources>

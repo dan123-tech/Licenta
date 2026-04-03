@@ -337,3 +337,17 @@ export async function apiRefreshReservationCodes(reservationId) {
   if (!res.ok) throw new Error(data.error || "Failed to refresh codes");
   return data;
 }
+
+/**
+ * Admin: list audit logs for the company.
+ * @param {{ page?: number, limit?: number, action?: string, entityType?: string }} opts
+ */
+export async function apiAuditLogs({ page = 1, limit = 50, action, entityType } = {}) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (action) params.set("action", action);
+  if (entityType) params.set("entityType", entityType);
+  const res = await fetch(`/api/audit-logs?${params}`, getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load audit logs");
+  return data;
+}

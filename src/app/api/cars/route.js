@@ -8,6 +8,7 @@ import { listCars, createCar } from "@/lib/cars";
 import { getProvider, getLayerTable, getStoredCredentials, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
 import { listSqlServerCars, createSqlServerCar } from "@/lib/connectors/sql-server-cars";
 import { requireCompany, requireAdmin, jsonResponse, errorResponse, dataSourceNotConfiguredResponse } from "@/lib/api-helpers";
+import { writeAuditLog } from "@/lib/audit";
 
 const FUEL_TYPES = ["Benzine", "Diesel", "Electric", "Hybrid"];
 const postSchema = z.object({
@@ -118,6 +119,14 @@ export async function POST(request) {
       }
       const car = await createSqlServerCar(out.session.companyId, data);
       if (!car) return dataSourceNotConfiguredResponse(LAYERS.CARS, "Could not create car in SQL Server.");
+      await writeAuditLog({
+        companyId: out.session.companyId,
+        actorId: out.session.userId,
+        action: "CAR_ADDED",
+        entityType: "CAR",
+        entityId: car.id,
+        meta: { brand: car.brand, model: car.model, registrationNumber: car.registrationNumber },
+      });
       return jsonResponse(
         {
           id: car.id,
@@ -143,6 +152,14 @@ export async function POST(request) {
   }
 
   const car = await createCar(out.session.companyId, data);
+  await writeAuditLog({
+    companyId: out.session.companyId,
+    actorId: out.session.userId,
+    action: "CAR_ADDED",
+    entityType: "CAR",
+    entityId: car.id,
+    meta: { brand: car.brand, model: car.model, registrationNumber: car.registrationNumber },
+  });
   return jsonResponse(
     {
       id: car.id,

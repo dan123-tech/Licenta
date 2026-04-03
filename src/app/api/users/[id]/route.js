@@ -8,6 +8,7 @@ import { updateMemberRole, removeMember, setUserDrivingLicenceStatus } from "@/l
 import { getProvider, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
 import { updateSqlServerUser, deleteSqlServerUser } from "@/lib/connectors/sql-server-users";
 import { requireAdmin, jsonResponse, errorResponse } from "@/lib/api-helpers";
+import { writeAuditLog } from "@/lib/audit";
 
 const patchSchema = z.object({
   role: z.enum(["ADMIN", "USER"]).optional(),
@@ -48,6 +49,14 @@ export async function PATCH(request, { params }) {
     }
     try {
       const member = await updateMemberRole(out.session.companyId, userId, data.role);
+      await writeAuditLog({
+        companyId: out.session.companyId,
+        actorId: out.session.userId,
+        action: "USER_ROLE_CHANGED",
+        entityType: "USER",
+        entityId: userId,
+        meta: { newRole: data.role },
+      });
       return jsonResponse(member);
     } catch {
       return errorResponse("Member not found", 404);
@@ -56,6 +65,14 @@ export async function PATCH(request, { params }) {
   if (data.drivingLicenceStatus != null) {
     try {
       await setUserDrivingLicenceStatus(userId, data.drivingLicenceStatus, { verifiedBy: "ADMIN" });
+      await writeAuditLog({
+        companyId: out.session.companyId,
+        actorId: out.session.userId,
+        action: "DRIVING_LICENCE_STATUS_CHANGED",
+        entityType: "USER",
+        entityId: userId,
+        meta: { newStatus: data.drivingLicenceStatus },
+      });
       return jsonResponse({ ok: true, drivingLicenceStatus: data.drivingLicenceStatus });
     } catch {
       return errorResponse("Member not found", 404);
@@ -84,6 +101,13 @@ export async function DELETE(_request, { params }) {
 
   try {
     await removeMember(out.session.companyId, userId);
+    await writeAuditLog({
+      companyId: out.session.companyId,
+      actorId: out.session.userId,
+      action: "USER_REMOVED",
+      entityType: "USER",
+      entityId: userId,
+    });
     return jsonResponse({ ok: true });
   } catch {
     return errorResponse("Member not found", 404);

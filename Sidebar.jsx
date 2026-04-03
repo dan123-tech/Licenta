@@ -52,11 +52,11 @@ export function Sidebar({ user, children, mobileOpen, onClose, viewAs, setViewAs
           w-[224px] min-w-[224px] h-screen flex flex-col pb-3 text-white shrink-0 overflow-x-hidden
           fixed md:relative left-0 top-0 z-50 md:z-auto
           transform transition-transform duration-200 ease-out
-          ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
         style={{
           backgroundColor: "var(--sidebar-bg)",
           borderRight: "1px solid var(--sidebar-border)",
+          transform: mobileOpen ? "translateX(0)" : undefined,
         }}
       >
         {/* ── Brand header */}

@@ -60,6 +60,7 @@ public class StatisticsFragment extends Fragment {
             public void onResponse(Call<List<Reservation>> call, Response<List<Reservation>> response) {
                 if (!response.isSuccessful() || response.body() == null) {
                     binding.statLoading.setText("Failed to load reservations");
+                    binding.statLoading.setVisibility(View.VISIBLE);
                     return;
                 }
                 List<Reservation> reservations = response.body();
@@ -141,13 +142,17 @@ public class StatisticsFragment extends Fragment {
                     }
                     @Override
                     public void onFailure(Call<List<Car>> call, Throwable t) {
-                        if (getActivity() != null) binding.statLoading.setText("Error loading cars");
+                        if (getActivity() != null) {
+                            binding.statLoading.setText("Error loading cars: " + (t.getMessage() != null ? t.getMessage() : ""));
+                            binding.statLoading.setVisibility(View.VISIBLE);
+                        }
                     }
                 });
             }
             @Override
             public void onFailure(Call<List<Reservation>> call, Throwable t) {
-                binding.statLoading.setText("Error: " + (t.getMessage() != null ? t.getMessage() : ""));
+                binding.statLoading.setText("Error: " + (t.getMessage() != null ? t.getMessage() : "network failure"));
+                binding.statLoading.setVisibility(View.VISIBLE);
             }
         });
     }

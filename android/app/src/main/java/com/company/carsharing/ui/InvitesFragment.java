@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -48,7 +49,13 @@ public class InvitesFragment extends Fragment {
                 }
             }
             @Override
-            public void onFailure(Call<List<Invite>> call, Throwable t) { }
+            public void onFailure(Call<List<Invite>> call, Throwable t) {
+                if (getActivity() != null) {
+                    Toast.makeText(requireContext(),
+                            "Could not load invites: " + (t.getMessage() != null ? t.getMessage() : "network error"),
+                            Toast.LENGTH_SHORT).show();
+                }
+            }
         });
     }
 }

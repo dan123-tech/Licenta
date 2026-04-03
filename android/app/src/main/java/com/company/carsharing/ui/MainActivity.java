@@ -38,12 +38,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             finish();
             return;
         }
-        if (!authRepository.getSessionPreferences().getRememberMe()) {
-            authRepository.logout(this);
-            startActivity(new Intent(this, LoginActivity.class));
-            finish();
-            return;
-        }
+        // "rememberMe" controls whether credentials are saved for the NEXT launch,
+        // not whether the current authenticated session is valid. Do not force-logout here.
         setContentView(R.layout.activity_main);
         drawerLayout = findViewById(R.id.drawer_layout);
         navView = findViewById(R.id.nav_view);
@@ -99,14 +95,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (toolbarView != null) toolbarView.setVisibility(View.VISIBLE);
         View header = navView.getHeaderView(0);
         if (header != null) {
-            android.widget.ImageView avatar = header.findViewById(R.id.nav_header_avatar);
-            if (avatar != null) avatar.setVisibility(View.VISIBLE);
+            // Avatar: now a TextView showing the initial letter of the user's name
+            android.widget.TextView avatar = header.findViewById(R.id.nav_header_avatar);
+            if (avatar != null && user != null) {
+                String initial = (user.getName() != null && !user.getName().isEmpty())
+                        ? user.getName().substring(0, 1).toUpperCase()
+                        : (user.getEmail() != null && !user.getEmail().isEmpty()
+                                ? user.getEmail().substring(0, 1).toUpperCase() : "?");
+                avatar.setText(initial);
+            }
             android.widget.TextView title = header.findViewById(R.id.nav_header_title);
             android.widget.TextView sub = header.findViewById(R.id.nav_header_subtitle);
-            android.widget.TextView joinCodeTv = header.findViewById(R.id.nav_header_join_code);
-            if (title != null) title.setText(user != null && user.getName() != null && !user.getName().isEmpty() ? user.getName() : (user != null ? user.getEmail() : ""));
-            if (sub != null) sub.setText(user != null ? user.getEmail() : "");
-            if (joinCodeTv != null) joinCodeTv.setText(company != null && company.getJoinCode() != null ? "Code: " + company.getJoinCode() : "");
+            if (title != null) title.setText(user != null && user.getName() != null && !user.getName().isEmpty()
+                    ? user.getName() : (user != null ? user.getEmail() : ""));
+            String roleLabel = user != null && "ADMIN".equalsIgnoreCase(user.getRole()) ? "Admin" : "Member";
+            String companyName = company != null ? company.getName() : "";
+            if (sub != null) sub.setText(roleLabel + (companyName.isEmpty() ? "" : " · " + companyName));
         }
         if (!isAdmin(user)) {
             navView.getMenu().setGroupVisible(R.id.group_admin, false);
@@ -148,6 +152,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         else if (id == R.id.nav_available_cars) showFragment(new AvailableCarsFragment());
         else if (id == R.id.nav_my_reservations) showFragment(new MyReservationsFragment());
         else if (id == R.id.nav_driving_licence) showFragment(new DrivingLicenceFragment());
+        else if (id == R.id.nav_audit_logs) showFragment(new AuditLogsFragment());
         return true;
     }
 }

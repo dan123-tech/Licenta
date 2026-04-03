@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { getCompanyById, updateCompany } from "@/lib/companies";
 import { requireSession, requireAdmin, jsonResponse, errorResponse } from "@/lib/api-helpers";
+import { writeAuditLog } from "@/lib/audit";
 
 export async function GET() {
   const out = await requireSession();
@@ -97,8 +98,34 @@ export async function PATCH(request) {
     const v = parsed.data.priceElectricityPerKwh;
     data.priceElectricityPerKwh = v === null || (typeof v === "number" && !Number.isNaN(v)) ? v : null;
   }
+  // Determine if this is a pricing change or a general settings change
+  const PRICE_FIELDS = ["averageFuelPricePerLiter", "priceBenzinePerLiter", "priceDieselPerLiter", "priceElectricityPerKwh"];
+  const changedFields = Object.keys(data);
+  const isPricingChange = changedFields.some((f) => PRICE_FIELDS.includes(f));
+
+  // Snapshot the company before update for before/after comparison
+  let companyBefore = null;
+  try {
+    companyBefore = await getCompanyById(out.session.companyId);
+  } catch (_) {}
+
   try {
     const company = await updateCompany(out.session.companyId, data);
+    const action = isPricingChange ? "PRICING_CHANGED" : "COMPANY_SETTINGS_CHANGED";
+    const before = {};
+    const after = {};
+    for (const f of changedFields) {
+      before[f] = companyBefore?.[f] ?? null;
+      after[f] = company[f] ?? null;
+    }
+    await writeAuditLog({
+      companyId: out.session.companyId,
+      actorId: out.session.userId,
+      action,
+      entityType: "COMPANY",
+      entityId: out.session.companyId,
+      meta: { before, after },
+    });
     return jsonResponse({
       id: company.id,
       name: company.name,

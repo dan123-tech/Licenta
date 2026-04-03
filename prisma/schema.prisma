@@ -75,6 +75,7 @@ model User {
 
   companyMembers CompanyMember[]
   reservations   Reservation[]
+  auditLogs      AuditLog[]
 
   @@index([email])
 }
@@ -202,4 +203,52 @@ model Reservation {
   @@index([carId])
   @@index([userId])
   @@index([startDate, endDate])
+}
+
+// ---------------------------------------------------------------------------
+// AuditLog – append-only record of every significant action in the company.
+// No updatedAt field – rows must never be modified after creation.
+// ---------------------------------------------------------------------------
+
+enum AuditAction {
+  // Car lifecycle
+  CAR_ADDED
+  CAR_UPDATED
+  CAR_STATUS_CHANGED
+  CAR_DELETED
+
+  // Reservation lifecycle
+  RESERVATION_CREATED
+  RESERVATION_CANCELLED
+  RESERVATION_COMPLETED
+  RESERVATION_EXTENDED
+  KM_EXCEEDED_APPROVED
+  KM_EXCEEDED_REJECTED
+
+  // Pricing / company settings
+  PRICING_CHANGED
+  COMPANY_SETTINGS_CHANGED
+
+  // User management
+  USER_INVITED
+  USER_ROLE_CHANGED
+  USER_REMOVED
+  DRIVING_LICENCE_STATUS_CHANGED
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  companyId  String
+  actorId    String?     // null for system/automated actions
+  action     AuditAction
+  entityType String      // "CAR" | "RESERVATION" | "COMPANY" | "USER"
+  entityId   String?     // id of the affected entity
+  meta       Json?       // structured context: { before, after, reason, … }
+  createdAt  DateTime    @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt(sort: Desc)])
+  @@index([companyId, action])
+  @@index([companyId, entityType, entityId])
 }

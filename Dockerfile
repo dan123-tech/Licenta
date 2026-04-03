@@ -22,7 +22,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
-EXPOSE 3000
+COPY --from=builder /app/proxy-3001.js ./proxy-3001.js
+EXPOSE 3000 3001
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 # Run migrations then start the server

@@ -9,6 +9,7 @@ import { updateCar } from "@/lib/cars";
 import { getProvider, getLayerTable, getStoredCredentials, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
 import { listSqlServerReservations } from "@/lib/connectors/sql-server-reservations";
 import { requireCompany, jsonResponse, errorResponse, dataSourceNotConfiguredResponse } from "@/lib/api-helpers";
+import { writeAuditLog } from "@/lib/audit";
 
 const postSchema = z.object({
   carId: z.string().min(1),
@@ -153,6 +154,21 @@ export async function POST(request) {
       reservation = await createReservation(out.session.userId, carId, start, end, purpose);
       await updateCar(carId, reservation.car.companyId, { status: "RESERVED" });
     }
+    await writeAuditLog({
+      companyId: out.session.companyId,
+      actorId: out.session.userId,
+      action: "RESERVATION_CREATED",
+      entityType: "RESERVATION",
+      entityId: reservation.id,
+      meta: {
+        carId: reservation.carId,
+        carLabel: `${reservation.car?.brand ?? ""} ${reservation.car?.model ?? ""}`.trim(),
+        startDate: reservation.startDate,
+        endDate: reservation.endDate,
+        purpose: reservation.purpose ?? null,
+        instant: isInstant,
+      },
+    });
     return jsonResponse(
       {
         id: reservation.id,

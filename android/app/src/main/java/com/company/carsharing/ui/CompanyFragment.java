@@ -35,11 +35,7 @@ public class CompanyFragment extends Fragment {
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        try {
-            binding = FragmentCompanyBinding.inflate(inflater, container, false);
-        } catch (Exception e) {
-            throw new RuntimeException("Company layout failed to inflate", e);
-        }
+        binding = FragmentCompanyBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
 
@@ -144,11 +140,29 @@ public class CompanyFragment extends Fragment {
                         View card = LayoutInflater.from(ctx).inflate(R.layout.item_pending_approval, binding.pendingApprovalsList, false);
                         String userCar = (r.getUser() != null ? r.getUser().getName() : "User") + " – " + (r.getCar() != null ? r.getCar().getBrand() + " " + r.getCar().getRegistrationNumber() : "");
                         String kmReason = (r.getReleasedKmUsed() != null ? r.getReleasedKmUsed() + " km" : "") + (r.getReleasedExceededReason() != null ? " • " + r.getReleasedExceededReason() : "");
-                        ((TextView) card.findViewById(R.id.pending_user_car)).setText(userCar);
-                        ((TextView) card.findViewById(R.id.pending_km_reason)).setText(kmReason);
+                        TextView userCarTv = card.findViewById(R.id.pending_user_car);
+                        TextView kmReasonTv = card.findViewById(R.id.pending_km_reason);
                         EditText obs = card.findViewById(R.id.pending_observations);
-                        card.findViewById(R.id.btnApprove).setOnClickListener(v -> setExceededApproval(r.getId(), "approveExceeded", obs.getText().toString().trim(), card));
-                        card.findViewById(R.id.btnReject).setOnClickListener(v -> setExceededApproval(r.getId(), "rejectExceeded", obs.getText().toString().trim(), card));
+                        View approveBtn = card.findViewById(R.id.btnApprove);
+                        View rejectBtn = card.findViewById(R.id.btnReject);
+                        if (userCarTv != null) userCarTv.setText(userCar);
+                        if (kmReasonTv != null) kmReasonTv.setText(kmReason);
+                        if (approveBtn != null) {
+                            approveBtn.setOnClickListener(v -> setExceededApproval(
+                                    r.getId(),
+                                    "approveExceeded",
+                                    obs != null && obs.getText() != null ? obs.getText().toString().trim() : "",
+                                    card
+                            ));
+                        }
+                        if (rejectBtn != null) {
+                            rejectBtn.setOnClickListener(v -> setExceededApproval(
+                                    r.getId(),
+                                    "rejectExceeded",
+                                    obs != null && obs.getText() != null ? obs.getText().toString().trim() : "",
+                                    card
+                            ));
+                        }
                         binding.pendingApprovalsList.addView(card);
                     }
                 } else {
@@ -157,11 +171,23 @@ public class CompanyFragment extends Fragment {
                 }
             }
             @Override
-            public void onFailure(Call<List<Reservation>> call, Throwable t) { }
+            public void onFailure(Call<List<Reservation>> call, Throwable t) {
+                if (getActivity() != null && isAdded()) {
+                    Toast.makeText(requireContext(), "Failed to load approvals", Toast.LENGTH_SHORT).show();
+                    binding.pendingApprovalsTitle.setVisibility(View.GONE);
+                    binding.pendingApprovalsList.setVisibility(View.GONE);
+                }
+            }
         });
     }
 
     private void setExceededApproval(String reservationId, String action, String observations, View card) {
+        if (reservationId == null || reservationId.isEmpty()) {
+            if (getActivity() != null && isAdded()) {
+                Toast.makeText(requireContext(), "Invalid reservation id", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
         Map<String, Object> body = new HashMap<>();
         body.put("action", action);
         if (!observations.isEmpty()) body.put("observations", observations);
@@ -184,5 +210,11 @@ public class CompanyFragment extends Fragment {
                 if (getActivity() != null) Toast.makeText(getContext(), t.getMessage() != null ? t.getMessage() : "Failed", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
     }
 }

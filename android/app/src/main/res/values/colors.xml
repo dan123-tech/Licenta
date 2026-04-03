@@ -1,32 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- FleetAdmin template: brand #185FA5, sidebar #0F1117 -->
-    <color name="brand_primary">#185FA5</color>
-    <color name="brand_primary_dark">#144A84</color>
-    <color name="sidebar_bg">#0F1117</color>
-    <color name="toolbar_bg">#FFFFFF</color>
-    <color name="join_badge_bg">#E6F1FB</color>
-    <color name="join_badge_text">#0C447C</color>
-    <color name="join_badge_border">#B5D4F4</color>
+    <!-- FleetAdmin design system (matches web globals.css) -->
 
-    <color name="primary">#185FA5</color>
-    <color name="primary_variant">#0F1117</color>
-    <color name="accent">#185FA5</color>
-    <color name="accent_variant">#144A84</color>
+    <!-- Brand / primary blue -->
+    <color name="brand_primary">#1D4ED8</color>
+    <color name="brand_primary_dark">#1E40AF</color>
+    <color name="brand_icon_fg">#BFDBFE</color>
+
+    <!-- Sidebar (-sidebar-bg) -->
+    <color name="sidebar_bg">#0C1220</color>
+    <color name="sidebar_border">#0F1E2E</color>
+
+    <!-- Toolbar (white) -->
+    <color name="toolbar_bg">#FFFFFF</color>
+
+    <!-- Join badge -->
+    <color name="join_badge_bg">#EFF6FF</color>
+    <color name="join_badge_text">#1E40AF</color>
+    <color name="join_badge_border">#BFDBFE</color>
+
+    <!-- Theme slots -->
+    <color name="primary">#1D4ED8</color>
+    <color name="primary_variant">#1E40AF</color>
+    <color name="accent">#1D4ED8</color>
+    <color name="accent_variant">#1E40AF</color>
     <color name="on_primary">#FFFFFF</color>
     <color name="on_accent">#FFFFFF</color>
-    <color name="surface">#EEF1F6</color>
-    <color name="surface_variant">#E2E8F0</color>
-    <color name="on_surface">#0F172A</color>
-    <color name="on_surface_variant">#475569</color>
-    <color name="outline">#94A3B8</color>
+
+    <!-- Backgrounds -->
+    <color name="surface">#F0F2F7</color>
+    <color name="surface_variant">#E8EBF2</color>
+    <color name="card_bg">#FFFFFF</color>
+    <color name="card_border">#0D172A12</color>
+
+    <!-- Text -->
+    <color name="on_surface">#0D1526</color>
+    <color name="on_surface_variant">#64748B</color>
+    <color name="text_subtle">#94A3B8</color>
+
+    <!-- Utility -->
+    <color name="outline">#CBD5E1</color>
+    <color name="divider">#0D172A12</color>
     <color name="error">#DC2626</color>
     <color name="on_error">#FFFFFF</color>
+
     <!-- Car status -->
     <color name="status_available">#059669</color>
-    <color name="status_reserved">#DC2626</color>
-    <color name="status_maintenance">#EA580C</color>
+    <color name="status_reserved">#D97706</color>
+    <color name="status_maintenance">#DC2626</color>
+
     <!-- Role labels -->
-    <color name="role_admin">#185FA5</color>
-    <color name="role_user">#475569</color>
+    <color name="role_admin">#1D4ED8</color>
+    <color name="role_user">#64748B</color>
 </resources>

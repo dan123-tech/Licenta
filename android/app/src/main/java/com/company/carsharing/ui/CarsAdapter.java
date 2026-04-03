@@ -59,7 +59,7 @@ public class CarsAdapter extends BaseAdapter {
         int statusColor = ContextCompat.getColor(context, com.company.carsharing.R.color.on_surface_variant);
         if ("AVAILABLE".equalsIgnoreCase(statusStr)) statusColor = ContextCompat.getColor(context, com.company.carsharing.R.color.status_available);
         else if ("RESERVED".equalsIgnoreCase(statusStr)) statusColor = ContextCompat.getColor(context, com.company.carsharing.R.color.status_reserved);
-        else if ("MAINTENANCE".equalsIgnoreCase(statusStr)) statusColor = ContextCompat.getColor(context, com.company.carsharing.R.color.status_maintenance);
+        else if ("IN_MAINTENANCE".equalsIgnoreCase(statusStr)) statusColor = ContextCompat.getColor(context, com.company.carsharing.R.color.status_maintenance);
         status.setBackgroundColor(statusColor);
         status.setTextColor(android.graphics.Color.WHITE);
         String sub = (car.getRegistrationNumber() != null ? car.getRegistrationNumber() : "") + " · " + car.getKm() + " km";

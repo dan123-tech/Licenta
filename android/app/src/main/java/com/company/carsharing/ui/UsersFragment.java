@@ -36,7 +36,7 @@ public class UsersFragment extends Fragment implements UsersAdapter.OnUserAction
         binding = FragmentUsersBinding.inflate(inflater, container, false);
         if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarTitle("Manage Users");
         String currentUserId = SessionHolder.getUser() != null ? SessionHolder.getUser().getId() : null;
-        usersAdapter = new UsersAdapter(requireContext(), currentUserId, this);
+        usersAdapter = new UsersAdapter(requireContext(), currentUserId, SessionHolder.isAdmin(), this);
         binding.usersList.setAdapter(usersAdapter);
         if (SessionHolder.isAdmin()) {
             binding.fabInvite.setVisibility(View.VISIBLE);

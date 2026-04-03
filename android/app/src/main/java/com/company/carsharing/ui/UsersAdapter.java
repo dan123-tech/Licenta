@@ -18,6 +18,7 @@ public class UsersAdapter extends BaseAdapter {
     private final Context context;
     private final List<Member> members = new ArrayList<>();
     private final String currentUserId;
+    private final boolean isAdmin;
     private final OnUserActionListener listener;
 
     public interface OnUserActionListener {
@@ -27,9 +28,10 @@ public class UsersAdapter extends BaseAdapter {
         void onRemove(Member member);
     }
 
-    public UsersAdapter(Context context, String currentUserId, OnUserActionListener listener) {
+    public UsersAdapter(Context context, String currentUserId, boolean isAdmin, OnUserActionListener listener) {
         this.context = context;
         this.currentUserId = currentUserId;
+        this.isAdmin = isAdmin;
         this.listener = listener;
     }
 
@@ -70,14 +72,25 @@ public class UsersAdapter extends BaseAdapter {
         View approveDl = row.findViewById(R.id.user_approve_dl);
         View rejectDl = row.findViewById(R.id.user_reject_dl);
         View removeBtn = row.findViewById(R.id.user_remove);
-        roleBtn.setOnClickListener(v -> listener.onChangeRole(m));
-        approveDl.setOnClickListener(v -> listener.onApproveDl(m));
-        rejectDl.setOnClickListener(v -> listener.onRejectDl(m));
-        removeBtn.setOnClickListener(v -> listener.onRemove(m));
-        removeBtn.setVisibility(isSelf ? View.GONE : View.VISIBLE);
+
+        if (isAdmin) {
+            roleBtn.setVisibility(View.VISIBLE);
+            approveDl.setVisibility(View.VISIBLE);
+            rejectDl.setVisibility(View.VISIBLE);
+            removeBtn.setVisibility(isSelf ? View.GONE : View.VISIBLE);
+            roleBtn.setOnClickListener(v -> listener.onChangeRole(m));
+            approveDl.setOnClickListener(v -> listener.onApproveDl(m));
+            rejectDl.setOnClickListener(v -> listener.onRejectDl(m));
+            removeBtn.setOnClickListener(v -> listener.onRemove(m));
+        } else {
+            roleBtn.setVisibility(View.GONE);
+            approveDl.setVisibility(View.GONE);
+            rejectDl.setVisibility(View.GONE);
+            removeBtn.setVisibility(View.GONE);
+        }
 
         row.setOnLongClickListener(v -> {
-            if (isSelf) return false;
+            if (!isAdmin || isSelf) return false;
             PopupMenu popup = new PopupMenu(context, v);
             popup.getMenu().add(0, 0, 0, "ADMIN".equalsIgnoreCase(m.getRole()) ? "Demote to User" : "Promote to Admin");
             popup.getMenu().add(0, 1, 1, "Remove");

@@ -95,9 +95,9 @@ public class DrivingLicenceFragment extends Fragment {
                 if (getActivity() == null) return;
                 binding.dlMessage.setVisibility(View.VISIBLE);
                 if (response.isSuccessful()) {
-                    binding.dlMessage.setText("Uploaded. Status will update after admin review.");
-                    String status = SessionHolder.getUser() != null ? SessionHolder.getUser().getDrivingLicenceStatus() : null;
-                    binding.dlStatus.setText(status != null ? status : "Pending");
+                    binding.dlMessage.setText("Uploaded successfully. Waiting for admin review.");
+                    // Session cache is stale here — show PENDING which is the server state after upload
+                    binding.dlStatus.setText("PENDING");
                 } else {
                     binding.dlMessage.setText("Upload failed");
                 }

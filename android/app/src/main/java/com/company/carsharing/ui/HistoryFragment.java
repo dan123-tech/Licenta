@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -43,7 +44,19 @@ public class HistoryFragment extends Fragment {
                 }
             }
             @Override
-            public void onFailure(Call<List<Reservation>> call, Throwable t) { }
+            public void onFailure(Call<List<Reservation>> call, Throwable t) {
+                if (getActivity() != null) {
+                    Toast.makeText(requireContext(),
+                            "Could not load history: " + (t.getMessage() != null ? t.getMessage() : "network error"),
+                            Toast.LENGTH_SHORT).show();
+                }
+            }
         });
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
     }
 }
