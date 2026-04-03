@@ -3,7 +3,14 @@
  * Overlap validation for same car and active status.
  */
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+
+const SERIALIZABLE_TX = {
+  isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+  maxWait: 5000,
+  timeout: 15000,
+};
 
 /** Generate a random 6-digit code (string, e.g. "042817"). */
 function generateSixDigitCode() {
@@ -31,6 +38,18 @@ export async function hasOverlappingReservation(carId, start, end, excludeReserv
   return count > 0;
 }
 
+async function hasOverlappingReservationTx(tx, carId, start, end, excludeReservationId) {
+  const count = await tx.reservation.count({
+    where: {
+      carId,
+      status: "ACTIVE",
+      id: excludeReservationId ? { not: excludeReservationId } : undefined,
+      OR: [{ startDate: { lt: end }, endDate: { gt: start } }],
+    },
+  });
+  return count > 0;
+}
+
 /**
  * Create a reservation. Fails if car has overlapping ACTIVE reservation.
  * @param {string} userId
@@ -41,28 +60,32 @@ export async function hasOverlappingReservation(carId, start, end, excludeReserv
  * @returns {Promise<Object>} Created reservation
  */
 export async function createReservation(userId, carId, startDate, endDate, purpose) {
-  const overlap = await hasOverlappingReservation(carId, startDate, endDate);
-  if (overlap) {
-    throw new Error("Car is already reserved for this period");
-  }
   const pickup_code = generateSixDigitCode();
-  // For scheduled: code valid for 30 min starting at reservation start time
   const code_valid_from = startDate;
 
-  return prisma.reservation.create({
-    data: {
-      userId,
-      carId,
-      startDate,
-      endDate,
-      purpose: purpose?.trim() || null,
-      status: "ACTIVE",
-      pickup_code,
-      code_valid_from,
-      release_code: null, // set when user releases (completes) the reservation
+  return prisma.$transaction(
+    async (tx) => {
+      const overlap = await hasOverlappingReservationTx(tx, carId, startDate, endDate);
+      if (overlap) {
+        throw new Error("Car is already reserved for this period");
+      }
+      return tx.reservation.create({
+        data: {
+          userId,
+          carId,
+          startDate,
+          endDate,
+          purpose: purpose?.trim() || null,
+          status: "ACTIVE",
+          pickup_code,
+          code_valid_from,
+          release_code: null,
+        },
+        include: { car: true, user: { select: { id: true, name: true, email: true } } },
+      });
     },
-    include: { car: true, user: { select: { id: true, name: true, email: true } } },
-  });
+    SERIALIZABLE_TX
+  );
 }
 
 /** One year in ms – used for "until released" end date for instant reservations */
@@ -78,28 +101,32 @@ const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 export async function createInstantReservation(userId, carId, purpose) {
   const now = new Date();
   const endUntilRelease = new Date(now.getTime() + ONE_YEAR_MS);
-  const overlap = await hasOverlappingReservation(carId, now, endUntilRelease);
-  if (overlap) {
-    throw new Error("Car is already reserved");
-  }
   const pickup_code = generateSixDigitCode();
-  // Code valid for 30 min from reservation start (no pending delay)
   const code_valid_from = now;
 
-  return prisma.reservation.create({
-    data: {
-      userId,
-      carId,
-      startDate: now,
-      endDate: endUntilRelease,
-      purpose: purpose?.trim() || null,
-      status: "ACTIVE",
-      pickup_code,
-      code_valid_from,
-      release_code: null, // set when user releases (completes) the reservation
+  return prisma.$transaction(
+    async (tx) => {
+      const overlap = await hasOverlappingReservationTx(tx, carId, now, endUntilRelease);
+      if (overlap) {
+        throw new Error("Car is already reserved");
+      }
+      return tx.reservation.create({
+        data: {
+          userId,
+          carId,
+          startDate: now,
+          endDate: endUntilRelease,
+          purpose: purpose?.trim() || null,
+          status: "ACTIVE",
+          pickup_code,
+          code_valid_from,
+          release_code: null,
+        },
+        include: { car: true, user: { select: { id: true, name: true, email: true } } },
+      });
     },
-    include: { car: true, user: { select: { id: true, name: true, email: true } } },
-  });
+    SERIALIZABLE_TX
+  );
 }
 
 /**
@@ -312,21 +339,27 @@ export async function refreshReservationCodes(reservationId) {
  * @returns {Promise<Object>}
  */
 export async function extendReservation(reservationId, newEndDate) {
-  const res = await prisma.reservation.findUnique({
-    where: { id: reservationId },
-    include: { car: true },
-  });
-  if (!res || res.status !== "ACTIVE") throw new Error("Reservation not found or not active");
-  const overlap = await hasOverlappingReservation(
-    res.carId,
-    res.startDate,
-    newEndDate,
-    reservationId
+  return prisma.$transaction(
+    async (tx) => {
+      const res = await tx.reservation.findUnique({
+        where: { id: reservationId },
+        include: { car: true },
+      });
+      if (!res || res.status !== "ACTIVE") throw new Error("Reservation not found or not active");
+      const overlap = await hasOverlappingReservationTx(
+        tx,
+        res.carId,
+        res.startDate,
+        newEndDate,
+        reservationId
+      );
+      if (overlap) throw new Error("New end date overlaps with another reservation");
+      return tx.reservation.update({
+        where: { id: reservationId },
+        data: { endDate: newEndDate },
+        include: { car: true, user: { select: { id: true, name: true, email: true } } },
+      });
+    },
+    SERIALIZABLE_TX
   );
-  if (overlap) throw new Error("New end date overlaps with another reservation");
-  return prisma.reservation.update({
-    where: { id: reservationId },
-    data: { endDate: newEndDate },
-    include: { car: true, user: { select: { id: true, name: true, email: true } } },
-  });
 }

@@ -4,27 +4,29 @@
     android:layout_width="280dp"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="?attr/colorSurface">
+    android:background="@color/sidebar_bg">
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:layout_gravity="start"
+        android:background="@color/sidebar_bg"
+        app:itemBackground="@drawable/nav_drawer_item_background"
+        app:itemIconTint="@color/nav_drawer_item_color"
+        app:itemTextColor="@color/nav_drawer_item_color"
         app:headerLayout="@layout/nav_header"
         app:menu="@menu/drawer_menu" />
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/outline" />
+        android:background="#14FFFFFF" />
     <com.google.android.material.button.MaterialButton
         android:id="@+id/drawer_logout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:text="Log out"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        app:strokeColor="@color/error"
-        app:strokeWidth="2dp"
-        android:textColor="@color/error" />
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:textColor="#B0B8C4" />
 </LinearLayout>

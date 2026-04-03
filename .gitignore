@@ -55,3 +55,12 @@ yarn-error.log*
 
 # Project
 tmp_frontend
+
+# Android / Gradle (never commit generated or local build output)
+android/.gradle/
+android/**/build/
+android/local.properties
+android/*.iml
+android/captures/
+*.apk
+*.aab

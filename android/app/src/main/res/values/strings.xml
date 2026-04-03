@@ -13,4 +13,14 @@
     <string name="confirm_password">Confirm password</string>
     <string name="already_have_account">Already have an account? Log in</string>
     <string name="create_account_link">Create account</string>
+    <string name="booking_reminders_channel_name">Booking reminders</string>
+    <string name="booking_reminders_channel_desc">Start and end of your car reservations</string>
+    <string name="booking_start_title">Booking starting</string>
+    <string name="booking_start_body">Your car reservation is starting now.</string>
+    <string name="booking_start_body_car">Your reservation for %1$s is starting now.</string>
+    <string name="booking_end_title">Booking ending</string>
+    <string name="booking_end_body">Your car reservation end time has been reached.</string>
+    <string name="booking_end_body_car">Your reservation for %1$s has reached its end time.</string>
+    <string name="server_url_hint">API server URL</string>
+    <string name="server_url_helper">Emulator: http://10.0.2.2:3000 — Phone on same Wi‑Fi: http://YOUR-PC-IP:3000 (run ipconfig, IPv4 Address). Your PC must run npm run dev.</string>
 </resources>

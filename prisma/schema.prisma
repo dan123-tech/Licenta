@@ -68,6 +68,8 @@ model User {
   drivingLicenceUrl         String?              // photo of driving licence
   drivingLicenceStatus      DrivingLicenceStatus? // PENDING | APPROVED | REJECTED; null = not uploaded
   drivingLicenceVerifiedBy  String?              // "AI" | "ADMIN" – who set the status
+  fcmToken                  String?              // FCM device token for booking reminders (mobile)
+  fcmTokenUpdatedAt         DateTime?
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
@@ -189,6 +191,8 @@ model Reservation {
   releasedExceededReason      String?              // reason when km exceeded company default
   releasedExceededStatus      ExceededApprovalStatus? // PENDING_APPROVAL | APPROVED | REJECTED
   releasedExceededAdminComment String?             // admin observations (visible to user)
+  pushReminderStartSentAt      DateTime?            // server FCM: start-of-booking reminder sent
+  pushReminderEndSentAt        DateTime?            // server FCM: end-of-booking reminder sent
   createdAt                  DateTime             @default(now())
   updatedAt                  DateTime             @updatedAt
 

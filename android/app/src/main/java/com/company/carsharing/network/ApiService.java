@@ -40,6 +40,10 @@ public interface ApiService {
     @POST("api/auth/logout")
     Call<Void> logout();
 
+    /** Register FCM token for server-side booking reminders (optional; requires Firebase on the device). */
+    @POST("api/users/me/push-token")
+    Call<Map<String, Object>> registerPushToken(@Body Map<String, String> body);
+
     // Company
     @POST("api/companies")
     Call<CompanyResponse> createCompany(@Body Map<String, Object> body);

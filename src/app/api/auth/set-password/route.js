@@ -51,13 +51,16 @@ export async function POST(request) {
   const member = await acceptInvite(token, user.id);
   if (!member) return errorResponse("Could not enroll", 400);
 
-  await setSession({
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    companyId: member.companyId,
-    role: member.role,
-  });
+  await setSession(
+    {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      companyId: member.companyId,
+      role: member.role,
+    },
+    request
+  );
 
   return jsonResponse({
     user: { id: user.id, email: user.email, name: user.name, role: member.role, companyId: member.companyId },

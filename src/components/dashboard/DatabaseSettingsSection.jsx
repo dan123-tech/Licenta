@@ -38,7 +38,7 @@ function ToggleButton({ providerId, label, icon: Icon, active, disabled, hasCred
         flex flex-col sm:flex-row items-center gap-2 sm:gap-3 px-4 py-3 rounded-xl border-2 min-w-[120px] sm:min-w-[140px]
         transition-all duration-200 text-left relative
         ${active
-          ? "border-[#3B82F6] bg-[#3B82F6]/10 text-slate-900 shadow-sm ring-2 ring-[#3B82F6]/20"
+          ? "border-[var(--primary)] bg-[var(--primary)]/10 text-slate-900 shadow-sm ring-2 ring-[var(--primary-ring)]"
           : disabled
             ? "border-slate-200 bg-slate-100/80 text-slate-400 cursor-not-allowed"
             : "border-slate-200 bg-slate-50/80 text-slate-600 hover:border-slate-300 hover:bg-slate-100"

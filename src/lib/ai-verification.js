@@ -1,37 +1,108 @@
 /**
  * AI Verification – call the AI Docker service to verify driving licence experience.
  * Base URL: AI_VERIFICATION_URL (default http://localhost:8080)
- * Expects: POST with image (multipart/form-data "file" or "image"), JSON response with
- *   hasTwoPlusYearsExperience / has_two_plus_years_experience / approved (boolean).
- * If true → approve (2+ years), if false → reject.
+ * Form field: AI_VERIFY_FORM_FIELD (default "file") – some services expect "image"
  */
 
 const DEFAULT_AI_URL = process.env.AI_VERIFICATION_URL || "http://localhost:8080";
-const AI_VERIFY_PATH = process.env.AI_VERIFY_PATH || "/verify";
+const AI_VERIFY_PATH = process.env.AI_VERIFY_PATH || "/validate";
+const AI_FORM_FIELD = process.env.AI_VERIFY_FORM_FIELD || "file";
 const AI_TIMEOUT_MS = parseInt(process.env.AI_VERIFICATION_TIMEOUT_MS || "30000", 10);
 
 /**
- * Send the driving licence image to the AI service and get whether the user has 2+ years experience.
- * @param {Buffer} imageBuffer - Raw image bytes
- * @param {string} mimeType - e.g. "image/jpeg"
- * @param {string} [filename] - Optional filename for the part
+ * Normalize various validator JSON shapes into approved (2+ years) or not.
+ * @param {unknown} data
+ * @returns {boolean}
+ */
+export function hasTwoPlusYearsFromAIResponse(data) {
+  if (data == null) return false;
+
+  const visit = (obj, depth = 0) => {
+    if (obj == null || typeof obj !== "object" || depth > 4) return false;
+    const o = obj;
+
+    if (o.hasTwoPlusYearsExperience === true || o.has_two_plus_years_experience === true) return true;
+    if (o.approved === true || o.eligible === true || o.is_eligible === true || o.valid === true) return true;
+    if (String(o.approved).toLowerCase() === "true") return true;
+    const r = String(o.result || o.status || o.decision || "").toLowerCase();
+    if (r === "approved" || r === "pass" || r === "eligible") return true;
+
+    const years =
+      o.years_of_experience ??
+      o.yearsOfExperience ??
+      o.experience_years ??
+      o.experienceYears ??
+      o.years ??
+      o.experience;
+    if (typeof years === "number" && !Number.isNaN(years) && years >= 2) return true;
+    if (typeof years === "string") {
+      const n = parseFloat(years.replace(/,/g, "."));
+      if (!Number.isNaN(n) && n >= 2) return true;
+    }
+
+    // Nested payloads (e.g. { data: { ... } }, { analysis: { ... } })
+    for (const key of ["data", "analysis", "result", "payload", "response"]) {
+      if (o[key] && typeof o[key] === "object" && visit(o[key], depth + 1)) return true;
+    }
+    return false;
+  };
+
+  return visit(data, 0);
+}
+
+function buildLicenceFormData(imageBuffer, mimeType, filename, fieldName) {
+  const form = new FormData();
+  const type = mimeType || "image/jpeg";
+  if (typeof File !== "undefined") {
+    try {
+      const file = new File([imageBuffer], filename, { type });
+      form.append(fieldName, file);
+    } catch {
+      const blob = new Blob([imageBuffer], { type });
+      form.append(fieldName, blob, filename);
+    }
+  } else {
+    const blob = new Blob([imageBuffer], { type });
+    form.append(fieldName, blob, filename);
+  }
+  return form;
+}
+
+async function postLicenceToAI(url, imageBuffer, mimeType, filename, fieldName, signal) {
+  const form = buildLicenceFormData(imageBuffer, mimeType, filename, fieldName);
+  return fetch(url, { method: "POST", body: form, signal });
+}
+
+/**
+ * @param {Buffer} imageBuffer
+ * @param {string} mimeType
+ * @param {string} [filename]
  * @returns {Promise<{ hasTwoPlusYearsExperience: boolean, raw?: object }>}
  */
 export async function verifyDrivingLicenceWithAI(imageBuffer, mimeType, filename = "driving-licence.jpg") {
-  const url = `${DEFAULT_AI_URL.replace(/\/$/, "")}${AI_VERIFY_PATH}`;
-  const form = new FormData();
-  const blob = new Blob([imageBuffer], { type: mimeType || "image/jpeg" });
-  form.append("file", blob, filename);
+  const base = DEFAULT_AI_URL.replace(/\/$/, "");
+  const url = `${base}${AI_VERIFY_PATH}`;
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
   let res;
+  const primaryField = AI_FORM_FIELD;
+  const altField = primaryField === "file" ? "image" : "file";
+
   try {
-    res = await fetch(url, {
-      method: "POST",
-      body: form,
-      signal: controller.signal,
-      headers: {}, // FormData sets Content-Type with boundary
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[ai-verification] POST", url, "field=", primaryField);
+    }
+    res = await postLicenceToAI(url, imageBuffer, mimeType, filename, primaryField, controller.signal);
+
+    // FastAPI often returns 422 if multipart field name doesn't match UploadFile param
+    if (res.status === 422) {
+      const t = await res.text();
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[ai-verification] 422 with field", primaryField, "retrying field", altField, t.slice(0, 200));
+      }
+      res = await postLicenceToAI(url, imageBuffer, mimeType, filename, altField, controller.signal);
+    }
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === "AbortError") {
@@ -45,14 +116,19 @@ export async function verifyDrivingLicenceWithAI(imageBuffer, mimeType, filename
   } finally {
     clearTimeout(timeoutId);
   }
+
   if (!res.ok) {
     const text = await res.text();
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[ai-verification] non-OK", res.status, text.slice(0, 500));
+    }
     throw new Error(
       res.status === 503 || res.status === 502
         ? "AI verification service is temporarily unavailable. Your licence is pending manual review."
         : `AI verification returned ${res.status}: ${text.slice(0, 200)}`
     );
   }
+
   let data;
   const contentType = res.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
@@ -65,10 +141,12 @@ export async function verifyDrivingLicenceWithAI(imageBuffer, mimeType, filename
       throw new Error("AI verification returned invalid response. Your licence is pending manual review.");
     }
   }
-  const hasTwoPlusYearsExperience =
-    data?.hasTwoPlusYearsExperience === true ||
-    data?.has_two_plus_years_experience === true ||
-    (typeof data?.approved === "boolean" && data.approved === true);
+
+  const hasTwoPlusYearsExperience = hasTwoPlusYearsFromAIResponse(data);
+  if (process.env.NODE_ENV !== "production") {
+    console.info("[ai-verification] parsed approved=", hasTwoPlusYearsExperience, "keys=", data && typeof data === "object" ? Object.keys(data) : []);
+  }
+
   return {
     hasTwoPlusYearsExperience: Boolean(hasTwoPlusYearsExperience),
     raw: data,

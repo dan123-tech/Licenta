@@ -32,11 +32,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Reach AI services running on the host (licence validator :8080, helpbot :8501).
+    # Linux: host-gateway makes host.docker.internal work; Windows/Mac Docker Desktop also support it.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DATABASE_URL: "postgresql://postgres:postgres@db:5432/company_car_sharing?schema=public"
       AUTH_SECRET: "${AUTH_SECRET:-dev-secret-at-least-32-chars-long-change-me}"
       AI_VERIFICATION_URL: "http://host.docker.internal:8080"
       AI_VERIFY_PATH: "/validate"
+      HELPBOT_URL: "http://host.docker.internal:8501"
     ports:
       - "3000:3000"
     volumes:

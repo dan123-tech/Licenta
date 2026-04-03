@@ -12,7 +12,7 @@ import { getAuth } from "firebase-admin/auth";
 
 const STORED_APP_NAME_PREFIX = "firebase-stored-";
 
-function getFirebaseApp() {
+export function getFirebaseApp() {
   if (getApps().length > 0) return getApp();
   const cred = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   let app;

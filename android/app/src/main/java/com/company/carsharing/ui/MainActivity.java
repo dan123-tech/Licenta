@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
         if (!authRepository.getSessionPreferences().getRememberMe()) {
-            authRepository.logout();
+            authRepository.logout(this);
             startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
@@ -50,7 +50,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         navView.setNavigationItemSelectedListener(this);
         View logoutBtn = findViewById(R.id.drawer_logout);
         if (logoutBtn != null) logoutBtn.setOnClickListener(v -> {
-            authRepository.logout();
+            authRepository.logout(this);
             startActivity(new Intent(this, LoginActivity.class));
             finish();
         });

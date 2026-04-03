@@ -1,21 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --background: #F8FAFC;
-  --foreground: #1E293B;
-  /* Professional corporate theme */
-  --sidebar-bg: #1E293B;
-  --sidebar-active: #334155;
-  --primary: #3B82F6;
-  --primary-hover: #2563EB;
-  --danger: #DC2626;
-  --danger-hover: #B91C1C;
-  --main-bg: #F8FAFC;
-  --text: #1E293B;
-  --text-muted: #64748B;
+  --background: #eef1f6;
+  --foreground: #0f172a;
+  /* FleetAdmin template */
+  --sidebar-bg: #0f1117;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-nav-active-bg: rgba(24, 95, 165, 0.25);
+  --sidebar-nav-active-text: #85b7eb;
+  --sidebar-nav-muted: rgba(255, 255, 255, 0.55);
+  --brand-icon-bg: #185fa5;
+  --brand-icon-fg: #b5d4f4;
+  --primary: #185fa5;
+  --primary-hover: #144a84;
+  --primary-ring: rgba(24, 95, 165, 0.2);
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --main-bg: #eef1f6;
+  --text: #0f172a;
+  --text-muted: #64748b;
   --card-bg: #ffffff;
   --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
   --card-radius: 12px;
+  --join-badge-bg: #e6f1fb;
+  --join-badge-text: #0c447c;
+  --join-badge-border: #b5d4f4;
+  --border-tertiary: rgba(15, 23, 42, 0.08);
 }
 
 @theme inline {
@@ -49,4 +59,26 @@ body {
 
 .card-soft:hover {
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+}
+
+.fleet-topbar {
+  background: var(--card-bg);
+  border-bottom: 0.5px solid var(--border-tertiary);
+}
+
+.join-badge-pill {
+  font-size: 11px;
+  background: var(--join-badge-bg);
+  color: var(--join-badge-text);
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 0.5px solid var(--join-badge-border);
+}
+
+.input-focus {
+  @apply outline-none transition-shadow;
+}
+.input-focus:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-ring);
 }

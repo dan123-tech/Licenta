@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, Fragment } from "react";
-import { Sidebar, NavItem } from "./Sidebar";
+import { LayoutGrid, IdCard, Car, Wrench, Calendar, History } from "lucide-react";
+import { Sidebar, NavItem, NavSection, NavLabel } from "./Sidebar";
 import {
   apiCars,
+  apiGetCar,
   apiReservations,
   apiReservationHistory,
   apiCreateReservation,
@@ -14,14 +16,40 @@ import {
   apiDeleteDrivingLicence,
 } from "@/lib/api";
 
-const SECTIONS = [
-  { id: "dashboard", label: "Dashboard", icon: "📊" },
-  { id: "drivingLicence", label: "Driving licence", icon: "🪪" },
-  { id: "myReservations", label: "My Reservations", icon: "📅" },
-  { id: "availableCars", label: "Available Cars", icon: "🚗" },
-  { id: "unavailableCars", label: "Unavailable Cars", icon: "🔧" },
-  { id: "history", label: "History", icon: "📜" },
+const UICON = { s: "w-4 h-4 shrink-0 stroke-[1.5]" };
+
+const USER_NAV_GROUPS = [
+  {
+    label: "Overview",
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className={UICON.s} aria-hidden /> },
+      { id: "drivingLicence", label: "Driving licence", icon: <IdCard className={UICON.s} aria-hidden /> },
+    ],
+  },
+  {
+    label: "Fleet",
+    items: [
+      { id: "availableCars", label: "Available cars", icon: <Car className={UICON.s} aria-hidden /> },
+      { id: "unavailableCars", label: "Unavailable cars", icon: <Wrench className={UICON.s} aria-hidden /> },
+    ],
+  },
+  {
+    label: "My activity",
+    items: [
+      { id: "myReservations", label: "My reservations", icon: <Calendar className={UICON.s} aria-hidden /> },
+      { id: "history", label: "History", icon: <History className={UICON.s} aria-hidden /> },
+    ],
+  },
 ];
+
+const USER_PAGE_META = {
+  dashboard: { title: "Dashboard", sub: "Your fleet activity at a glance" },
+  drivingLicence: { title: "Driving licence", sub: "Upload and validation status" },
+  myReservations: { title: "My reservations", sub: "Active and upcoming bookings" },
+  availableCars: { title: "Available cars", sub: "Reserve a vehicle" },
+  unavailableCars: { title: "Unavailable cars", sub: "Reserved or in maintenance" },
+  history: { title: "History", sub: "Past reservations" },
+};
 
 function formatDate(d) {
   const x = new Date(d);
@@ -57,7 +85,7 @@ function getPickupCodeStatus(reservation, now = new Date()) {
 function statusClass(s) {
   const v = (s || "").toLowerCase();
   if (v === "available" || v === "active") return "bg-emerald-100 text-emerald-800";
-  if (v === "completed") return "bg-[#3B82F6]/10 text-[#2563EB]";
+  if (v === "completed") return "bg-[var(--primary)]/10 text-[var(--primary)]";
   if (v === "reserved") return "bg-amber-100 text-amber-800";
   if (v === "cancelled") return "bg-red-100 text-red-800";
   if (v === "in_maintenance" || v === "maintenance") return "bg-red-100 text-red-800";
@@ -81,6 +109,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
   const [dlDeleting, setDlDeleting] = useState(false);
   const [selectedDlFile, setSelectedDlFile] = useState(null);
   const [dlPreviewUrl, setDlPreviewUrl] = useState(null);
+  const [dlNotice, setDlNotice] = useState(null);
   const [now, setNow] = useState(() => new Date());
   const [scheduleModal, setScheduleModal] = useState(null);
   const [scheduleStart, setScheduleStart] = useState("");
@@ -198,12 +227,30 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
     if (!selectedDlFile) return;
     setDlUploading(true);
     setError("");
+    setDlNotice(null);
     try {
-      await apiUploadDrivingLicence(selectedDlFile);
+      const data = await apiUploadDrivingLicence(selectedDlFile);
       if (dlPreviewUrl) URL.revokeObjectURL(dlPreviewUrl);
       setDlPreviewUrl(null);
       setSelectedDlFile(null);
       onUserUpdated?.();
+      if (data.aiVerified) {
+        const s = data.drivingLicenceStatus;
+        setDlNotice({
+          type: s === "APPROVED" ? "success" : "warning",
+          text:
+            s === "APPROVED"
+              ? "Automatic AI check: approved (meets experience rules)."
+              : "Automatic AI check: not approved from this image (e.g. experience under 2 years or unreadable). You can upload a clearer photo or ask an admin.",
+        });
+      } else {
+        setDlNotice({
+          type: "warn",
+          text:
+            data.message ||
+            "Photo saved, but the AI service did not respond. Status is pending until an admin reviews or you try again.",
+        });
+      }
     } catch (err) {
       setError(err.message || "Upload failed");
     } finally {
@@ -250,7 +297,11 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
       return;
     }
     if (newKm < releaseCurrentKm) {
-      setError("New km cannot be less than the car's km when you started (" + releaseCurrentKm + " km).");
+      setError(
+        "Odometer must be greater than or equal to the last known reading (" +
+          releaseCurrentKm +
+          " km). You cannot enter a lower value."
+      );
       return;
     }
     if (releaseExceedsLimit && !releaseExceededReason.trim()) {
@@ -270,32 +321,57 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
     }
   }
 
+  const pageMeta = USER_PAGE_META[section] || { title: "Car sharing", sub: "" };
+
   return (
-    <div className="flex h-full w-full bg-[#F8FAFC]">
+    <div className="flex h-full w-full min-h-0" style={{ background: "var(--main-bg)" }}>
       <Sidebar user={user} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} viewAs={viewAs} setViewAs={setViewAs}>
-        {SECTIONS.map((s) => (
-          <NavItem
-            key={s.id}
-            active={section === s.id}
-            onClick={() => { setSection(s.id); setMobileOpen(false); }}
-            icon={s.icon}
-            label={s.label}
-          />
+        {USER_NAV_GROUPS.map((group) => (
+          <NavSection key={group.label}>
+            <NavLabel>{group.label}</NavLabel>
+            {group.items.map((s) => (
+              <NavItem
+                key={s.id}
+                active={section === s.id}
+                onClick={() => {
+                  setSection(s.id);
+                  setMobileOpen(false);
+                }}
+                icon={s.icon}
+                label={s.label}
+              />
+            ))}
+          </NavSection>
         ))}
       </Sidebar>
-      <div className="flex-1 flex flex-col min-h-0 min-w-0 md:ml-2 my-2 md:my-3 md:mr-3 bg-white rounded-l-2xl shadow-sm border border-slate-200/80 overflow-hidden">
-        <header className="shrink-0 flex items-center gap-3 py-3 px-4 sm:px-6 md:px-8 border-b border-slate-200/80 bg-white shadow-sm z-10">
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            className="md:hidden p-2 rounded-xl bg-white shadow-sm text-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center border border-slate-100 hover:bg-slate-50 transition-colors"
-            aria-label="Open menu"
-          >
-            ☰
-          </button>
-          <h1 className="text-lg font-bold text-slate-800 truncate">Car Sharing</h1>
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
+        <header className="fleet-topbar shrink-0 z-10 flex flex-wrap items-center justify-between gap-3 py-3.5 px-4 sm:px-6 md:px-8">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              className="md:hidden p-2 rounded-lg bg-slate-100 text-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center border border-slate-200/80 hover:bg-slate-200 transition-colors"
+              aria-label="Open menu"
+            >
+              ☰
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-base font-medium text-slate-900 truncate">{pageMeta.title}</h1>
+              <p className="text-xs text-slate-500 mt-0.5 truncate">{pageMeta.sub}</p>
+            </div>
+          </div>
+          {company?.joinCode && (
+            <span className="join-badge-pill font-medium hidden sm:inline shrink-0">
+              Join code: <span className="font-mono">{company.joinCode}</span>
+            </span>
+          )}
         </header>
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 sm:p-8 md:p-10 flex flex-col">
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-5 sm:p-6 md:px-8 md:pb-8 md:pt-6 flex flex-col">
+        {company?.joinCode && (
+          <p className="mb-4 text-xs text-slate-500 sm:hidden shrink-0">
+            Join code: <code className="font-mono text-slate-800 font-semibold">{company.joinCode}</code>
+          </p>
+        )}
         {error && (
           <div className="mb-6 p-3 rounded-xl bg-red-50 text-red-700 text-sm border border-red-100">{error}</div>
         )}
@@ -305,7 +381,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
             <h2 className="text-2xl font-bold text-slate-800 mb-6">Dashboard</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
               <div className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] border border-slate-100/80 p-6 flex items-center gap-4">
-                <span className="text-3xl w-12 h-12 flex items-center justify-center rounded-xl bg-[#3B82F6]/10 text-[#3B82F6]" aria-hidden>🚗</span>
+                <span className="text-3xl w-12 h-12 flex items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]" aria-hidden>🚗</span>
                 <div>
                   <p className="text-2xl font-bold text-slate-800">{activeReservations.length}</p>
                   <p className="text-sm text-slate-500">Active Reservations</p>
@@ -319,7 +395,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                 </div>
               </div>
               <div className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] border border-slate-100/80 p-6 flex items-center gap-4">
-                <span className="text-3xl w-12 h-12 flex items-center justify-center rounded-xl bg-[#3B82F6]/10 text-[#3B82F6]" aria-hidden>✅</span>
+                <span className="text-3xl w-12 h-12 flex items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]" aria-hidden>✅</span>
                 <div>
                   <p className="text-2xl font-bold text-slate-800">{availableCars.length}</p>
                   <p className="text-sm text-slate-500">Available Cars</p>
@@ -360,7 +436,9 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
         {section === "drivingLicence" && (
           <section className="w-full min-w-0">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 sm:mb-6">Driving licence</h2>
-            <p className="text-sm text-slate-500 mb-4">Upload a photo of your driving licence. An admin must approve it before you can reserve a car.</p>
+            <p className="text-sm text-slate-500 mb-4">
+              Choose a photo, then click <strong>Save</strong> to upload. The system sends it to the AI validator automatically. If the AI is unavailable, an admin can still approve you.
+            </p>
             <div className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] border border-slate-100/80 p-4 sm:p-6 max-w-lg">
               <div className="mb-4">
                 <span className="text-sm font-semibold text-slate-600">Status: </span>
@@ -404,7 +482,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                   type="button"
                   onClick={handleDlSave}
                   disabled={dlUploading || dlDeleting || !selectedDlFile}
-                  className="px-5 py-2.5 rounded-xl font-semibold text-white bg-[#3B82F6] hover:bg-[#2563EB] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+                  className="px-5 py-2.5 rounded-xl font-semibold text-white bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
                 >
                   {dlUploading ? "Saving…" : "Save"}
                 </button>
@@ -417,7 +495,20 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                   {dlDeleting ? "Deleting…" : "Delete"}
                 </button>
               </div>
-              {dlUploading && <p className="text-sm text-[#7f8c8d] mt-2">Uploading…</p>}
+              {dlUploading && <p className="text-sm text-[#7f8c8d] mt-2">Uploading and running AI check…</p>}
+              {dlNotice && (
+                <div
+                  className={`mt-4 rounded-xl px-4 py-3 text-sm ${
+                    dlNotice.type === "success"
+                      ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                      : dlNotice.type === "warning"
+                      ? "bg-amber-50 text-amber-900 border border-amber-200"
+                      : "bg-slate-50 text-slate-800 border border-slate-200"
+                  }`}
+                >
+                  {dlNotice.text}
+                </div>
+              )}
               {!canReserve && dlStatus !== "PENDING" && dlStatus !== "REJECTED" && (
                 <p className="text-sm text-amber-700 mt-3">Upload your driving licence and wait for admin approval to reserve cars.</p>
               )}
@@ -452,13 +543,19 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                             {r.status}
                           </span>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-4 flex flex-wrap gap-2 items-center">
+                          <a
+                            href={`/api/reservations/${r.id}/calendar`}
+                            className="inline-flex px-3 py-2 min-h-[44px] sm:min-h-0 items-center bg-slate-100 text-slate-800 text-sm font-semibold rounded-xl hover:bg-slate-200 border border-slate-200/80 transition-colors"
+                          >
+                            Calendar (.ics)
+                          </a>
                           {(r.status || "").toLowerCase() === "active" && (
                             <>
                               <button
                                 type="button"
                                 onClick={() => openReleaseModal(r)}
-                                className="px-3 py-2 min-h-[44px] sm:min-h-0 bg-[#3B82F6] text-white text-sm font-semibold rounded-xl hover:bg-[#2563EB] shadow-sm transition-colors"
+                                className="px-3 py-2 min-h-[44px] sm:min-h-0 bg-[var(--primary)] text-white text-sm font-semibold rounded-xl hover:bg-[var(--primary-hover)] shadow-sm transition-colors"
                               >
                                 Release
                               </button>
@@ -553,7 +650,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                           type="button"
                           onClick={() => canReserve && reserveInstant(c.id)}
                           disabled={reservingCarId === c.id || !canReserve}
-                          className="px-3 py-2 min-h-[44px] sm:min-h-0 bg-[#3B82F6] text-white text-sm font-semibold rounded-xl hover:bg-[#2563EB] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+                          className="px-3 py-2 min-h-[44px] sm:min-h-0 bg-[var(--primary)] text-white text-sm font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
                         >
                           {reservingCarId === c.id ? "Reserving…" : "Reserve now"}
                         </button>
@@ -631,7 +728,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                     <div key={year} className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] p-4 border border-slate-100/80">
                       <div className="text-sm font-semibold text-slate-500">{year}</div>
                       <div className="mt-1 text-xl font-bold text-slate-800">{byYear[year].count} reservation{byYear[year].count !== 1 ? "s" : ""}</div>
-                      <div className="text-sm text-[#3B82F6] font-medium">{byYear[year].km.toLocaleString()} km total</div>
+                      <div className="text-sm text-[var(--primary)] font-medium">{byYear[year].km.toLocaleString()} km total</div>
                     </div>
                   ))}
                 </div>
@@ -697,7 +794,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                   type="datetime-local"
                   value={scheduleStart}
                   onChange={(e) => setScheduleStart(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   required
                 />
               </div>
@@ -707,7 +804,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                   type="datetime-local"
                   value={scheduleEnd}
                   onChange={(e) => setScheduleEnd(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   required
                 />
               </div>
@@ -717,7 +814,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                   type="text"
                   value={schedulePurpose}
                   onChange={(e) => setSchedulePurpose(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   placeholder="e.g. Client visit"
                 />
               </div>
@@ -738,18 +835,19 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
             <p className="text-sm text-slate-500 mb-4">
               {releaseModal.car?.brand} {releaseModal.car?.registrationNumber}
               {releaseCurrentKm != null && (
-                <span className="block mt-1">Current odometer when reserved: {releaseCurrentKm} km</span>
+                <span className="block mt-1">Last known odometer (cannot go below this): {releaseCurrentKm} km</span>
               )}
             </p>
             <form onSubmit={submitRelease} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-600 mb-1">New km (odometer reading)</label>
+                <label className="block text-sm font-semibold text-slate-600 mb-1">Current odometer (must be ≥ {releaseCurrentKm} km)</label>
                 <input
                   type="number"
                   min={releaseCurrentKm}
+                  step={1}
                   value={releaseNewKm}
                   onChange={(e) => setReleaseNewKm(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   placeholder={String(releaseCurrentKm)}
                   required
                 />
@@ -763,7 +861,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                   <textarea
                     value={releaseExceededReason}
                     onChange={(e) => setReleaseExceededReason(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                     placeholder="Why did you exceed the allowed km?"
                     rows={3}
                     required
@@ -781,7 +879,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                 <button
                   type="submit"
                   disabled={releaseSubmitting}
-                  className="px-4 py-2 bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] disabled:opacity-50 shadow-sm transition-colors"
+                  className="px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm transition-colors"
                 >
                   {releaseSubmitting ? "Releasing…" : "Release"}
                 </button>

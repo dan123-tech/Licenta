@@ -32,6 +32,33 @@
             android:textColor="@color/on_surface_variant" />
 
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/serverUrlLayout"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:hint="@string/server_url_hint"
+            app:boxStrokeColor="@color/accent"
+            app:hintTextColor="@color/accent">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/serverUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri"
+                android:maxLines="2"
+                android:text="http://10.0.2.2:3000/" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/server_url_helper"
+            android:textSize="12sp"
+            android:textColor="@color/on_surface_variant" />
+
+        <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/nameLayout"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"

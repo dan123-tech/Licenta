@@ -1,7 +1,10 @@
 package com.company.carsharing.ui;
 
+import android.Manifest;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,13 +16,18 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.company.carsharing.data.repository.AuthRepository;
 import com.company.carsharing.databinding.FragmentMyReservationsBinding;
 import com.company.carsharing.models.Car;
 import com.company.carsharing.models.Reservation;
+import com.company.carsharing.models.User;
 import com.company.carsharing.network.RetrofitClient;
+import com.company.carsharing.reminders.ReservationAlarmScheduler;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -170,12 +178,35 @@ public class MyReservationsFragment extends Fragment implements ReservationsAdap
 
     @Override
     public void onRelease(Reservation r) {
-        int currentKm = r.getCar() != null ? r.getCar().getKm() : 0;
+        int fallbackKm = r.getCar() != null ? r.getCar().getKm() : 0;
+        AuthRepository authRepo = new AuthRepository(requireContext());
+        RetrofitClient.getApiService(authRepo.getSessionPreferences())
+                .getCar(r.getCarId())
+                .enqueue(new Callback<Car>() {
+                    @Override
+                    public void onResponse(@NonNull Call<Car> call, @NonNull Response<Car> response) {
+                        int km = fallbackKm;
+                        if (response.isSuccessful() && response.body() != null) {
+                            km = response.body().getKm();
+                        }
+                        if (getActivity() == null) return;
+                        showReleaseReservationDialog(r, km);
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull Call<Car> call, @NonNull Throwable t) {
+                        if (getActivity() == null) return;
+                        showReleaseReservationDialog(r, fallbackKm);
+                    }
+                });
+    }
+
+    private void showReleaseReservationDialog(Reservation r, int lastKnownKm) {
         View dialogView = LayoutInflater.from(requireContext()).inflate(com.company.carsharing.R.layout.dialog_release_reservation, null);
         TextView currentKmTv = dialogView.findViewById(com.company.carsharing.R.id.dialog_release_current_km);
-        currentKmTv.setText("Current odometer: " + currentKm + " km");
+        currentKmTv.setText("Last known odometer: " + lastKnownKm + " km (must be ≥ this)");
         com.google.android.material.textfield.TextInputEditText newKmEt = dialogView.findViewById(com.company.carsharing.R.id.dialog_release_new_km_et);
-        newKmEt.setText(String.valueOf(currentKm));
+        newKmEt.setText(String.valueOf(lastKnownKm));
         com.google.android.material.textfield.TextInputEditText reasonEt = dialogView.findViewById(com.company.carsharing.R.id.dialog_release_reason_et);
         TextView errorTv = dialogView.findViewById(com.company.carsharing.R.id.dialog_release_error);
         View cancelBtn = dialogView.findViewById(com.company.carsharing.R.id.dialog_release_cancel);
@@ -187,9 +218,15 @@ public class MyReservationsFragment extends Fragment implements ReservationsAdap
             errorTv.setVisibility(View.GONE);
             String newKmStr = newKmEt.getText() != null ? newKmEt.getText().toString().trim() : "";
             int newKm;
-            try { newKm = Integer.parseInt(newKmStr); } catch (NumberFormatException e) { newKm = currentKm; }
-            if (newKm < currentKm) {
-                errorTv.setText("New km cannot be less than current");
+            try {
+                newKm = Integer.parseInt(newKmStr);
+            } catch (NumberFormatException e) {
+                errorTv.setText("Enter a valid odometer number");
+                errorTv.setVisibility(View.VISIBLE);
+                return;
+            }
+            if (newKm < lastKnownKm) {
+                errorTv.setText("Odometer must be greater than or equal to " + lastKnownKm + " km");
                 errorTv.setVisibility(View.VISIBLE);
                 return;
             }
@@ -200,28 +237,43 @@ public class MyReservationsFragment extends Fragment implements ReservationsAdap
             if (!reason.isEmpty()) body.put("exceededReason", reason);
             RetrofitClient.getApiService(new AuthRepository(requireContext()).getSessionPreferences())
                     .updateReservation(r.getId(), body).enqueue(new Callback<Map<String, Object>>() {
-                @Override
-                public void onResponse(Call<Map<String, Object>> call, Response<Map<String, Object>> response) {
-                    if (getActivity() == null) return;
-                    if (response.isSuccessful()) {
-                        dialog.dismiss();
-                        loadReservations();
-                        Toast.makeText(requireContext(), "Car released", Toast.LENGTH_SHORT).show();
-                    } else {
-                        errorTv.setText(response.code() == 422 ? "Invalid km or reason required" : "Failed to release");
-                        errorTv.setVisibility(View.VISIBLE);
-                    }
-                }
-                @Override
-                public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                    if (getActivity() != null) {
-                        errorTv.setText("Network error");
-                        errorTv.setVisibility(View.VISIBLE);
-                    }
-                }
-            });
+                        @Override
+                        public void onResponse(@NonNull Call<Map<String, Object>> call, @NonNull Response<Map<String, Object>> response) {
+                            if (getActivity() == null) return;
+                            if (response.isSuccessful()) {
+                                dialog.dismiss();
+                                loadReservations();
+                                Toast.makeText(requireContext(), "Car released", Toast.LENGTH_SHORT).show();
+                            } else {
+                                String apiErr = parseApiErrorMessage(response);
+                                errorTv.setText(apiErr != null ? apiErr : (response.code() == 422 ? "Invalid km or reason required" : "Failed to release"));
+                                errorTv.setVisibility(View.VISIBLE);
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(@NonNull Call<Map<String, Object>> call, @NonNull Throwable t) {
+                            if (getActivity() != null) {
+                                errorTv.setText("Network error");
+                                errorTv.setVisibility(View.VISIBLE);
+                            }
+                        }
+                    });
         });
         dialog.show();
+    }
+
+    private static String parseApiErrorMessage(Response<?> response) {
+        try {
+            if (response.errorBody() == null) return null;
+            String raw = response.errorBody().string();
+            JsonObject o = JsonParser.parseString(raw).getAsJsonObject();
+            if (o.has("error") && !o.get("error").isJsonNull()) {
+                return o.get("error").getAsString();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     @Override
@@ -300,6 +352,15 @@ public class MyReservationsFragment extends Fragment implements ReservationsAdap
                 if (response.isSuccessful() && response.body() != null) {
                     adapter.setReservations(response.body());
                     binding.emptyText.setVisibility(response.body().isEmpty() ? View.VISIBLE : View.GONE);
+                    if (Build.VERSION.SDK_INT >= 33
+                            && ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1001);
+                    }
+                    AuthRepository repo = new AuthRepository(requireContext());
+                    User u = repo.getSessionPreferences().getUser();
+                    if (u != null && u.getId() != null) {
+                        ReservationAlarmScheduler.schedule(requireContext(), response.body(), u.getId());
+                    }
                 }
             }
             @Override

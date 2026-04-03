@@ -13,6 +13,7 @@ import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.company.carsharing.CarSharingApplication;
 import com.company.carsharing.R;
 import com.company.carsharing.data.repository.AuthRepository;
 import com.company.carsharing.databinding.ActivityLoginBinding;
@@ -52,7 +53,19 @@ public class LoginActivity extends AppCompatActivity {
             binding.email.setText(authRepository.getSessionPreferences().getSavedEmail());
         }
 
+        if (binding.serverUrl != null) {
+            String u = CarSharingApplication.getApiBaseUrl();
+            if (u.endsWith("/")) {
+                u = u.substring(0, u.length() - 1);
+            }
+            binding.serverUrl.setText(u);
+        }
+
         binding.buttonLogin.setOnClickListener(v -> {
+            String baseUrl = binding.serverUrl != null && binding.serverUrl.getText() != null
+                    ? binding.serverUrl.getText().toString()
+                    : "";
+            CarSharingApplication.setApiBaseUrl(baseUrl);
             String email = binding.email.getText() != null ? binding.email.getText().toString() : "";
             String password = binding.password.getText() != null ? binding.password.getText().toString() : "";
             boolean rememberMe = binding.rememberMe != null && binding.rememberMe.isChecked();
@@ -81,6 +94,9 @@ public class LoginActivity extends AppCompatActivity {
         String email = authRepository.getSessionPreferences().getSavedEmail();
         String password = authRepository.getSessionPreferences().getSavedPassword();
         if (email == null || password == null || email.isEmpty() || password.isEmpty()) return;
+        if (binding.serverUrl != null && binding.serverUrl.getText() != null) {
+            CarSharingApplication.setApiBaseUrl(binding.serverUrl.getText().toString());
+        }
         viewModel.login(email, password, true);
     }
 

@@ -380,7 +380,7 @@ export default function StatisticsDashboard({ reservations = [], company, users 
         <button
           type="button"
           onClick={handleDownloadPdf}
-          className="px-4 py-2.5 bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] shadow-sm transition-colors flex items-center gap-2"
+          className="px-4 py-2.5 bg-[#185FA5] text-white font-semibold rounded-xl hover:bg-[#144a84] shadow-sm transition-colors flex items-center gap-2"
         >
           <span>Download PDF Report</span>
         </button>
@@ -637,7 +637,7 @@ export default function StatisticsDashboard({ reservations = [], company, users 
                   contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }}
                   formatter={(value) => [`${value} km`, "Km driven"]}
                 />
-                <Bar dataKey="km" fill="#3B82F6" radius={[4, 4, 0, 0]} name="Km driven" />
+                <Bar dataKey="km" fill="#185FA5" radius={[4, 4, 0, 0]} name="Km driven" />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -663,7 +663,7 @@ export default function StatisticsDashboard({ reservations = [], company, users 
                   formatter={(value, name) => [name === "fuelCost" ? Number(value).toFixed(2) : value, name === "fuelCost" ? "Fuel cost" : "Km"]}
                 />
                 <Legend />
-                <Line type="monotone" dataKey="fuelCost" stroke="#3B82F6" strokeWidth={2} dot={{ r: 2 }} name="Fuel cost" />
+                <Line type="monotone" dataKey="fuelCost" stroke="#185FA5" strokeWidth={2} dot={{ r: 2 }} name="Fuel cost" />
                 <Line type="monotone" dataKey="km" stroke="#64748B" strokeWidth={2} dot={{ r: 2 }} name="Km" />
               </LineChart>
             </ResponsiveContainer>

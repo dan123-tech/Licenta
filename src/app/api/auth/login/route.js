@@ -11,6 +11,8 @@ import { getCompanyById } from "@/lib/companies";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 const bodySchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -35,13 +37,16 @@ export async function POST(request) {
   });
 
   if (member) {
-    await setSession({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      companyId: member.companyId,
-      role: member.role,
-    });
+    await setSession(
+      {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        companyId: member.companyId,
+        role: member.role,
+      },
+      request
+    );
     const company = await getCompanyById(member.companyId);
     return jsonResponse({
       user: { id: user.id, email: user.email, name: user.name, role: member.role, companyId: member.companyId },
@@ -49,13 +54,16 @@ export async function POST(request) {
     });
   }
 
-  await setSession({
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    companyId: null,
-    role: null,
-  });
+  await setSession(
+    {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      companyId: null,
+      role: null,
+    },
+    request
+  );
   return jsonResponse({
     user: { id: user.id, email: user.email, name: user.name, role: null, companyId: null },
     company: null,

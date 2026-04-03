@@ -35,7 +35,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--main-bg)" }}>
         <p className="text-slate-500">Loading…</p>
       </div>
     );
@@ -47,7 +47,7 @@ export default function DashboardPage() {
 
   if (!company) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC]">
+      <div className="min-h-screen" style={{ background: "var(--main-bg)" }}>
         <NoCompanyView onJoined={loadSession} />
       </div>
     );
@@ -70,7 +70,7 @@ function AdminDashboardOrUserToggle({ session, company, loadSession }) {
   const [viewAs, setViewAs] = useState("admin"); // "admin" | "user"
 
   return (
-    <div className="h-screen w-full flex overflow-hidden bg-[#F8FAFC]">
+    <div className="h-screen w-full flex overflow-hidden" style={{ background: "var(--main-bg)" }}>
       <div className="flex-1 flex min-h-0 min-w-0">
         {viewAs === "user" ? (
           <UserDashboard

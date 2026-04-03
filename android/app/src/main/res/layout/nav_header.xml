@@ -3,8 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="200dp"
-    android:background="?attr/colorPrimary"
+    android:minHeight="120dp"
+    android:background="@color/sidebar_bg"
     android:gravity="center_horizontal|bottom"
     android:orientation="vertical"
     android:padding="16dp">
@@ -32,7 +32,7 @@
         android:alpha="0.9"
         android:gravity="center"
         android:text=""
-        android:textColor="@color/on_primary"
+        android:textColor="#99FFFFFF"
         android:textSize="14sp" />
     <TextView
         android:id="@+id/nav_header_join_code"
@@ -42,6 +42,6 @@
         android:alpha="0.85"
         android:gravity="center"
         android:text=""
-        android:textColor="@color/on_primary"
+        android:textColor="#80FFFFFF"
         android:textSize="13sp" />
 </LinearLayout>

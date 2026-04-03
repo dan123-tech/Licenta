@@ -8,6 +8,7 @@ import { getReservationById, cancelReservation, extendReservation, completeReser
 import { updateCar } from "@/lib/cars";
 import { getCompanyById } from "@/lib/companies";
 import { getProvider, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
+import { prisma } from "@/lib/db";
 import { requireCompany, jsonResponse, errorResponse, dataSourceNotConfiguredResponse } from "@/lib/api-helpers";
 
 const patchSchema = z.discriminatedUnion("action", [
@@ -75,9 +76,18 @@ export async function PATCH(request, { params }) {
 
   if (parsed.data.action === "release") {
     if (reservation.status !== "ACTIVE") return errorResponse("Only active reservations can be released", 422);
-    const currentKm = reservation.car.km ?? 0;
+    const fresh = await prisma.car.findFirst({
+      where: { id: reservation.carId, companyId: reservation.car.companyId },
+      select: { km: true },
+    });
+    const currentKm = fresh?.km ?? reservation.car.km ?? 0;
     const newKm = parsed.data.newKm;
-    if (newKm < currentKm) return errorResponse("New km cannot be less than current car km", 422);
+    if (newKm < currentKm) {
+      return errorResponse(
+        `Odometer must be greater than or equal to the last known reading (${currentKm} km). Lower values are not allowed.`,
+        422
+      );
+    }
     const kmUsed = newKm - currentKm;
     const company = await getCompanyById(reservation.car.companyId);
     const defaultKm = company?.defaultKmUsage ?? 100;

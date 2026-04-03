@@ -1,5 +1,6 @@
 package com.company.carsharing.network;
 
+import com.company.carsharing.CarSharingApplication;
 import com.company.carsharing.data.preferences.SessionCookieStore;
 
 import okhttp3.OkHttpClient;
@@ -8,13 +9,9 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 /**
- * Singleton Retrofit client with OkHttp, session cookie handling, and Gson.
- * Change BASE_URL for your environment (e.g. http://10.0.2.2:3000 for emulator).
+ * Singleton Retrofit client. Base URL from {@link CarSharingApplication} (login screen / prefs).
  */
 public final class RetrofitClient {
-
-    // Emulator: 10.0.2.2:3000. Real device: use your machine's IP, e.g. http://192.168.1.x:3000
-    private static final String BASE_URL = "http://10.0.2.2:3000/";
 
     private static volatile ApiService apiService;
     private static volatile OkHttpClient okHttpClient;
@@ -47,7 +44,7 @@ public final class RetrofitClient {
                 .build();
 
         return new Retrofit.Builder()
-                .baseUrl(BASE_URL)
+                .baseUrl(CarSharingApplication.getApiBaseUrl())
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();

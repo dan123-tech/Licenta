@@ -208,6 +208,7 @@ export async function setUserDrivingLicenceUrl(userId, { drivingLicenceUrl }) {
     data: {
       drivingLicenceUrl,
       drivingLicenceStatus: "PENDING",
+      drivingLicenceVerifiedBy: null,
     },
   });
 }
@@ -233,7 +234,30 @@ export async function setUserDrivingLicenceStatus(userId, status, options = {}) 
 export async function clearUserDrivingLicence(userId) {
   return prisma.user.update({
     where: { id: userId },
-    data: { drivingLicenceUrl: null, drivingLicenceStatus: null },
+    data: {
+      drivingLicenceUrl: null,
+      drivingLicenceStatus: null,
+      drivingLicenceVerifiedBy: null,
+    },
+  });
+}
+
+/**
+ * Save or clear FCM device token for booking reminder pushes (mobile).
+ * @param {string} userId
+ * @param {string|null|undefined} token - null/empty clears
+ */
+export async function setUserFcmToken(userId, token) {
+  const trimmed = typeof token === "string" ? token.trim() : "";
+  if (!trimmed) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { fcmToken: null, fcmTokenUpdatedAt: null },
+    });
+  }
+  return prisma.user.update({
+    where: { id: userId },
+    data: { fcmToken: trimmed, fcmTokenUpdatedAt: new Date() },
   });
 }
 

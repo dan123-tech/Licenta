@@ -8,9 +8,16 @@ import { getCompanyById } from "@/lib/companies";
 import { getUserById } from "@/lib/users";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 
+export const dynamic = "force-dynamic";
+
+function noStore(res) {
+  res.headers.set("Cache-Control", "private, no-store, must-revalidate");
+  return res;
+}
+
 export async function GET() {
   const session = await getSession();
-  if (!session) return errorResponse("Unauthorized", 401);
+  if (!session) return noStore(errorResponse("Unauthorized", 401));
   const userRow = await getUserById(session.userId);
   const baseUser = {
     id: session.userId,
@@ -22,10 +29,10 @@ export async function GET() {
     drivingLicenceUrl: userRow?.drivingLicenceUrl ?? null,
   };
   if (!session.companyId) {
-    return jsonResponse({ user: baseUser, company: null });
+    return noStore(jsonResponse({ user: baseUser, company: null }));
   }
   const company = await getCompanyById(session.companyId);
-  return jsonResponse({
+  return noStore(jsonResponse({
     user: baseUser,
     company: company ? {
       id: company.id,
@@ -39,5 +46,5 @@ export async function GET() {
       priceDieselPerLiter: company.priceDieselPerLiter ?? null,
       priceElectricityPerKwh: company.priceElectricityPerKwh ?? null,
     } : null,
-  });
+  }));
 }

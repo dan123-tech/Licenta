@@ -5,6 +5,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 
 import com.company.carsharing.data.preferences.SecureSessionPreferences;
+import com.company.carsharing.reminders.ReservationAlarmScheduler;
 import com.company.carsharing.models.LoginRequest;
 import com.company.carsharing.models.LoginResponse;
 import com.company.carsharing.models.RegisterRequest;
@@ -23,11 +24,14 @@ import retrofit2.Response;
 public class AuthRepository {
 
     private final SecureSessionPreferences sessionPreferences;
-    private final ApiService apiService;
 
     public AuthRepository(Context context) {
         this.sessionPreferences = new SecureSessionPreferences(context);
-        this.apiService = RetrofitClient.getApiService(sessionPreferences);
+    }
+
+    /** Fresh after {@link RetrofitClient#reset()} (e.g. API base URL changed). */
+    private ApiService api() {
+        return RetrofitClient.getApiService(sessionPreferences);
     }
 
     public SecureSessionPreferences getSessionPreferences() {
@@ -40,7 +44,7 @@ public class AuthRepository {
 
     public void login(@NonNull String email, @NonNull String password, boolean rememberMe, @NonNull AuthCallback callback) {
         LoginRequest request = new LoginRequest(email.trim(), password);
-        apiService.login(request).enqueue(new Callback<LoginResponse>() {
+        api().login(request).enqueue(new Callback<LoginResponse>() {
             @Override
             public void onResponse(@NonNull Call<LoginResponse> call, @NonNull Response<LoginResponse> response) {
                 try {
@@ -78,7 +82,9 @@ public class AuthRepository {
                 try {
                     String msg = t.getMessage();
                     if (msg == null) msg = "Network error";
-                    if (t instanceof java.net.ConnectException) msg = "Cannot reach server. Is the app running on 10.0.2.2:3000?";
+                    if (t instanceof java.net.ConnectException) {
+                        msg = "Cannot reach server. On a real phone use your PC's Wi‑Fi IP (e.g. http://192.168.x.x:3000) and run npm run dev on the laptop.";
+                    }
                     callback.onError(msg);
                 } catch (Exception e) {
                     callback.onError("Network error");
@@ -89,7 +95,7 @@ public class AuthRepository {
 
     public void register(@NonNull String name, @NonNull String email, @NonNull String password, @NonNull AuthCallback callback) {
         RegisterRequest request = new RegisterRequest(email.trim(), password, (name != null ? name.trim() : ""));
-        apiService.register(request).enqueue(new Callback<RegisterResponse>() {
+        api().register(request).enqueue(new Callback<RegisterResponse>() {
             @Override
             public void onResponse(@NonNull Call<RegisterResponse> call, @NonNull Response<RegisterResponse> response) {
                 try {
@@ -125,14 +131,17 @@ public class AuthRepository {
         });
     }
 
-    public void logout() {
+    public void logout(Context context) {
+        if (context != null) {
+            ReservationAlarmScheduler.cancelAll(context.getApplicationContext());
+        }
         sessionPreferences.clearSession();
         sessionPreferences.clearSavedCredentials();
         RetrofitClient.reset();
     }
 
     public void refreshSession(final SessionCallback callback) {
-        apiService.getSession().enqueue(new retrofit2.Callback<com.company.carsharing.models.SessionResponse>() {
+        api().getSession().enqueue(new retrofit2.Callback<com.company.carsharing.models.SessionResponse>() {
             @Override
             public void onResponse(@NonNull retrofit2.Call<com.company.carsharing.models.SessionResponse> call,
                                   @NonNull retrofit2.Response<com.company.carsharing.models.SessionResponse> response) {

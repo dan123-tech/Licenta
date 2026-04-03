@@ -23,13 +23,16 @@ export async function POST(request) {
     return errorResponse("Invalid join code or you are already a member", 400);
   }
 
-  await setSession({
-    userId: out.session.userId,
-    email: out.session.email,
-    name: out.session.name,
-    companyId: member.companyId,
-    role: member.role,
-  });
+  await setSession(
+    {
+      userId: out.session.userId,
+      email: out.session.email,
+      name: out.session.name,
+      companyId: member.companyId,
+      role: member.role,
+    },
+    request
+  );
 
   return jsonResponse({
     company: {

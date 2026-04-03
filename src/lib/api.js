@@ -3,7 +3,8 @@
  */
 
 const getOpts = (method = "GET", body) => {
-  const opts = { method, credentials: "include", headers: {} };
+  // Avoid stale HTTP cache (especially for /api/auth/session) causing false 401 after login.
+  const opts = { method, credentials: "include", cache: "no-store", headers: {} };
   if (body) {
     opts.headers["Content-Type"] = "application/json";
     opts.body = JSON.stringify(body);
@@ -129,6 +130,15 @@ export async function apiCars(status) {
     if (data?.layer) err.layer = data.layer;
     throw err;
   }
+  return data;
+}
+
+/** Latest car row (odometer etc.) for release / validation. */
+export async function apiGetCar(id) {
+  const res = await fetch(`/api/cars/${encodeURIComponent(id)}`, getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  throwIfDataSourceNotConfigured(res, data);
+  if (!res.ok) throw new Error(typeof data?.error === "string" ? data.error : "Failed to load car");
   return data;
 }
 

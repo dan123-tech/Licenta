@@ -21,6 +21,8 @@ import java.security.GeneralSecurityException;
 public class SecureSessionPreferences implements SessionCookieStore {
 
     private static final String PREFS_NAME = "car_sharing_secure_session";
+    private static final String KEY_COOKIE_NAME = "session_cookie_name";
+    private static final String LEGACY_COOKIE_NAME = "car_sharing_session";
     private static final String KEY_SESSION_COOKIE = "session_cookie";
     private static final String KEY_USER_JSON = "user_json";
     private static final String KEY_IS_LOGGED_IN = "is_logged_in";
@@ -56,15 +58,22 @@ public class SecureSessionPreferences implements SessionCookieStore {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
-    public void setSessionCookie(String cookieValue) {
+    public void setSessionCookie(String cookieName, String cookieValue) {
+        String name = cookieName != null && !cookieName.isEmpty() ? cookieName : LEGACY_COOKIE_NAME;
         prefs.edit()
+                .putString(KEY_COOKIE_NAME, name)
                 .putString(KEY_SESSION_COOKIE, cookieValue)
                 .putBoolean(KEY_IS_LOGGED_IN, true)
                 .apply();
     }
 
     @Nullable
-    public String getSessionCookie() {
+    public String getSessionCookieName() {
+        return prefs.getString(KEY_COOKIE_NAME, LEGACY_COOKIE_NAME);
+    }
+
+    @Nullable
+    public String getSessionCookieValue() {
         return prefs.getString(KEY_SESSION_COOKIE, null);
     }
 
@@ -88,11 +97,12 @@ public class SecureSessionPreferences implements SessionCookieStore {
     }
 
     public boolean isLoggedIn() {
-        return prefs.getBoolean(KEY_IS_LOGGED_IN, false) && getSessionCookie() != null;
+        return prefs.getBoolean(KEY_IS_LOGGED_IN, false) && getSessionCookieValue() != null;
     }
 
     public void clearSession() {
         prefs.edit()
+                .remove(KEY_COOKIE_NAME)
                 .remove(KEY_SESSION_COOKIE)
                 .remove(KEY_USER_JSON)
                 .putBoolean(KEY_IS_LOGGED_IN, false)

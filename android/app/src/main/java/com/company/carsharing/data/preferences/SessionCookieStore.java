@@ -8,6 +8,11 @@ import androidx.annotation.Nullable;
  */
 public interface SessionCookieStore {
     @Nullable
-    String getSessionCookie();
-    void setSessionCookie(String cookieValue);
+    String getSessionCookieValue();
+
+    /** Cookie name from the last Set-Cookie (e.g. {@code car_sharing_session} or {@code __Host-car_sharing_session}). */
+    @Nullable
+    String getSessionCookieName();
+
+    void setSessionCookie(String cookieName, String cookieValue);
 }

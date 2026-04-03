@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Corporate Navy Blue / Slate theme (matches web app) -->
-    <color name="primary">#1E293B</color>
-    <color name="primary_variant">#0F172A</color>
-    <color name="accent">#3B82F6</color>
-    <color name="accent_variant">#2563EB</color>
+    <!-- FleetAdmin template: brand #185FA5, sidebar #0F1117 -->
+    <color name="brand_primary">#185FA5</color>
+    <color name="brand_primary_dark">#144A84</color>
+    <color name="sidebar_bg">#0F1117</color>
+    <color name="toolbar_bg">#FFFFFF</color>
+    <color name="join_badge_bg">#E6F1FB</color>
+    <color name="join_badge_text">#0C447C</color>
+    <color name="join_badge_border">#B5D4F4</color>
+
+    <color name="primary">#185FA5</color>
+    <color name="primary_variant">#0F1117</color>
+    <color name="accent">#185FA5</color>
+    <color name="accent_variant">#144A84</color>
     <color name="on_primary">#FFFFFF</color>
     <color name="on_accent">#FFFFFF</color>
-    <color name="surface">#F8FAFC</color>
-    <color name="surface_variant">#F1F5F9</color>
+    <color name="surface">#EEF1F6</color>
+    <color name="surface_variant">#E2E8F0</color>
     <color name="on_surface">#0F172A</color>
     <color name="on_surface_variant">#475569</color>
     <color name="outline">#94A3B8</color>
@@ -19,6 +27,6 @@
     <color name="status_reserved">#DC2626</color>
     <color name="status_maintenance">#EA580C</color>
     <!-- Role labels -->
-    <color name="role_admin">#1E40AF</color>
+    <color name="role_admin">#185FA5</color>
     <color name="role_user">#475569</color>
 </resources>

@@ -21,13 +21,16 @@ export async function POST(request) {
 
   const company = await createCompany(out.session.userId, parsed.data);
 
-  await setSession({
-    userId: out.session.userId,
-    email: out.session.email,
-    name: out.session.name,
-    companyId: company.id,
-    role: "ADMIN",
-  });
+  await setSession(
+    {
+      userId: out.session.userId,
+      email: out.session.email,
+      name: out.session.name,
+      companyId: company.id,
+      role: "ADMIN",
+    },
+    request
+  );
 
   return jsonResponse(
     {

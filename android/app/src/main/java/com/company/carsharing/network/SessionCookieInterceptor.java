@@ -15,13 +15,16 @@ import okhttp3.Response;
 
 /**
  * Adds the stored session cookie to outgoing requests and saves Set-Cookie from responses.
- * Backend uses cookie name "car_sharing_session". Supports refresh/session persistence.
+ * Supports production {@code __Host-car_sharing_session} and legacy {@code car_sharing_session}.
  */
 public class SessionCookieInterceptor implements Interceptor {
 
     private static final String COOKIE_HEADER = "Cookie";
     private static final String SET_COOKIE_HEADER = "Set-Cookie";
-    private static final Pattern COOKIE_PATTERN = Pattern.compile("car_sharing_session=([^;]+)");
+    private static final Pattern SESSION_COOKIE_IN_SET = Pattern.compile(
+            "((?:__Host-)?car_sharing_session)=([^;\\s]+)",
+            Pattern.CASE_INSENSITIVE
+    );
 
     private final SessionCookieStore store;
 
@@ -35,28 +38,30 @@ public class SessionCookieInterceptor implements Interceptor {
         Request original = chain.request();
         Request.Builder builder = original.newBuilder();
 
-        String cookie = store.getSessionCookie();
-        if (cookie != null && !cookie.isEmpty()) {
-            builder.addHeader(COOKIE_HEADER, "car_sharing_session=" + cookie);
+        String value = store.getSessionCookieValue();
+        String name = store.getSessionCookieName();
+        if (value != null && !value.isEmpty() && name != null && !name.isEmpty()) {
+            builder.addHeader(COOKIE_HEADER, name + "=" + value);
         }
 
         Response response = chain.proceed(builder.build());
 
-        // Persist session cookie from response (e.g. after login / refresh)
         try {
             List<String> setCookies = response.headers(SET_COOKIE_HEADER);
             if (setCookies != null) {
                 for (String header : setCookies) {
-                    Matcher m = COOKIE_PATTERN.matcher(header);
+                    Matcher m = SESSION_COOKIE_IN_SET.matcher(header);
                     if (m.find()) {
-                        String value = m.group(1);
-                        if (value != null) store.setSessionCookie(value);
+                        String cname = m.group(1);
+                        String cval = m.group(2);
+                        if (cname != null && cval != null) {
+                            store.setSessionCookie(cname, cval);
+                        }
                         break;
                     }
                 }
             }
         } catch (Exception ignored) {
-            // Don't fail the request if we can't save the cookie
         }
 
         return response;

@@ -72,7 +72,7 @@ export default function NoCompanyView({ onJoined }) {
                 type="text"
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 text-slate-800"
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-ring)] text-slate-800"
                 placeholder="Acme Corp"
                 required
               />
@@ -83,14 +83,14 @@ export default function NoCompanyView({ onJoined }) {
                 type="text"
                 value={createDomain}
                 onChange={(e) => setCreateDomain(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 text-slate-800"
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-ring)] text-slate-800"
                 placeholder="acme.com"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] disabled:opacity-50 shadow-sm transition-colors"
+              className="w-full py-2.5 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm transition-colors"
             >
               {loading ? "Creating…" : "Create company"}
             </button>
@@ -106,7 +106,7 @@ export default function NoCompanyView({ onJoined }) {
                 type="text"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 uppercase text-slate-800"
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-ring)] uppercase text-slate-800"
                 placeholder="ABC12XYZ"
                 required
               />

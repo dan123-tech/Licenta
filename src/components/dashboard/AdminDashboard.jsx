@@ -1,11 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BarChart2 } from "lucide-react";
-import { Sidebar, NavItem } from "./Sidebar";
+import {
+  BarChart2,
+  Building2,
+  Car,
+  KeyRound,
+  Users,
+  Mail,
+  History,
+  Calendar,
+  Bot,
+  Database,
+  Plus,
+} from "lucide-react";
+import { Sidebar, NavItem, NavSection, NavLabel } from "./Sidebar";
 import StatisticsDashboard from "./StatisticsDashboard";
 import {
   apiCars,
+  apiGetCar,
   apiUsers,
   apiInvites,
   apiReservations,
@@ -31,24 +44,54 @@ import DatabaseSettingsSection from "./DatabaseSettingsSection";
 import DataSourceNotConfiguredEmptyState from "./DataSourceNotConfiguredEmptyState";
 import { getProviderLabelWithTable } from "@/orchestrator/config";
 
-const SECTIONS = [
-  { id: "company", label: "Company", icon: "🏢" },
-  { id: "statistics", label: "Statistics & Reports", icon: <BarChart2 className="w-5 h-5 shrink-0" aria-hidden /> },
-  { id: "cars", label: "Manage Cars", icon: "🚗" },
-  { id: "verifyCode", label: "Verify Pickup Code", icon: "🔐" },
-  { id: "users", label: "Manage Users", icon: "👥" },
-  { id: "invites", label: "Invites", icon: "✉️" },
-  { id: "history", label: "Car Sharing History", icon: "📋" },
-  { id: "myReservations", label: "My Reservations", icon: "📅" },
-  { id: "aiVerification", label: "AI Verification", icon: "🤖" },
-  { id: "databaseSettings", label: "Database Settings", icon: "⚙️" },
+const ICON = { s: "w-4 h-4 shrink-0 stroke-[1.5]" };
+
+const ADMIN_NAV_GROUPS = [
+  {
+    label: "Overview",
+    items: [
+      { id: "company", label: "Company", icon: <Building2 className={ICON.s} aria-hidden /> },
+      { id: "statistics", label: "Statistics", icon: <BarChart2 className={ICON.s} aria-hidden /> },
+    ],
+  },
+  {
+    label: "Fleet",
+    items: [
+      { id: "cars", label: "Manage cars", icon: <Car className={ICON.s} aria-hidden /> },
+      { id: "myReservations", label: "Reservations", icon: <Calendar className={ICON.s} aria-hidden /> },
+      { id: "history", label: "History", icon: <History className={ICON.s} aria-hidden /> },
+      { id: "verifyCode", label: "Verify pickup code", icon: <KeyRound className={ICON.s} aria-hidden /> },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { id: "users", label: "Manage users", icon: <Users className={ICON.s} aria-hidden /> },
+      { id: "invites", label: "Invites", icon: <Mail className={ICON.s} aria-hidden /> },
+      { id: "aiVerification", label: "AI verification", icon: <Bot className={ICON.s} aria-hidden /> },
+      { id: "databaseSettings", label: "Database settings", icon: <Database className={ICON.s} aria-hidden /> },
+    ],
+  },
 ];
 
+const ADMIN_PAGE_META = {
+  company: { title: "Company", sub: "Settings, pricing & fleet defaults" },
+  statistics: { title: "Statistics & reports", sub: "Analytics and cost breakdown" },
+  cars: { title: "Manage cars", sub: "Fleet overview" },
+  verifyCode: { title: "Verify pickup code", sub: "Validate reservation pickup codes" },
+  users: { title: "Manage users", sub: "Roles and driving licences" },
+  invites: { title: "Invites", sub: "Pending and accepted invitations" },
+  history: { title: "Car sharing history", sub: "All company reservations" },
+  myReservations: { title: "My reservations", sub: "Your bookings" },
+  aiVerification: { title: "AI verification", sub: "Driving licence checks" },
+  databaseSettings: { title: "Database settings", sub: "External data sources" },
+};
+
 const FUEL_BADGE = {
-  Benzine: "bg-amber-100 text-amber-800 border-amber-200",
+  Benzine: "bg-[#FAEEDA] text-[#633806] border-[#E8D4B8]",
   Diesel: "bg-slate-200 text-slate-800 border-slate-300",
-  Electric: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  Hybrid: "bg-teal-100 text-teal-800 border-teal-200",
+  Electric: "bg-[#EAF3DE] text-[#27500A] border-[#C9D9B8]",
+  Hybrid: "bg-[#E6F1FB] text-[#0C447C] border-[#B5D4F4]",
 };
 
 function FuelTypeBadge({ fuelType }) {
@@ -106,7 +149,7 @@ function CarConsumptionCell({ car, onUpdated }) {
           onKeyDown={(e) => e.key === "Enter" && save()}
           onBlur={save}
           autoFocus
-          className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-sm focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+          className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
           placeholder="7.5"
         />
         {saving && <span className="text-xs text-slate-500">Saving…</span>}
@@ -120,7 +163,7 @@ function CarConsumptionCell({ car, onUpdated }) {
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="text-left text-sm text-slate-700 hover:text-[#3B82F6] hover:underline"
+      className="text-left text-sm text-slate-700 hover:text-[var(--primary)] hover:underline"
       title="Click to edit"
     >
       {display != null ? `${display} L/100km` : "Default"}
@@ -312,6 +355,14 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
   }
 
   const availableCars = cars.filter((c) => (c.status || "").toLowerCase() === "available");
+  const totalCars = cars.length;
+  const serviceDueCount = cars.filter((c) => needsService(c).need).length;
+  const averageMileage =
+    totalCars > 0
+      ? Math.round(
+          cars.reduce((sum, c) => sum + (typeof c.km === "number" ? c.km : 0), 0) / totalCars,
+        )
+      : 0;
   const defaultKm = company?.defaultKmUsage ?? 100;
   const releaseCurrentKm = releaseModal?.car?.km ?? 0;
   const releaseKmUsed = (() => {
@@ -362,10 +413,15 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
     return true;
   });
 
-  function openReleaseModal(r) {
-    setReleaseModal({ id: r.id, car: r.car });
+  async function openReleaseModal(r) {
     setReleaseNewKm("");
     setReleaseExceededReason("");
+    try {
+      const fresh = await apiGetCar(r.carId);
+      setReleaseModal({ id: r.id, car: fresh });
+    } catch {
+      setReleaseModal({ id: r.id, car: r.car });
+    }
   }
 
   async function submitRelease(e) {
@@ -377,7 +433,11 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
       return;
     }
     if (newKm < releaseCurrentKm) {
-      setError("New km cannot be less than the car's km when reserved (" + releaseCurrentKm + " km).");
+      setError(
+        "Odometer must be greater than or equal to the last known reading (" +
+          releaseCurrentKm +
+          " km). You cannot enter a lower value."
+      );
       return;
     }
     if (releaseExceedsLimit && !releaseExceededReason.trim()) {
@@ -598,37 +658,82 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
     }
   }
 
+  const pageMeta = ADMIN_PAGE_META[section] || { title: "Admin", sub: "" };
+  const pageSub =
+    section === "cars" && dataSourceConfig?.cars != null
+      ? `${pageMeta.sub} — ${getProviderLabelWithTable(dataSourceConfig.cars, dataSourceConfig.carsTable)}`
+      : pageMeta.sub;
+
   return (
-    <div className="flex h-full w-full bg-[#F8FAFC]">
+    <div className="flex h-full w-full min-h-0" style={{ background: "var(--main-bg)" }}>
       <Sidebar user={user} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} viewAs={viewAs} setViewAs={setViewAs}>
-        {SECTIONS.map((s) => (
-          <NavItem
-            key={s.id}
-            active={section === s.id}
-            onClick={() => { setSection(s.id); setMobileOpen(false); }}
-            icon={s.icon}
-            label={s.label}
-          />
+        {ADMIN_NAV_GROUPS.map((group) => (
+          <NavSection key={group.label}>
+            <NavLabel>{group.label}</NavLabel>
+            {group.items.map((s) => (
+              <NavItem
+                key={s.id}
+                active={section === s.id}
+                onClick={() => {
+                  setSection(s.id);
+                  setMobileOpen(false);
+                }}
+                icon={s.icon}
+                label={s.label}
+              />
+            ))}
+          </NavSection>
         ))}
       </Sidebar>
-      <div className="flex-1 flex flex-col min-h-0 min-w-0 md:ml-2 my-2 md:my-3 md:mr-3 bg-white rounded-l-2xl shadow-sm border border-slate-200/80 overflow-hidden">
-        <header className="shrink-0 flex items-center gap-3 py-3 px-4 sm:px-6 md:px-8 border-b border-slate-200/80 bg-white shadow-sm z-10">
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            className="md:hidden p-2 rounded-xl bg-slate-100 text-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-slate-200 transition-colors"
-            aria-label="Open menu"
-          >
-            ☰
-          </button>
-          <h1 className="text-lg font-bold text-slate-800 truncate">Admin</h1>
-        </header>
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 sm:p-8 md:p-10">
-        {company?.joinCode && (
-          <div className="mb-6 p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 text-sm shadow-sm">
-            <strong>Join code for your company:</strong> <code className="font-mono text-lg text-[#3B82F6]">{company.joinCode}</code>
-            <span className="block mt-1 text-slate-600">Share this code so others can join.</span>
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
+        <header className="fleet-topbar shrink-0 z-10 flex flex-wrap items-center justify-between gap-3 py-3.5 px-4 sm:px-6 md:px-8">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              className="md:hidden p-2 rounded-lg bg-slate-100 text-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-slate-200 transition-colors border border-slate-200/80"
+              aria-label="Open menu"
+            >
+              ☰
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-base font-medium text-slate-900 truncate">{pageMeta.title}</h1>
+              <p className="text-xs text-slate-500 mt-0.5 truncate">{pageSub}</p>
+            </div>
           </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {company?.joinCode && (
+              <span className="join-badge-pill font-medium hidden sm:inline">
+                Join code: <span className="font-mono">{company.joinCode}</span>
+              </span>
+            )}
+            {section === "cars" && !dataSourceNotConfigured.cars && (
+              <button
+                type="button"
+                onClick={() => setShowAddCar(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-white px-3.5 py-2 rounded-md shadow-sm transition-colors bg-[var(--primary)] hover:bg-[var(--primary-hover)]"
+              >
+                <Plus className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                Add car
+              </button>
+            )}
+            {(section === "users" || section === "invites") && !dataSourceNotConfigured.users && (
+              <button
+                type="button"
+                onClick={() => setShowAddUser(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-white px-3.5 py-2 rounded-md shadow-sm transition-colors bg-[var(--primary)] hover:bg-[var(--primary-hover)]"
+              >
+                <Plus className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                {section === "invites" ? "Invite user" : "Add user"}
+              </button>
+            )}
+          </div>
+        </header>
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-5 sm:p-6 md:px-8 md:pb-8 md:pt-6">
+        {company?.joinCode && (
+          <p className="mb-4 text-xs text-slate-500 sm:hidden">
+            Join code: <code className="font-mono text-slate-800 font-semibold">{company.joinCode}</code>
+          </p>
         )}
         {error && (
           <div className="mb-6 p-3 rounded-xl bg-red-50 text-red-700 text-sm border border-red-100">{error}</div>
@@ -658,7 +763,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                       max={99999}
                       value={defaultKmUsage}
                       onChange={(e) => setDefaultKmUsage(e.target.value)}
-                      className="w-24 px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none transition-shadow"
+                      className="w-24 px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none transition-shadow"
                     />
                     <span className="text-slate-500">km</span>
                   </div>
@@ -674,7 +779,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                     value={defaultConsumptionL100km}
                     onChange={(e) => setDefaultConsumptionL100km(e.target.value)}
                     placeholder="7.5"
-                    className="w-24 px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                    className="w-24 px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   />
                 </div>
                 <div className="border-t border-slate-200 pt-4">
@@ -689,7 +794,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                         value={priceBenzinePerLiter}
                         onChange={(e) => setPriceBenzinePerLiter(e.target.value)}
                         placeholder="e.g. 1.50"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                       />
                     </div>
                     <div>
@@ -701,7 +806,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                         value={priceDieselPerLiter}
                         onChange={(e) => setPriceDieselPerLiter(e.target.value)}
                         placeholder="e.g. 1.45"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                       />
                     </div>
                     <div>
@@ -713,7 +818,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                         value={priceElectricityPerKwh}
                         onChange={(e) => setPriceElectricityPerKwh(e.target.value)}
                         placeholder="e.g. 0.25"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                       />
                     </div>
                   </div>
@@ -727,12 +832,12 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                       value={averageFuelPricePerLiter}
                       onChange={(e) => setAverageFuelPricePerLiter(e.target.value)}
                       placeholder="e.g. 1.50"
-                      className="w-28 px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                      className="w-28 px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                     />
                     <span className="text-slate-500">currency/L (fallback)</span>
                   </div>
                 </div>
-                <button type="submit" disabled={defaultKmSaving} className="px-4 py-2 bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] disabled:opacity-50 min-h-[44px] shadow-sm transition-colors">
+                <button type="submit" disabled={defaultKmSaving} className="px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 min-h-[44px] shadow-sm transition-colors">
                   {defaultKmSaving ? "Saving…" : "Save settings"}
                 </button>
               </form>
@@ -755,7 +860,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                           value={pendingApprovalObservations[r.id] ?? ""}
                           onChange={(e) => setPendingApprovalObservations((prev) => ({ ...prev, [r.id]: e.target.value }))}
                           placeholder="Optional comment for the user…"
-                          className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white text-sm focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white text-sm focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                           rows={2}
                         />
                       </div>
@@ -806,12 +911,48 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               <DataSourceNotConfiguredEmptyState layerLabel="Cars" className="min-h-[200px]" />
             ) : (
             <>
+            <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="bg-white border border-[var(--border-tertiary)] rounded-xl px-4 py-3">
+                <div className="text-[11px] text-slate-500 mb-1">Total fleet</div>
+                <div className="text-2xl font-semibold text-slate-900">
+                  {totalCars}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">
+                  {company?.name || "All registered"}
+                </div>
+              </div>
+              <div className="bg-white border border-[var(--border-tertiary)] rounded-xl px-4 py-3">
+                <div className="text-[11px] text-slate-500 mb-1">Available</div>
+                <div className="text-2xl font-semibold text-slate-900">
+                  {availableCars.length}
+                </div>
+                <div className="text-[11px] text-emerald-700 mt-1">
+                  {totalCars > 0 ? `${Math.round((availableCars.length / totalCars) * 100)}% of fleet` : "—"}
+                </div>
+              </div>
+              <div className="bg-white border border-[var(--border-tertiary)] rounded-xl px-4 py-3">
+                <div className="text-[11px] text-slate-500 mb-1">Service due</div>
+                <div className="text-2xl font-semibold text-slate-900">
+                  {serviceDueCount}
+                </div>
+                <div className="text-[11px] text-amber-700 mt-1">
+                  {serviceDueCount > 0 ? "Oil change needed" : "All good"}
+                </div>
+              </div>
+              <div className="bg-white border border-[var(--border-tertiary)] rounded-xl px-4 py-3">
+                <div className="text-[11px] text-slate-500 mb-1">Avg mileage</div>
+                <div className="text-2xl font-semibold text-slate-900">
+                  {averageMileage > 0 ? averageMileage.toLocaleString() : "—"}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">km across fleet</div>
+              </div>
+            </div>
             <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
               <div className="flex-1 min-w-0" />
               <button
                 type="button"
                 onClick={() => setShowAddCar(!showAddCar)}
-                className="px-4 py-2.5 bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] shadow-sm transition-colors"
+                className="px-4 py-2.5 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] shadow-sm transition-colors"
               >
                 {showAddCar ? "Hide form" : "Add Car"}
               </button>
@@ -823,19 +964,19 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                 placeholder="Brand"
                 value={carsFilterBrand}
                 onChange={(e) => setCarsFilterBrand(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[100px] focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[100px] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               />
               <input
                 type="text"
                 placeholder="Registration"
                 value={carsFilterReg}
                 onChange={(e) => setCarsFilterReg(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[120px] focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[120px] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               />
               <select
                 value={carsFilterFuel}
                 onChange={(e) => setCarsFilterFuel(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               >
                 <option value="">All fuel types</option>
                 <option value="Benzine">Benzine</option>
@@ -846,7 +987,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               <select
                 value={carsFilterStatus}
                 onChange={(e) => setCarsFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               >
                 <option value="">All statuses</option>
                 <option value="AVAILABLE">Available</option>
@@ -868,7 +1009,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                   value={addCarBrand}
                   onChange={(e) => setAddCarBrand(e.target.value)}
                   placeholder="Brand"
-                  className="px-3 py-2 border border-slate-200 rounded-xl min-w-[120px] focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="px-3 py-2 border border-slate-200 rounded-xl min-w-[120px] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   required
                 />
                 <input
@@ -876,7 +1017,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                   value={addCarReg}
                   onChange={(e) => setAddCarReg(e.target.value)}
                   placeholder="Registration Number"
-                  className="px-3 py-2 border border-slate-200 rounded-xl min-w-[140px] focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="px-3 py-2 border border-slate-200 rounded-xl min-w-[140px] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   required
                 />
                 <input
@@ -885,12 +1026,12 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                   onChange={(e) => setAddCarKm(e.target.value)}
                   placeholder="Km"
                   min={0}
-                  className="px-3 py-2 border border-slate-200 rounded-xl w-24 focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="px-3 py-2 border border-slate-200 rounded-xl w-24 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                 />
                 <select
                   value={addCarStatus}
                   onChange={(e) => setAddCarStatus(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                 >
                   <option value="AVAILABLE">Available</option>
                   <option value="RESERVED">Reserved</option>
@@ -899,7 +1040,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                 <select
                   value={addCarFuelType}
                   onChange={(e) => setAddCarFuelType(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   title="Fuel type"
                 >
                   <option value="Benzine">Benzine</option>
@@ -916,7 +1057,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                     value={addCarConsumption}
                     onChange={(e) => setAddCarConsumption(e.target.value)}
                     placeholder="L/100km"
-                    className="px-3 py-2 border border-slate-200 rounded-xl w-24 focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                    className="px-3 py-2 border border-slate-200 rounded-xl w-24 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   />
                 )}
                 {(addCarFuelType === "Electric" || addCarFuelType === "Hybrid") && (
@@ -928,7 +1069,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                       value={addCarBatteryLevel}
                       onChange={(e) => setAddCarBatteryLevel(e.target.value)}
                       placeholder="Battery %"
-                      className="px-3 py-2 border border-slate-200 rounded-xl w-24 focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                      className="px-3 py-2 border border-slate-200 rounded-xl w-24 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                     />
                     <input
                       type="number"
@@ -937,7 +1078,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                       value={addCarBatteryCapacityKwh}
                       onChange={(e) => setAddCarBatteryCapacityKwh(e.target.value)}
                       placeholder="Battery capacity (kWh)"
-                      className="px-3 py-2 border border-slate-200 rounded-xl w-36 focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                      className="px-3 py-2 border border-slate-200 rounded-xl w-36 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                     />
                     <input
                       type="number"
@@ -946,7 +1087,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                       value={addCarConsumptionKwh}
                       onChange={(e) => setAddCarConsumptionKwh(e.target.value)}
                       placeholder="kWh/100km"
-                      className="px-3 py-2 border border-slate-200 rounded-xl w-28 focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                      className="px-3 py-2 border border-slate-200 rounded-xl w-28 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                     />
                   </>
                 )}
@@ -956,10 +1097,10 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                   value={addCarLastServiceMileage}
                   onChange={(e) => setAddCarLastServiceMileage(e.target.value)}
                   placeholder="Last service km"
-                  className="px-3 py-2 border border-slate-200 rounded-xl w-28 focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="px-3 py-2 border border-slate-200 rounded-xl w-28 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   title="Odometer at last service (for maintenance forecast)"
                 />
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] disabled:opacity-50 shadow-sm transition-colors">
+                <button type="submit" disabled={submitting} className="px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm transition-colors">
                   Save Car
                 </button>
               </form>
@@ -1007,7 +1148,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                           <select
                             value={c.status}
                             onChange={(e) => handleCarStatusChange(c.id, e.target.value)}
-                            className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                            className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
                           >
                             <option value="AVAILABLE">Available</option>
                             <option value="RESERVED">Reserved</option>
@@ -1069,7 +1210,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                   value={verifyCodeInput}
                   onChange={(e) => setVerifyCodeInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="e.g. 123456"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 font-mono text-lg tracking-widest focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 font-mono text-lg tracking-widest focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                 />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -1127,7 +1268,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               <button
                 type="button"
                 onClick={() => setShowAddUser(true)}
-                className="px-4 py-2.5 min-h-[44px] bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] flex items-center gap-2 shadow-sm transition-colors"
+                className="px-4 py-2.5 min-h-[44px] bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] flex items-center gap-2 shadow-sm transition-colors"
               >
                 Add User
               </button>
@@ -1143,19 +1284,19 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                 placeholder="Email"
                 value={usersFilterEmail}
                 onChange={(e) => setUsersFilterEmail(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[140px] focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[140px] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               />
               <input
                 type="text"
                 placeholder="Name"
                 value={usersFilterName}
                 onChange={(e) => setUsersFilterName(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[120px] focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[120px] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               />
               <select
                 value={usersFilterRole}
                 onChange={(e) => setUsersFilterRole(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               >
                 <option value="">All roles</option>
                 <option value="ADMIN">Admin</option>
@@ -1164,7 +1305,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               <select
                 value={usersFilterStatus}
                 onChange={(e) => setUsersFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               >
                 <option value="">All statuses</option>
                 <option value="enrolled">Enrolled</option>
@@ -1173,7 +1314,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               <select
                 value={usersFilterDl}
                 onChange={(e) => setUsersFilterDl(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               >
                 <option value="">All driving licence</option>
                 <option value="APPROVED">Approved</option>
@@ -1207,7 +1348,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                       <td className="py-4 px-4">{m.email}</td>
                       <td className="py-4 px-4">{m.name}</td>
                       <td className="py-4 px-4">
-                        <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${m.role === "ADMIN" ? "bg-slate-600 text-white" : "bg-[#3B82F6]/90 text-white"}`}>
+                        <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${m.role === "ADMIN" ? "bg-slate-600 text-white" : "bg-[var(--primary)]/90 text-white"}`}>
                           {m.role}
                         </span>
                       </td>
@@ -1223,7 +1364,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                         </span>
                         {m.drivingLicenceUrl && (
                           <>
-                            <button type="button" onClick={() => setDlImageModal(m.drivingLicenceUrl)} className="ml-2 px-2 py-1 text-xs font-semibold text-[#3B82F6] hover:underline">View</button>
+                            <button type="button" onClick={() => setDlImageModal(m.drivingLicenceUrl)} className="ml-2 px-2 py-1 text-xs font-semibold text-[var(--primary)] hover:underline">View</button>
                             {m.drivingLicenceStatus === "PENDING" && (
                               <span className="inline-flex gap-1 ml-1">
                                 <button type="button" onClick={() => handleDlStatus(m.userId, "APPROVED")} className="px-2 py-1 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Approve</button>
@@ -1330,33 +1471,33 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                 placeholder="Car (brand or reg.)"
                 value={historyFilterCar}
                 onChange={(e) => setHistoryFilterCar(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[140px] focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[140px] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               />
               <input
                 type="text"
                 placeholder="User (name or email)"
                 value={historyFilterUser}
                 onChange={(e) => setHistoryFilterUser(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[140px] focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[140px] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               />
               <input
                 type="date"
                 placeholder="From date"
                 value={historyFilterDateFrom}
                 onChange={(e) => setHistoryFilterDateFrom(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               />
               <input
                 type="date"
                 placeholder="To date"
                 value={historyFilterDateTo}
                 onChange={(e) => setHistoryFilterDateTo(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               />
               <select
                 value={historyFilterStatus}
                 onChange={(e) => setHistoryFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               >
                 <option value="">All statuses</option>
                 <option value="ACTIVE">Active</option>
@@ -1368,7 +1509,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                 placeholder="Purpose"
                 value={historyFilterPurpose}
                 onChange={(e) => setHistoryFilterPurpose(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[120px] focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]/20 outline-none"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[120px] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               />
               <button
                 type="button"
@@ -1406,7 +1547,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                       <td className="py-4 px-4">
                         <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${
                           (r.status || "").toLowerCase() === "active" ? "bg-emerald-100 text-emerald-800" :
-                          (r.status || "").toLowerCase() === "completed" ? "bg-[#3B82F6]/10 text-[#2563EB]" :
+                          (r.status || "").toLowerCase() === "completed" ? "bg-[var(--primary)]/10 text-[var(--primary)]" :
                           (r.status || "").toLowerCase() === "cancelled" ? "bg-red-100 text-red-800" :
                           "bg-slate-100 text-slate-800"
                         }`}>{r.status}</span>
@@ -1461,7 +1602,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               <button
                 type="button"
                 onClick={() => openReserve()}
-                className="px-4 py-2.5 bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] shadow-sm transition-colors"
+                className="px-4 py-2.5 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] shadow-sm transition-colors"
               >
                 Reserve a car
               </button>
@@ -1487,7 +1628,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                       <td className="py-4 px-4">
                         <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${
                           (r.status || "").toLowerCase() === "active" ? "bg-emerald-100 text-emerald-800" :
-                          (r.status || "").toLowerCase() === "completed" ? "bg-[#3B82F6]/10 text-[#2563EB]" :
+                          (r.status || "").toLowerCase() === "completed" ? "bg-[var(--primary)]/10 text-[var(--primary)]" :
                           "bg-red-100 text-red-800"
                         }`}>{r.status}</span>
                       </td>
@@ -1497,7 +1638,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                             <button
                               type="button"
                               onClick={() => openReleaseModal(r)}
-                              className="px-3 py-1.5 bg-[#3B82F6] text-white text-sm font-semibold rounded-xl hover:bg-[#2563EB] shadow-sm transition-colors"
+                              className="px-3 py-1.5 bg-[var(--primary)] text-white text-sm font-semibold rounded-xl hover:bg-[var(--primary-hover)] shadow-sm transition-colors"
                             >
                               Release
                             </button>
@@ -1572,7 +1713,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                         </td>
                         <td className="py-4 px-4">
                           {m.drivingLicenceUrl ? (
-                            <button type="button" onClick={() => setDlImageModal(m.drivingLicenceUrl)} className="px-3 py-1.5 text-xs font-semibold text-white bg-[#3B82F6] rounded-lg hover:bg-[#2563EB] transition-colors shadow-sm">
+                            <button type="button" onClick={() => setDlImageModal(m.drivingLicenceUrl)} className="px-3 py-1.5 text-xs font-semibold text-white bg-[var(--primary)] rounded-lg hover:bg-[var(--primary-hover)] transition-colors shadow-sm">
                               View Photo
                             </button>
                           ) : (
@@ -1617,18 +1758,19 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
             <p className="text-sm text-slate-500 mb-4">
               {releaseModal.car?.brand} {releaseModal.car?.registrationNumber}
               {releaseCurrentKm != null && (
-                <span className="block mt-1">Current odometer when reserved: {releaseCurrentKm} km</span>
+                <span className="block mt-1">Last known odometer (cannot go below this): {releaseCurrentKm} km</span>
               )}
             </p>
             <form onSubmit={submitRelease} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-600 mb-1">New km (odometer reading)</label>
+                <label className="block text-sm font-semibold text-slate-600 mb-1">Current odometer (must be ≥ {releaseCurrentKm} km)</label>
                 <input
                   type="number"
                   min={releaseCurrentKm}
+                  step={1}
                   value={releaseNewKm}
                   onChange={(e) => setReleaseNewKm(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   placeholder={String(releaseCurrentKm)}
                   required
                 />
@@ -1642,7 +1784,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                   <textarea
                     value={releaseExceededReason}
                     onChange={(e) => setReleaseExceededReason(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                     placeholder="Why did you exceed the allowed km?"
                     rows={3}
                     required
@@ -1651,7 +1793,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               )}
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setReleaseModal(null)} className="px-4 py-2 bg-slate-100 text-slate-800 font-semibold rounded-xl hover:bg-slate-200 transition-colors">Cancel</button>
-                <button type="submit" disabled={releaseSubmitting} className="px-4 py-2 bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] disabled:opacity-50 shadow-sm transition-colors">{releaseSubmitting ? "Releasing…" : "Release"}</button>
+                <button type="submit" disabled={releaseSubmitting} className="px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm transition-colors">{releaseSubmitting ? "Releasing…" : "Release"}</button>
               </div>
             </form>
           </div>
@@ -1688,7 +1830,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                   <select
                     value={reserveCarId}
                     onChange={(e) => setReserveCarId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                     required
                   >
                     <option value="">Select car</option>
@@ -1700,12 +1842,12 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-600 mb-1">Purpose (optional)</label>
-                <input type="text" value={reservePurpose} onChange={(e) => setReservePurpose(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none" placeholder="e.g. Client visit" />
+                <input type="text" value={reservePurpose} onChange={(e) => setReservePurpose(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none" placeholder="e.g. Client visit" />
               </div>
               <p className="text-xs text-slate-500">The car will be reserved instantly until you release it.</p>
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => { setShowReserveModal(false); setReserveCar(null); }} className="px-4 py-2 bg-slate-100 text-slate-800 font-semibold rounded-xl hover:bg-slate-200 transition-colors">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] disabled:opacity-50 shadow-sm transition-colors">{submitting ? "Reserving…" : "Reserve"}</button>
+                <button type="submit" disabled={submitting} className="px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm transition-colors">{submitting ? "Reserving…" : "Reserve"}</button>
               </div>
             </form>
           </div>
@@ -1729,7 +1871,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                   type="email"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   placeholder="user@company.com"
                   required
                 />
@@ -1740,7 +1882,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                   type="text"
                   value={inviteName}
                   onChange={(e) => setInviteName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   placeholder="John Doe"
                   required
                 />
@@ -1751,7 +1893,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                   type="password"
                   value={addUserPassword}
                   onChange={(e) => setAddUserPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                   placeholder="Min 6 characters; empty = default for Local"
                   minLength={6}
                   autoComplete="new-password"
@@ -1759,7 +1901,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-600 mb-1">Role</label>
-                <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 outline-none">
+                <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none">
                   <option value="USER">User</option>
                   <option value="ADMIN">Admin</option>
                 </select>
@@ -1768,7 +1910,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                 <button type="button" onClick={() => setShowAddUser(false)} className="px-4 py-2 bg-slate-100 text-slate-800 font-semibold rounded-xl hover:bg-slate-200 transition-colors">
                   Cancel
                 </button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-[#3B82F6] text-white font-semibold rounded-xl hover:bg-[#2563EB] disabled:opacity-50 shadow-sm transition-colors">
+                <button type="submit" disabled={submitting} className="px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm transition-colors">
                   {submitting ? "Creating…" : "Create User"}
                 </button>
               </div>
