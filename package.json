@@ -11,7 +11,7 @@
     "dev:3000": "next dev -H 0.0.0.0 -p 3000",
     "dev:3001": "next dev -H 0.0.0.0 -p 3001",
     "proxy": "node proxy-3001.js",
-    "build": "next build",
+    "build": "node scripts/run-build.js",
     "build:cf": "opennextjs-cloudflare build",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
