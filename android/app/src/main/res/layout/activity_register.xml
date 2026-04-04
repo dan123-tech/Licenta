@@ -31,7 +31,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="F"
+                android:text="@string/brand_initial"
                 android:textColor="@color/brand_icon_fg"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -41,7 +41,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="FleetAdmin"
+            android:text="@string/brand_name"
             android:textColor="#FFFFFF"
             android:textSize="26sp"
             android:textStyle="bold"
@@ -51,7 +51,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="Create your account"
+            android:text="@string/create_your_account"
             android:textColor="#59FFFFFF"
             android:textSize="14sp" />
     </LinearLayout>
@@ -103,7 +103,7 @@
                     android:layout_height="wrap_content"
                     android:inputType="textUri"
                     android:maxLines="2"
-                    android:text="http://10.0.2.2:3000/" />
+                    android:text="@string/default_api_url_hint" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <TextView

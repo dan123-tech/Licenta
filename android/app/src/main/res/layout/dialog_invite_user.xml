@@ -6,14 +6,14 @@
     android:orientation="vertical"
     android:padding="24dp">
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="Invite user" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/on_surface" />
+        android:text="@string/invite_user_title" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/on_surface" />
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/dialog_invite_email"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:hint="Email"
+        android:hint="@string/hint_email"
         app:boxStrokeColor="@color/accent">
         <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_invite_email_et"
             android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textEmailAddress" />
@@ -24,13 +24,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:hint="Name (optional)"
+        android:hint="@string/hint_name_optional"
         app:boxStrokeColor="@color/accent">
         <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_invite_name_et"
             android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textPersonName" />
     </com.google.android.material.textfield.TextInputLayout>
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_marginTop="12dp" android:text="Role" android:textColor="@color/on_surface_variant" android:textSize="14sp" />
+        android:layout_marginTop="12dp" android:text="@string/role_label" android:textColor="@color/on_surface_variant" android:textSize="14sp" />
     <Spinner android:id="@+id/dialog_invite_role"
         android:layout_width="match_parent"
         android:layout_height="48dp"
@@ -40,9 +40,9 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:orientation="horizontal">
         <com.google.android.material.button.MaterialButton android:id="@+id/dialog_invite_cancel"
             android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginEnd="8dp"
-            android:text="Cancel" app:backgroundTint="@color/on_surface_variant" />
+            android:text="@string/cancel" app:backgroundTint="@color/on_surface_variant" />
         <com.google.android.material.button.MaterialButton android:id="@+id/dialog_invite_save"
             android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-            android:text="Invite" app:backgroundTint="@color/accent" />
+            android:text="@string/invite" app:backgroundTint="@color/accent" />
     </LinearLayout>
 </LinearLayout>

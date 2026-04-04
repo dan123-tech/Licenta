@@ -1,6 +1,6 @@
 /**
  * Reservation domain logic: create, list, cancel, extend.
- * Overlap validation for same car and active status.
+ * Overlap validation: same car cannot double-book; same user cannot overlap across cars.
  */
 
 import { Prisma } from "@prisma/client";
@@ -51,6 +51,49 @@ async function hasOverlappingReservationTx(tx, carId, start, end, excludeReserva
 }
 
 /**
+ * True if this user already has an ACTIVE reservation (any car) overlapping [start, end).
+ * Prevents e.g. 13:55–14:00 on car Y and 13:57–14:50 on car X for the same user.
+ * @param {import("@prisma/client").Prisma.TransactionClient} tx
+ * @param {string} userId
+ * @param {Date} start
+ * @param {Date} end
+ * @param {string} [excludeReservationId]
+ */
+async function hasOverlappingUserReservationTx(tx, userId, start, end, excludeReservationId) {
+  const count = await tx.reservation.count({
+    where: {
+      userId,
+      status: "ACTIVE",
+      id: excludeReservationId ? { not: excludeReservationId } : undefined,
+      startDate: { lt: end },
+      endDate: { gt: start },
+    },
+  });
+  return count > 0;
+}
+
+/**
+ * Earliest start of an ACTIVE reservation on this car that begins strictly after `after`.
+ * Used to cap instant bookings so the car stays bookable until the next scheduled window.
+ * @param {import("@prisma/client").Prisma.TransactionClient} tx
+ * @param {string} carId
+ * @param {Date} after
+ * @returns {Promise<Date|null>}
+ */
+async function getNextActiveReservationStartAfter(tx, carId, after) {
+  const row = await tx.reservation.findFirst({
+    where: {
+      carId,
+      status: "ACTIVE",
+      startDate: { gt: after },
+    },
+    orderBy: { startDate: "asc" },
+    select: { startDate: true },
+  });
+  return row?.startDate ?? null;
+}
+
+/**
  * Create a reservation. Fails if car has overlapping ACTIVE reservation.
  * @param {string} userId
  * @param {string} carId
@@ -68,6 +111,12 @@ export async function createReservation(userId, carId, startDate, endDate, purpo
       const overlap = await hasOverlappingReservationTx(tx, carId, startDate, endDate);
       if (overlap) {
         throw new Error("Car is already reserved for this period");
+      }
+      const userOverlap = await hasOverlappingUserReservationTx(tx, userId, startDate, endDate);
+      if (userOverlap) {
+        throw new Error(
+          "You already have another reservation that overlaps this time on a different car. Cancel or finish it first, or choose a time that does not overlap."
+        );
       }
       return tx.reservation.create({
         data: {
@@ -100,15 +149,30 @@ const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
  */
 export async function createInstantReservation(userId, carId, purpose) {
   const now = new Date();
-  const endUntilRelease = new Date(now.getTime() + ONE_YEAR_MS);
   const pickup_code = generateSixDigitCode();
   const code_valid_from = now;
 
   return prisma.$transaction(
     async (tx) => {
+      const nextScheduledStart = await getNextActiveReservationStartAfter(tx, carId, now);
+      const endUntilRelease =
+        nextScheduledStart != null && nextScheduledStart.getTime() > now.getTime()
+          ? nextScheduledStart
+          : new Date(now.getTime() + ONE_YEAR_MS);
+
+      if (endUntilRelease.getTime() <= now.getTime()) {
+        throw new Error("Car is not available for an instant booking right now (next reservation starts immediately).");
+      }
+
       const overlap = await hasOverlappingReservationTx(tx, carId, now, endUntilRelease);
       if (overlap) {
         throw new Error("Car is already reserved");
+      }
+      const userOverlap = await hasOverlappingUserReservationTx(tx, userId, now, endUntilRelease);
+      if (userOverlap) {
+        throw new Error(
+          "You already have another reservation that overlaps this time on a different car. Cancel or finish it first, or choose a time that does not overlap."
+        );
       }
       return tx.reservation.create({
         data: {
@@ -354,6 +418,18 @@ export async function extendReservation(reservationId, newEndDate) {
         reservationId
       );
       if (overlap) throw new Error("New end date overlaps with another reservation");
+      const userOverlap = await hasOverlappingUserReservationTx(
+        tx,
+        res.userId,
+        res.startDate,
+        newEndDate,
+        reservationId
+      );
+      if (userOverlap) {
+        throw new Error(
+          "Extending would overlap another of your reservations on a different car. Choose an earlier end time."
+        );
+      }
       return tx.reservation.update({
         where: { id: reservationId },
         data: { endDate: newEndDate },

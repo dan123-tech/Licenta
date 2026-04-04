@@ -119,9 +119,9 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
         BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
-                .setTitle(getString(R.string.app_name) + " – Log in")
-                .setSubtitle("Use your fingerprint to sign in")
-                .setNegativeButtonText("Use password")
+                .setTitle(getString(R.string.biometric_title_fmt, getString(R.string.app_name)))
+                .setSubtitle(getString(R.string.biometric_subtitle))
+                .setNegativeButtonText(getString(R.string.use_password))
                 .build();
         biometricPrompt.authenticate(promptInfo);
     }
@@ -160,7 +160,7 @@ public class LoginActivity extends AppCompatActivity {
         String name = user.getName();
         String email = user.getEmail();
         String display = (name != null && !name.isEmpty()) ? name : (email != null ? email : "");
-        Toast.makeText(this, getString(R.string.app_name) + " – Welcome, " + display, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.welcome_user_fmt, getString(R.string.app_name), display), Toast.LENGTH_SHORT).show();
         startActivity(new Intent(this, MainActivity.class));
         finish();
     }

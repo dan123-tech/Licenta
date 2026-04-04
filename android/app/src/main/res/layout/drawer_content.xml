@@ -37,7 +37,7 @@
         android:layout_marginEnd="12dp"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="16dp"
-        android:text="Log out"
+        android:text="@string/log_out"
         style="@style/Widget.MaterialComponents.Button.TextButton"
         android:textColor="#7AFFFFFF"
         android:textSize="13sp"

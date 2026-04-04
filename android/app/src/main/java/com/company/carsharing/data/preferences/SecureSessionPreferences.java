@@ -60,11 +60,13 @@ public class SecureSessionPreferences implements SessionCookieStore {
 
     public void setSessionCookie(String cookieName, String cookieValue) {
         String name = cookieName != null && !cookieName.isEmpty() ? cookieName : LEGACY_COOKIE_NAME;
+        // Use commit() so the next Activity (MainActivity) sees the cookie immediately after login.
+        // apply() is async and caused isLoggedIn() to be false right after startActivity(MainActivity).
         prefs.edit()
                 .putString(KEY_COOKIE_NAME, name)
                 .putString(KEY_SESSION_COOKIE, cookieValue)
                 .putBoolean(KEY_IS_LOGGED_IN, true)
-                .apply();
+                .commit();
     }
 
     @Nullable

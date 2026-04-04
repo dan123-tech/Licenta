@@ -41,7 +41,7 @@ public class NoCompanyFragment extends Fragment {
     private void createCompany() {
         String name = binding.createNameLayout.getEditText() != null ? binding.createNameLayout.getEditText().getText().toString().trim() : "";
         if (name.isEmpty()) {
-            showError("Enter company name");
+            showError(getString(R.string.company_name_required));
             return;
         }
         setLoading(true);
@@ -54,14 +54,14 @@ public class NoCompanyFragment extends Fragment {
                     public void onResponse(Call<com.company.carsharing.models.CompanyResponse> call, Response<com.company.carsharing.models.CompanyResponse> response) {
                         setLoading(false);
                         if (response.isSuccessful() && response.body() != null) {
-                            Toast.makeText(requireContext(), "Company created", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(requireContext(), getString(R.string.company_created), Toast.LENGTH_SHORT).show();
                             refreshSession();
-                        } else showError("Failed to create company");
+                        } else showError(getString(R.string.failed_create_company));
                     }
                     @Override
                     public void onFailure(Call<com.company.carsharing.models.CompanyResponse> call, Throwable t) {
                         setLoading(false);
-                        showError(t.getMessage() != null ? t.getMessage() : "Network error");
+                        showError(t.getMessage() != null ? t.getMessage() : getString(R.string.network_error));
                     }
                 });
     }
@@ -69,7 +69,7 @@ public class NoCompanyFragment extends Fragment {
     private void joinCompany() {
         String code = binding.joinCodeLayout.getEditText() != null ? binding.joinCodeLayout.getEditText().getText().toString().trim().toUpperCase() : "";
         if (code.isEmpty()) {
-            showError("Enter join code");
+            showError(getString(R.string.join_code_required));
             return;
         }
         setLoading(true);
@@ -81,14 +81,14 @@ public class NoCompanyFragment extends Fragment {
                     public void onResponse(Call<com.company.carsharing.models.CompanyResponse> call, Response<com.company.carsharing.models.CompanyResponse> response) {
                         setLoading(false);
                         if (response.isSuccessful() && response.body() != null && response.body().getCompany() != null) {
-                            Toast.makeText(requireContext(), "Joined company", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(requireContext(), getString(R.string.joined_company), Toast.LENGTH_SHORT).show();
                             refreshSession();
-                        } else showError("Invalid join code or already a member");
+                        } else showError(getString(R.string.invalid_join_or_member));
                     }
                     @Override
                     public void onFailure(Call<com.company.carsharing.models.CompanyResponse> call, Throwable t) {
                         setLoading(false);
-                        showError(t.getMessage() != null ? t.getMessage() : "Network error");
+                        showError(t.getMessage() != null ? t.getMessage() : getString(R.string.network_error));
                     }
                 });
     }

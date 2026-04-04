@@ -5,7 +5,8 @@
 
 import { z } from "zod";
 import { createCompany } from "@/lib/companies";
-import { setSession } from "@/lib/auth";
+import { extendUserSession } from "@/lib/auth";
+import { normalizeClientType } from "@/lib/auth/session-tokens";
 import { requireSession, jsonResponse, errorResponse } from "@/lib/api-helpers";
 
 const bodySchema = z.object({
@@ -21,27 +22,24 @@ export async function POST(request) {
 
   const company = await createCompany(out.session.userId, parsed.data);
 
-  await setSession(
+  const sid = await extendUserSession(
+    out.session,
     {
-      userId: out.session.userId,
-      email: out.session.email,
-      name: out.session.name,
       companyId: company.id,
       role: "ADMIN",
     },
     request
   );
 
-  return jsonResponse(
-    {
-      company: {
-        id: company.id,
-        name: company.name,
-        domain: company.domain,
-        joinCode: company.joinCode,
-      },
-      message: "Share the join code so others can join your company.",
+  const payload = {
+    company: {
+      id: company.id,
+      name: company.name,
+      domain: company.domain,
+      joinCode: company.joinCode,
     },
-    201
-  );
+    message: "Share the join code so others can join your company.",
+  };
+  if (normalizeClientType(out.session.client) === "web") payload.webSessionId = sid;
+  return jsonResponse(payload, 201);
 }

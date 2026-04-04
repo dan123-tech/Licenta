@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Car, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { apiLogout } from "@/lib/api";
-
+import { useI18n } from "@/i18n/I18nProvider";
+import FleetShareBrandBlock from "@/components/FleetShareBrandBlock";
 export function NavSection({ children }) {
   return <div className="pt-3 pb-1 px-3 first:pt-2">{children}</div>;
 }
@@ -26,8 +27,9 @@ export function NavLabel({ children }) {
 
 export function Sidebar({ user, children, mobileOpen, onClose, viewAs, setViewAs }) {
   const router = useRouter();
+  const { t } = useI18n();
   const showViewToggle = viewAs != null && setViewAs != null;
-  const roleLabel = user?.role === "ADMIN" ? "Administrator" : "Member";
+  const roleLabel = user?.role === "ADMIN" ? t("sidebar.administrator") : t("sidebar.member");
   const initial = (user?.name || user?.email || "U").charAt(0).toUpperCase();
 
   async function handleLogout() {
@@ -43,13 +45,14 @@ export function Sidebar({ user, children, mobileOpen, onClose, viewAs, setViewAs
           type="button"
           onClick={onClose}
           className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
-          aria-label="Close menu"
+          aria-label={t("sidebar.closeMenu")}
         />
       )}
 
       <aside
         className={`
-          w-[224px] min-w-[224px] h-screen flex flex-col pb-3 text-white shrink-0 overflow-x-hidden
+          fleet-sidebar
+          w-[240px] min-w-[240px] h-screen flex flex-col pb-3 text-white shrink-0 overflow-x-hidden
           fixed md:relative left-0 top-0 z-50 md:z-auto
           transform transition-transform duration-200 ease-out
           ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
@@ -65,33 +68,15 @@ export function Sidebar({ user, children, mobileOpen, onClose, viewAs, setViewAs
           style={{ borderBottom: "1px solid var(--sidebar-border)" }}
         >
           <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                style={{ backgroundColor: "var(--brand-icon-bg)" }}
-              >
-                <Car
-                  className="w-[17px] h-[17px]"
-                  strokeWidth={1.6}
-                  style={{ color: "var(--brand-icon-fg)" }}
-                  aria-hidden
-                />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-white leading-tight tracking-tight">
-                  FleetAdmin
-                </p>
-                <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
-                  Car sharing platform
-                </p>
-              </div>
+            <div className="min-w-0 pr-1">
+              <FleetShareBrandBlock tone="dark" size="sm" className="pr-0" />
             </div>
             {onClose && (
               <button
                 type="button"
                 onClick={onClose}
                 className="md:hidden p-2 -m-1 rounded-lg text-white/60 hover:bg-white/10 hover:text-white min-h-[40px] min-w-[40px] flex items-center justify-center transition-colors shrink-0"
-                aria-label="Close menu"
+                aria-label={t("sidebar.closeMenu")}
               >
                 ✕
               </button>
@@ -111,29 +96,33 @@ export function Sidebar({ user, children, mobileOpen, onClose, viewAs, setViewAs
                   color: "rgba(255,255,255,0.25)",
                 }}
               >
-                View as
+                {t("sidebar.viewAs")}
               </p>
               <div
                 className="flex rounded-lg p-0.5"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
                 role="tablist"
-                aria-label="Switch view"
+                aria-label={t("sidebar.viewAs")}
               >
-                {["user", "admin"].map((v) => (
+                {[
+                  { id: "user", label: t("sidebar.viewUser") },
+                  { id: "admin", label: t("sidebar.viewAdmin") },
+                ].map(({ id: v, label }) => (
                   <button
                     key={v}
                     type="button"
                     role="tab"
                     aria-selected={viewAs === v}
                     onClick={() => setViewAs(v)}
-                    className="flex-1 py-1.5 px-2 rounded-md text-xs font-semibold transition-all capitalize"
-                    style={
+                    className={`flex-1 py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
                       viewAs === v
-                        ? { backgroundColor: "var(--brand-icon-bg)", color: "#fff" }
-                        : { color: "rgba(255,255,255,0.4)" }
-                    }
+                        ? v === "admin"
+                          ? "bg-blue-900 text-white shadow-sm"
+                          : "bg-blue-100 text-blue-900 shadow-sm"
+                        : "text-white/40 hover:text-white/65"
+                    }`}
                   >
-                    {v}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -163,7 +152,7 @@ export function Sidebar({ user, children, mobileOpen, onClose, viewAs, setViewAs
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-medium text-white/90 truncate leading-tight">
-                {user?.name || "User"}
+                {user?.name || t("common.user")}
               </p>
               <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>
                 {roleLabel}
@@ -182,8 +171,8 @@ export function Sidebar({ user, children, mobileOpen, onClose, viewAs, setViewAs
                 e.currentTarget.style.color = "rgba(255,255,255,0.35)";
                 e.currentTarget.style.background = "transparent";
               }}
-              title="Log out"
-              aria-label="Log out"
+              title={t("sidebar.logout")}
+              aria-label={t("sidebar.logout")}
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>
@@ -199,7 +188,7 @@ export function NavItem({ active, onClick, icon, label, badge }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2.5 w-full min-w-0 min-h-[38px] mx-2 px-2.5 py-2 rounded-lg text-left text-[13px] transition-all duration-100 cursor-pointer mb-0.5 group"
+      className={`relative flex items-center gap-2.5 w-full min-w-0 min-h-[38px] mx-2 px-2.5 py-2 rounded-lg text-left text-[13px] transition-all duration-100 cursor-pointer mb-0.5 group ${active ? "sidebar-nav-item-active" : ""}`}
       style={
         active
           ? {

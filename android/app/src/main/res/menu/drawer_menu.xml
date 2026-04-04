@@ -1,17 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:id="@+id/nav_dashboard" android:title="Dashboard" />
+    <item android:id="@+id/nav_dashboard" android:title="@string/nav_dashboard" />
     <group android:id="@+id/group_admin">
-        <item android:id="@+id/nav_company" android:title="Company" />
-        <item android:id="@+id/nav_cars" android:title="Manage Cars" />
-        <item android:id="@+id/nav_users" android:title="Manage Users" />
-        <item android:id="@+id/nav_invites" android:title="Invites" />
-        <item android:id="@+id/nav_history" android:title="History" />
-        <item android:id="@+id/nav_company_settings" android:title="Company Settings" />
-        <item android:id="@+id/nav_statistics" android:title="Statistics" />
-        <item android:id="@+id/nav_audit_logs" android:title="Audit Logs" />
+        <item android:id="@+id/nav_company" android:title="@string/nav_company" />
+        <item android:id="@+id/nav_cars" android:title="@string/nav_cars" />
+        <item android:id="@+id/nav_users" android:title="@string/nav_users" />
+        <item android:id="@+id/nav_invites" android:title="@string/nav_invites" />
+        <item android:id="@+id/nav_history" android:title="@string/nav_history" />
+        <item android:id="@+id/nav_company_settings" android:title="@string/nav_company_settings" />
+        <item android:id="@+id/nav_statistics" android:title="@string/nav_statistics" />
+        <item android:id="@+id/nav_audit_logs" android:title="@string/nav_audit_logs" />
+        <item android:id="@+id/nav_fleet_calendar" android:title="@string/nav_fleet_calendar" />
     </group>
-    <item android:id="@+id/nav_available_cars" android:title="Available Cars" />
-    <item android:id="@+id/nav_my_reservations" android:title="My Reservations" />
-    <item android:id="@+id/nav_driving_licence" android:title="Profile / Driving licence" />
+    <item android:id="@+id/nav_available_cars" android:title="@string/nav_available_cars" />
+    <item android:id="@+id/nav_my_reservations" android:title="@string/nav_my_reservations" />
+    <item android:id="@+id/nav_booking_calendar" android:title="@string/nav_booking_calendar" />
+    <item android:id="@+id/nav_driving_licence" android:title="@string/nav_driving_licence" />
 </menu>

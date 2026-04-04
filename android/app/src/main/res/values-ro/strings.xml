@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Car Sharing</string>
+    <string name="login">Autentificare</string>
+    <string name="email">E-mail</string>
+    <string name="password">Parolă</string>
+    <string name="logging_in">Se conectează…</string>
+    <string name="login_error">E-mail sau parolă incorectă</string>
+    <string name="create_account">Creează cont</string>
+    <string name="register">Înregistrare</string>
+    <string name="register_subtitle">Înregistrează-te pentru car sharing. Poți asocia o firmă după autentificare.</string>
+    <string name="name">Nume</string>
+    <string name="confirm_password">Confirmă parola</string>
+    <string name="already_have_account">Ai deja cont? Autentifică-te</string>
+    <string name="create_account_link">Creează cont</string>
+    <string name="booking_reminders_channel_name">Memento rezervări</string>
+    <string name="booking_reminders_channel_desc">Memento înainte de start, cod la început și sfârșitul rezervărilor</string>
+    <string name="booking_before_15_title">Rezervare în curând</string>
+    <string name="booking_before_15_body">Rezervarea ta începe în circa 15 minute.</string>
+    <string name="booking_before_15_body_car">Rezervarea pentru %1$s începe în circa 15 minute.</string>
+    <string name="booking_start_title">Rezervare începe</string>
+    <string name="booking_start_body">Rezervarea ta începe acum.</string>
+    <string name="booking_start_body_car">Rezervarea pentru %1$s începe acum.</string>
+    <string name="booking_start_body_with_code">Rezervarea începe acum. Cod preluare: %1$s</string>
+    <string name="booking_start_body_car_with_code">Rezervarea pentru %1$s începe acum. Cod preluare: %2$s</string>
+    <string name="booking_end_title">Rezervare se încheie</string>
+    <string name="booking_end_body">A sosit ora de sfârșit a rezervării.</string>
+    <string name="booking_end_body_car">Rezervarea pentru %1$s a ajuns la sfârșitul intervalului.</string>
+    <string name="server_url_hint">URL server API</string>
+    <string name="server_url_helper">Emulator: http://10.0.2.2:3000 — Telefon în aceeași rețea Wi‑Fi: http://IP-PC:3000 (ipconfig, adresă IPv4). PC-ul trebuie să ruleze npm run dev.</string>
+    <string name="new_reservation_title">Rezervare nouă</string>
+    <string name="reserve_car_title_fmt">Rezervă: %1$s</string>
+    <string name="reservation_dialog_hints">Nu poți suprapune două rezervări proprii pe mașini diferite.\n\nPlanifică: alege început și sfârșit astfel încât mașina să fie a ta doar în acel interval. Mașina rămâne disponibilă altora până la începutul slotului tău, dacă intervalele nu se suprapun.\n\nRezervă acum: începe imediat. Dacă alt utilizator are deja un slot viitor pe această mașină, sesiunea ta se încheie când începe rezervarea lui.</string>
+    <string name="reservation_created_scheduled">Rezervare creată pentru intervalul ales.</string>
+    <string name="reservation_created_instant_until">Rezervat acum până la %1$s. Alții pot rezerva în intervale care nu se suprapun.</string>
+    <string name="reservation_created_instant">Rezervare creată.</string>
+    <string name="reservation_user_time_overlap">Ai deja o rezervare activă în acel interval (inclusiv pe altă mașină). Schimbă orele sau încheie rezervarea.</string>
+    <string name="reservation_invalid_request">Cerere invalidă</string>
+    <string name="failed_create_reservation">Crearea rezervării a eșuat</string>
+    <string name="calendar_all_cars">Toate mașinile</string>
+    <string name="calendar_vehicle_label">Vehicul</string>
+    <string name="calendar_empty">Nicio rezervare pentru acest filtru.</string>
+    <string name="calendar_subtitle_personal">Rezervările tale (cele mai apropiate primele). Trage pentru reîmprospătare. Filtrează după vehicul sau toate mașinile.</string>
+    <string name="calendar_subtitle_fleet">Rezervări la nivel de firmă. Filtrează după vehicul sau toate mașinile.</string>
+
+    <string name="loading">Se încarcă…</string>
+    <string name="statistics_title">Statistici</string>
+    <string name="statistics_export_hint">Export PDF pentru orice interval (deschide foaia de partajare).</string>
+    <string name="statistics_pdf_7d">PDF · 7z</string>
+    <string name="statistics_pdf_30d">PDF · 30z</string>
+    <string name="statistics_pdf_6m">PDF · 6l</string>
+    <string name="statistics_pdf_1y">PDF · 1a</string>
+    <string name="statistics_period_label">Perioadă pentru grafice și totaluri călătorii</string>
+    <string name="period_7d">7 zile</string>
+    <string name="period_30d">30 zile</string>
+    <string name="period_6m">6 luni</string>
+    <string name="period_1y">12 luni</string>
+    <string name="statistics_range_hint">Totalurile pe călătorii folosesc rezervări finalizate al căror sfârșit cade în interval. Top utilizatori numără rezervările care au început în interval.</string>
+    <string name="statistics_active">Rezervări active (toate)</string>
+    <string name="statistics_km_period">Km călătorii (finalizate, perioada selectată)</string>
+    <string name="statistics_fuel_period">Cost estimat combustibil/electricitate (finalizate, perioadă)</string>
+    <string name="statistics_co2_period">CO₂ (călătorii finalizate, perioadă)</string>
+    <string name="statistics_co2_chart_title">Amprentă de carbon (perioadă)</string>
+    <string name="statistics_car_usage_title">Utilizare mașini (km parcurși)</string>
+    <string name="statistics_car_usage_hint">Derulează orizontal dacă sunt multe mașini. Atinge o bară pentru detalii.</string>
+    <string name="statistics_leaderboard_title">Eficiență după cost estimat</string>
+    <string name="statistics_leaderboard_sub">Călătorii finalizate în perioada selectată — cost mai mare = mai puțin eficient.</string>
+    <string name="statistics_top_users_title">Top utilizatori</string>
+    <string name="statistics_top_users_sub">Rezervări care au început în perioada selectată.</string>
+    <string name="statistics_car_tooltip">%1$s\n%2$s\n%3$s · %4$d km în perioadă · %5$d rezervări începute</string>
+    <string name="statistics_co2_tooltip">%1$s: %2$.1f kg CO₂</string>
+    <string name="statistics_share_chooser">Partajează raportul</string>
+    <string name="statistics_pdf_error">Nu s-a putut crea PDF</string>
+    <string name="statistics_load_failed">Încărcarea datelor a eșuat</string>
+
+    <string name="nav_dashboard">Panou</string>
+    <string name="nav_company">Firmă</string>
+    <string name="nav_cars">Gestionare mașini</string>
+    <string name="nav_users">Gestionare utilizatori</string>
+    <string name="nav_invites">Invitații</string>
+    <string name="nav_history">Istoric</string>
+    <string name="nav_company_settings">Setări firmă</string>
+    <string name="nav_statistics">Statistici</string>
+    <string name="nav_audit_logs">Jurnal audit</string>
+    <string name="nav_fleet_calendar">Calendar flotă</string>
+    <string name="nav_available_cars">Mașini disponibile</string>
+    <string name="nav_my_reservations">Rezervările mele</string>
+    <string name="nav_booking_calendar">Calendar rezervări</string>
+    <string name="nav_driving_licence">Profil / permis</string>
+
+    <string name="brand_initial">F</string>
+    <string name="brand_name">FleetAdmin</string>
+    <string name="brand_tagline">Platformă car sharing</string>
+    <string name="welcome_back">Bine ai revenit</string>
+    <string name="sign_in_subtitle">Autentifică-te pentru a continua</string>
+    <string name="keep_me_logged_in">Păstrează-mă autentificat</string>
+    <string name="use_fingerprint">Autentificare cu amprentă</string>
+    <string name="create_your_account">Creează contul</string>
+    <string name="default_api_url_hint">http://10.0.2.2:3000/</string>
+    <string name="use_password">Folosește parola</string>
+    <string name="welcome_user_fmt">%1$s – Bine ai venit, %2$s</string>
+    <string name="account_created_login">Cont creat. Te rugăm să te autentifici.</string>
+
+    <string name="save">Salvează</string>
+    <string name="cancel">Anulează</string>
+    <string name="delete">Șterge</string>
+    <string name="remove">Elimină</string>
+    <string name="approve">Aprobă</string>
+    <string name="reject">Respinge</string>
+    <string name="edit">Editează</string>
+    <string name="invite">Invită</string>
+    <string name="reserve">Rezervă</string>
+    <string name="release">Predare</string>
+    <string name="ok">OK</string>
+    <string name="log_out">Deconectare</string>
+    <string name="em_dash">—</string>
+    <string name="km_unit">km</string>
+    <string name="km_suffix_fmt">%1$d km</string>
+    <string name="unknown_user_placeholder">Nume utilizator</string>
+    <string name="avatar_initial_user">U</string>
+
+    <string name="fuel_type_benzine">Benzină</string>
+    <string name="fuel_type_diesel">Motorină</string>
+    <string name="fuel_type_electric">Electric</string>
+    <string name="fuel_type_hybrid">Hybrid</string>
+
+    <string name="car_status_available">Disponibilă</string>
+    <string name="car_status_reserved">Rezervată</string>
+    <string name="car_status_maintenance">În mentenanță</string>
+
+    <string name="reservation_status_active">Activă</string>
+    <string name="reservation_status_completed">Finalizată</string>
+    <string name="reservation_status_cancelled">Anulată</string>
+    <string name="reservation_status_pending">În așteptare</string>
+
+    <string name="join_code_label">Cod asociere</string>
+    <string name="share_join_code">Partajează codul</string>
+    <string name="default_km_per_reservation_admin">Km impliciți per rezervare (admin)</string>
+    <string name="price_per_liter_admin">Preț per litru (admin)</string>
+    <string name="default_consumption_admin">Consum implicit L/100km (admin)</string>
+    <string name="save_settings">Salvează setările</string>
+    <string name="pending_km_approvals">Aprobări depășire km în așteptare</string>
+    <string name="company_settings_subtitle">Km impliciți și prețuri combustibil (admin)</string>
+    <string name="could_not_save_settings">Nu s-au putut salva setările</string>
+    <string name="could_not_open_share">Nu s-a putut deschide partajarea</string>
+
+    <string name="enter_km_range">Introdu o valoare între 1 și 10000</string>
+    <string name="enter_valid_number">Introdu un număr valid</string>
+    <string name="saved">Salvat</string>
+    <string name="failed_to_save">Salvare eșuată</string>
+    <string name="error_generic">Eroare</string>
+
+    <string name="no_company_welcome">Bine ai venit la FleetAdmin</string>
+    <string name="no_company_subtitle">Creează o firmă pentru flota ta sau alătură-te uneia cu un cod de invitație.</string>
+    <string name="create_company">Creează firmă</string>
+    <string name="join_company_header">Alătură-te unei firme</string>
+    <string name="join_company_button">Asociază firma</string>
+    <string name="invite_code_hint">Cod invitație</string>
+    <string name="company_created">Firmă creată</string>
+    <string name="joined_company">Te-ai asociat firmei</string>
+    <string name="company_name_required">Introdu numele firmei</string>
+    <string name="failed_create_company">Crearea firmei a eșuat</string>
+    <string name="join_code_required">Introdu codul de asociere</string>
+    <string name="invalid_join_or_member">Cod invalid sau ești deja membru</string>
+
+    <string name="dashboard_overview">Prezentare</string>
+    <string name="dashboard_subtitle">Flota ta dintr-o privire</string>
+    <string name="total_fleet">Flotă totală</string>
+    <string name="active_rentals">Închirieri active</string>
+    <string name="team_members">Membri echipă</string>
+    <string name="available">Disponibile</string>
+
+    <string name="available_cars_title">Mașini disponibile</string>
+    <string name="available_cars_subtitle">Atinge o mașină pentru rezervare acum sau alege intervalul</string>
+    <string name="available_cars_empty">Momentan nu sunt mașini disponibile.</string>
+    <string name="could_not_load_cars_http">Nu s-au putut încărca mașinile (HTTP %1$d)</string>
+    <string name="network_error_fmt">Eroare rețea: %1$s</string>
+    <string name="failed_load_available_cars">Încărcarea mașinilor disponibile a eșuat</string>
+    <string name="driving_licence_required">Permisul trebuie aprobat pentru a rezerva</string>
+    <string name="check_connection">verifică conexiunea</string>
+
+    <string name="dialog_car_label">Mașină</string>
+    <string name="dialog_schedule_title">Început și sfârșit (opțional)</string>
+    <string name="dialog_schedule_hint">Lasă gol pentru Rezervă acum sau alege ambele pentru rezervare programată.</string>
+    <string name="hint_start_datetime_optional">Început dată și oră (opțional)</string>
+    <string name="hint_end_datetime_optional">Sfârșit dată și oră (opțional)</string>
+    <string name="hint_purpose_optional">Scop (opțional)</string>
+
+    <string name="no_available_cars">Nicio mașină disponibilă</string>
+    <string name="failed_load_cars">Încărcarea mașinilor a eșuat</string>
+    <string name="select_a_car">Selectează o mașină</string>
+    <string name="end_after_start">Sfârșitul trebuie să fie după început</string>
+
+    <string name="my_reservations_empty">Încă nu ai rezervări. Atinge + de mai jos pentru a rezerva de pe telefon.</string>
+    <string name="last_known_odometer_fmt">Ultimul kilometraj cunoscut: %1$d km (trebuie ≥ această valoare)</string>
+    <string name="enter_valid_odometer">Introdu un număr valid de kilometraj</string>
+    <string name="odometer_must_be_ge_fmt">Kilometrajul trebuie să fie ≥ %1$d km</string>
+    <string name="car_released">Mașină predată</string>
+    <string name="codes_updated">Coduri actualizate</string>
+    <string name="cancel_reservation_title">Anulează rezervarea</string>
+    <string name="cancel_reservation_message">Anulezi această rezervare?</string>
+    <string name="cancel_reservation_confirm">Anulează rezervarea</string>
+    <string name="keep_reservation">Păstrează</string>
+    <string name="reservation_cancelled">Rezervare anulată</string>
+    <string name="failed_to_cancel">Anularea a eșuat</string>
+
+    <string name="history_screen_title">Istoric</string>
+    <string name="reservation_history_heading">Istoric rezervări</string>
+    <string name="history_fallback_car">Mașină</string>
+    <string name="history_load_error_fmt">Nu s-a putut încărca istoricul: %1$s</string>
+    <string name="network_error_short">eroare rețea</string>
+    <string name="network_error">Eroare de rețea</string>
+
+    <string name="invites_load_error_fmt">Nu s-au putut încărca invitațiile: %1$s</string>
+
+    <string name="rental_codes">Coduri închiriere</string>
+    <string name="rental_codes_hint">Folosește codurile pentru start și predare. Codul este valabil 30 min de la începutul rezervării.</string>
+    <string name="start_rental_prefix">Start închiriere: </string>
+    <string name="release_rental_prefix">Predare mașină: </string>
+    <string name="get_codes">Obține coduri</string>
+
+    <string name="audit_icon">🛡</string>
+    <string name="audit_title">Jurnal audit</string>
+    <string name="audit_subtitle">Înregistrare imuabilă — nu poate fi editată sau ștearsă</string>
+    <string name="audit_empty">Încă nu există intrări.\nAcțiuni precum editarea unei mașini, anularea unei rezervări\nsau schimbarea prețurilor vor apărea aici.</string>
+    <string name="audit_prev">‹ Înapoi</string>
+    <string name="audit_next">Înainte ›</string>
+    <string name="audit_page_fmt">Pagina %1$d / %2$d</string>
+    <string name="audit_page_placeholder">Pagina 1</string>
+    <string name="audit_load_failed_http">Încărcarea jurnalului a eșuat (HTTP %1$d)</string>
+    <string name="audit_actor_fmt">De: %1$s &lt;%2$s&gt;</string>
+    <string name="audit_actor_system">De: Sistem</string>
+
+    <string name="add_car_title">Adaugă mașină</string>
+    <string name="edit_car_title">Editează mașina</string>
+    <string name="hint_brand">Marcă</string>
+    <string name="hint_registration">Număr înmatriculare</string>
+    <string name="hint_fuel_type">Tip combustibil</string>
+    <string name="hint_current_km">Kilometraj curent</string>
+    <string name="hint_consumption_optional">Consum L/100km (opțional)</string>
+    <string name="hint_status">Stare</string>
+    <string name="brand_required">Marcă obligatorie</string>
+    <string name="registration_required">Numărul de înmatriculare este obligatoriu</string>
+    <string name="invalid_data">Date invalide</string>
+    <string name="failed_add_car">Adăugarea mașinii a eșuat</string>
+    <string name="car_added">Mașină adăugată</string>
+    <string name="car_updated">Mașină actualizată</string>
+    <string name="failed_update">Actualizarea a eșuat</string>
+    <string name="delete_car_title">Șterge mașina</string>
+    <string name="delete_car_message_fmt">Ștergi %1$s %2$s?</string>
+    <string name="car_deleted">Mașină ștearsă</string>
+    <string name="failed_delete">Ștergerea a eșuat</string>
+
+    <string name="invite_user_title">Invită utilizator</string>
+    <string name="hint_email">E-mail</string>
+    <string name="hint_name_optional">Nume (opțional)</string>
+    <string name="role_label">Rol</string>
+    <string name="email_required">E-mail obligatoriu</string>
+    <string name="invite_created_hint">Invitație creată. Trimite tokenul utilizatorului.</string>
+    <string name="cannot_change_own_role">Nu îți poți schimba propriul rol</string>
+    <string name="change_role_title">Schimbă rolul</string>
+    <string name="role_updated">Rol actualizat</string>
+    <string name="cannot_change_role">Nu se poate schimba rolul</string>
+    <string name="failed_generic">Eșuat</string>
+    <string name="remove_user_title">Elimină utilizatorul</string>
+    <string name="remove_user_message_fmt">Elimini pe %1$s din firmă?</string>
+    <string name="user_removed">Utilizator eliminat</string>
+    <string name="cannot_remove_self">Nu te poți elimina pe tine</string>
+    <string name="cannot_remove_yourself_error">Nu te poți elimina pe tine</string>
+    <string name="approve_dl">Aprobă permis</string>
+    <string name="reject_dl">Respinge permis</string>
+    <string name="dl_status_fmt">Permis %1$s</string>
+    <string name="menu_promote_admin">Promovează admin</string>
+    <string name="menu_demote_user">Retrogradează utilizator</string>
+    <string name="dl_short_label">PC</string>
+    <string name="user_dl_status_fmt">%1$s · %2$s: %3$s</string>
+
+    <string name="driving_licence_screen_title">Permis de conducere</string>
+    <string name="dl_fragment_title">Permis de conducere</string>
+    <string name="dl_status_label">Stare</string>
+    <string name="dl_upload_hint">Încarcă sau actualizează permisul de conducere</string>
+    <string name="choose_from_gallery">Alege din galerie</string>
+    <string name="take_photo">Fă fotografie</string>
+    <string name="camera_not_available">Camera nu este disponibilă</string>
+    <string name="could_not_read_image">Nu s-a putut citi imaginea</string>
+    <string name="no_image">Nicio imagine</string>
+    <string name="uploading">Se încarcă…</string>
+    <string name="upload_success_pending">Încărcare reușită. Așteaptă validarea administratorului.</string>
+    <string name="upload_failed">Încărcarea a eșuat</string>
+
+    <string name="release_car_title">Predare mașină</string>
+    <string name="hint_km_used">Km parcurși</string>
+
+    <string name="chart_label_co2">CO₂</string>
+    <string name="chart_label_km">km</string>
+
+    <string name="pdf_report_header_fmt">FleetAdmin — %1$s</string>
+    <string name="pdf_active_reservations">Rezervări active: %1$d</string>
+    <string name="pdf_trip_km">Km călătorii (finalizate, perioadă): %1$,d km</string>
+    <string name="pdf_est_fuel">Cost estimat combustibil/electricitate (perioadă): %1$s</string>
+    <string name="pdf_co2_line">CO₂ (perioadă): %1$s</string>
+    <string name="pdf_cost_leaderboard_header">Clasament cost (perioadă, top 15)</string>
+    <string name="pdf_top_users_header">Top utilizatori (începute în perioadă)</string>
+    <string name="pdf_not_available">—</string>
+
+    <string name="code_valid_in_fmt">Cod valabil în %1$d min (30 min de la începutul rezervării)</string>
+    <string name="code_valid_now_fmt">Cod valabil acum, expiră în %1$d min</string>
+    <string name="code_window_expired">Fereastra codului a expirat</string>
+
+    <string name="biometric_title_fmt">%1$s – Autentificare</string>
+
+    <string name="hint_default_km_reservation">Km impliciți per rezervare</string>
+    <string name="hint_benzine_price">Benzină (preț per litru)</string>
+    <string name="hint_diesel_price">Motorină (preț per litru)</string>
+    <string name="hint_hybrid_price">Hybrid termic (preț per litru, opțional)</string>
+    <string name="hint_electricity_price">Electricitate (preț per kWh)</string>
+    <string name="hint_new_odometer">Kilometraj nou (odometru)</string>
+    <string name="hint_exceeded_km_reason">Motiv depășire km (dacă ai folosit mai mult decât limita firmei)</string>
+
+    <string name="register_name_required">Introdu numele</string>
+    <string name="register_email_required">Introdu adresa de e-mail</string>
+    <string name="register_password_required">Introdu parola</string>
+    <string name="register_password_min">Parola trebuie să aibă cel puțin 8 caractere</string>
+    <string name="register_passwords_mismatch">Parolele nu coincid</string>
+    <string name="registration_failed">Înregistrarea a eșuat</string>
+
+    <string name="biometric_subtitle">Folosește amprenta pentru autentificare</string>
+
+    <string name="role_display_admin">Administrator</string>
+    <string name="role_display_member">Membru</string>
+
+    <string name="could_not_load_company_screen">Nu s-a putut încărca ecranul firmei.</string>
+    <string name="join_share_body_fmt">Alătură-te car sharing-ului firmei. Cod: %1$s</string>
+    <string name="join_share_subject">Cod asociere car sharing</string>
+    <string name="pending_user_placeholder">Utilizator</string>
+    <string name="km_action_approved">Aprobat</string>
+    <string name="km_action_rejected">Respins</string>
+    <string name="could_not_show_pending_approvals">Nu s-au putut afișa aprobările în așteptare</string>
+    <string name="failed_load_approvals">Încărcarea aprobărilor a eșuat</string>
+    <string name="invalid_reservation_id">ID rezervare invalid</string>
+
+    <string name="invalid_km_or_reason">Kilometraj invalid sau motiv obligatoriu</string>
+    <string name="failed_to_release">Predarea a eșuat</string>
+    <string name="could_not_get_codes">Nu s-au putut obține codurile</string>
+
+    <string name="invalid_email_or_invited">E-mail invalid sau deja invitat</string>
+    <string name="failed_to_invite">Invitația a eșuat</string>
+
+    <string name="dl_status_not_set">Nesetat</string>
+    <string name="dl_status_pending_label">În așteptare</string>
+    <string name="driving_licence_status_approved">Aprobat</string>
+    <string name="driving_licence_status_rejected">Respins</string>
+    <string name="dl_toast_approved">Permis de conducere aprobat</string>
+    <string name="dl_toast_rejected">Permis de conducere respins</string>
+
+    <string name="audit_entries_fmt">%1$d intrări</string>
+    <string name="audit_action_car_added">Mașină adăugată</string>
+    <string name="audit_action_car_updated">Mașină actualizată</string>
+    <string name="audit_action_car_status_changed">Stare mașină schimbată</string>
+    <string name="audit_action_car_deleted">Mașină ștearsă</string>
+    <string name="audit_action_reservation_created">Rezervare creată</string>
+    <string name="audit_action_reservation_cancelled">Rezervare anulată</string>
+    <string name="audit_action_reservation_completed">Rezervare finalizată</string>
+    <string name="audit_action_reservation_extended">Rezervare prelungită</string>
+    <string name="audit_action_km_exceeded_approved">Depășire km – aprobată</string>
+    <string name="audit_action_km_exceeded_rejected">Depășire km – respinsă</string>
+    <string name="audit_action_pricing_changed">Prețuri modificate</string>
+    <string name="audit_action_company_settings_changed">Setări modificate</string>
+    <string name="audit_action_user_invited">Utilizator invitat</string>
+    <string name="audit_action_user_role_changed">Rol schimbat</string>
+    <string name="audit_action_user_removed">Utilizator eliminat</string>
+    <string name="audit_action_dl_status_changed">Stare permis schimbată</string>
+    <string name="audit_entity_type_car">Mașină</string>
+    <string name="audit_entity_type_reservation">Rezervare</string>
+    <string name="audit_entity_type_company">Firmă</string>
+    <string name="audit_entity_type_user">Utilizator</string>
+</resources>

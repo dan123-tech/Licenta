@@ -50,7 +50,7 @@ public class AvailableCarsAdapter extends BaseAdapter {
         String sub = (car.getRegistrationNumber() != null ? car.getRegistrationNumber() : "") + " · " + car.getKm() + " km";
         if (car.getAverageConsumptionL100km() != null) sub += " · " + car.getAverageConsumptionL100km() + " L/100km";
         ((TextView) convertView.findViewById(R.id.item_title)).setText(title);
-        ((TextView) convertView.findViewById(R.id.item_subtitle)).setText(sub + " · Tap to reserve");
+        ((TextView) convertView.findViewById(R.id.item_subtitle)).setText(sub + " · Tap to reserve (now or schedule)");
         convertView.setOnClickListener(v -> listener.onCarClick(car));
         return convertView;
     }

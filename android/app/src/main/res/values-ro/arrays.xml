@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="audit_filter_labels">
+        <item>Toate</item>
+        <item>Mașină</item>
+        <item>Rezervare</item>
+        <item>Firmă</item>
+        <item>Utilizator</item>
+    </string-array>
+</resources>

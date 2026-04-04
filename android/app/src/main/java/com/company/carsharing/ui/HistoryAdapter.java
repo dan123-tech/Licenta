@@ -9,9 +9,12 @@ import android.widget.TextView;
 
 import com.company.carsharing.R;
 import com.company.carsharing.models.Reservation;
+import com.company.carsharing.util.DateParseUtil;
+import com.company.carsharing.util.I18n;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class HistoryAdapter extends BaseAdapter {
     private final Context context;
@@ -40,11 +43,22 @@ public class HistoryAdapter extends BaseAdapter {
             convertView = LayoutInflater.from(context).inflate(R.layout.item_history, parent, false);
         }
         Reservation r = list.get(position);
-        String car = r.getCar() != null ? r.getCar().getBrand() + " " + (r.getCar().getRegistrationNumber() != null ? r.getCar().getRegistrationNumber() : "") : "Car";
+        String car = r.getCar() != null ? r.getCar().getBrand() + " " + (r.getCar().getRegistrationNumber() != null ? r.getCar().getRegistrationNumber() : "") : context.getString(R.string.history_fallback_car);
         ((TextView) convertView.findViewById(R.id.history_car)).setText(car);
-        String statusKm = (r.getStatus() != null ? r.getStatus() : "") + (r.getReleasedKmUsed() != null ? " · " + r.getReleasedKmUsed() + " km" : "");
+        String statusPart = I18n.reservationStatus(context, r.getStatus() != null ? r.getStatus() : "");
+        String statusKm = statusPart + (r.getReleasedKmUsed() != null ? " · " + context.getString(R.string.km_suffix_fmt, r.getReleasedKmUsed()) : "");
         ((TextView) convertView.findViewById(R.id.history_status_km)).setText(statusKm);
-        String dates = (r.getStartDate() != null ? r.getStartDate() : "") + (r.getEndDate() != null ? " → " + r.getEndDate() : "");
+        Locale loc = context.getResources().getConfiguration().getLocales().get(0);
+        String start = DateParseUtil.formatIsoForDisplay(r.getStartDate(), loc);
+        String end = DateParseUtil.formatIsoForDisplay(r.getEndDate(), loc);
+        String dates;
+        if (!start.isEmpty() && !end.isEmpty()) {
+            dates = start + " → " + end;
+        } else if (!start.isEmpty()) {
+            dates = start;
+        } else {
+            dates = end;
+        }
         ((TextView) convertView.findViewById(R.id.history_dates)).setText(dates);
         return convertView;
     }

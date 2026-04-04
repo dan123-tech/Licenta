@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   BarChart2,
   Building2,
@@ -9,17 +9,19 @@ import {
   Users,
   Mail,
   History,
-  Calendar,
-  Bot,
+  CalendarDays,
+  FileScan,
   Database,
   Plus,
   ShieldCheck,
 } from "lucide-react";
 import { Sidebar, NavItem, NavSection, NavLabel } from "./Sidebar";
+import FleetBookingCalendar from "./FleetBookingCalendar";
+import AccessCodeQRButton, { ACCESS_CODE_SLOT_CLASS } from "./AccessCodeQRButton";
 import StatisticsDashboard from "./StatisticsDashboard";
+import FuelTypeBadge from "@/components/FuelTypeBadge";
 import {
   apiCars,
-  apiGetCar,
   apiUsers,
   apiInvites,
   apiReservations,
@@ -30,9 +32,6 @@ import {
   apiCreateUser,
   apiUpdateUserRole,
   apiRemoveUser,
-  apiCreateReservation,
-  apiCancelReservation,
-  apiReleaseReservation,
   apiUpdateCompanyCurrent,
   apiSetUserDrivingLicenceStatus,
   apiPendingExceededApprovals,
@@ -45,67 +44,24 @@ import DatabaseSettingsSection from "./DatabaseSettingsSection";
 import DataSourceNotConfiguredEmptyState from "./DataSourceNotConfiguredEmptyState";
 import AuditLogsSection from "./AuditLogsSection";
 import { getProviderLabelWithTable } from "@/orchestrator/config";
+import { useI18n } from "@/i18n/I18nProvider";
+import LanguageCurrencySwitcher from "@/components/LanguageCurrencySwitcher";
 
 const ICON = { s: "w-4 h-4 shrink-0 stroke-[1.5]" };
 
-const ADMIN_NAV_GROUPS = [
-  {
-    label: "Overview",
-    items: [
-      { id: "company", label: "Company", icon: <Building2 className={ICON.s} aria-hidden /> },
-      { id: "statistics", label: "Statistics", icon: <BarChart2 className={ICON.s} aria-hidden /> },
-    ],
-  },
-  {
-    label: "Fleet",
-    items: [
-      { id: "cars", label: "Manage cars", icon: <Car className={ICON.s} aria-hidden /> },
-      { id: "myReservations", label: "Reservations", icon: <Calendar className={ICON.s} aria-hidden /> },
-      { id: "history", label: "History", icon: <History className={ICON.s} aria-hidden /> },
-      { id: "verifyCode", label: "Verify pickup code", icon: <KeyRound className={ICON.s} aria-hidden /> },
-    ],
-  },
-  {
-    label: "Admin",
-    items: [
-      { id: "users", label: "Manage users", icon: <Users className={ICON.s} aria-hidden /> },
-      { id: "invites", label: "Invites", icon: <Mail className={ICON.s} aria-hidden /> },
-      { id: "aiVerification", label: "AI verification", icon: <Bot className={ICON.s} aria-hidden /> },
-      { id: "databaseSettings", label: "Database settings", icon: <Database className={ICON.s} aria-hidden /> },
-      { id: "auditLogs", label: "Audit logs", icon: <ShieldCheck className={ICON.s} aria-hidden /> },
-    ],
-  },
-];
-
-const ADMIN_PAGE_META = {
-  company: { title: "Company", sub: "Settings, pricing & fleet defaults" },
-  statistics: { title: "Statistics & reports", sub: "Analytics and cost breakdown" },
-  cars: { title: "Manage cars", sub: "Fleet overview" },
-  verifyCode: { title: "Verify pickup code", sub: "Validate reservation pickup codes" },
-  users: { title: "Manage users", sub: "Roles and driving licences" },
-  invites: { title: "Invites", sub: "Pending and accepted invitations" },
-  history: { title: "Car sharing history", sub: "All company reservations" },
-  myReservations: { title: "My reservations", sub: "Your bookings" },
-  aiVerification: { title: "AI verification", sub: "Driving licence checks" },
-  databaseSettings: { title: "Database settings", sub: "External data sources" },
-  auditLogs: { title: "Audit logs", sub: "Immutable record of all important actions" },
+const ADMIN_PAGE_META_KEYS = {
+  company: "company",
+  statistics: "statistics",
+  cars: "cars",
+  fleetCalendar: "fleetCalendar",
+  verifyCode: "verifyCode",
+  users: "users",
+  invites: "invites",
+  history: "history",
+  aiVerification: "aiVerification",
+  databaseSettings: "databaseSettings",
+  auditLogs: "auditLogs",
 };
-
-const FUEL_BADGE = {
-  Benzine: "bg-[#FAEEDA] text-[#633806] border-[#E8D4B8]",
-  Diesel: "bg-slate-200 text-slate-800 border-slate-300",
-  Electric: "bg-[#EAF3DE] text-[#27500A] border-[#C9D9B8]",
-  Hybrid: "bg-[#E6F1FB] text-[#0C447C] border-[#B5D4F4]",
-};
-
-function FuelTypeBadge({ fuelType }) {
-  const t = fuelType || "Benzine";
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${FUEL_BADGE[t] || FUEL_BADGE.Benzine}`}>
-      {t}
-    </span>
-  );
-}
 
 function needsService(car) {
   const km = car.km ?? 0;
@@ -119,7 +75,18 @@ function needsService(car) {
   return { need: false, type: null };
 }
 
+const LAST_SERVICE_YM = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/** @param {string|null|undefined} ym - "YYYY-MM" */
+function formatLastServiceYearMonth(ym) {
+  if (!ym || !LAST_SERVICE_YM.test(ym)) return null;
+  const [y, m] = ym.split("-");
+  const d = new Date(Number(y), Number(m) - 1, 1);
+  return d.toLocaleString(undefined, { month: "long", year: "numeric" });
+}
+
 function CarConsumptionCell({ car, onUpdated }) {
+  const { formatNumber } = useI18n();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(car.averageConsumptionL100km == null ? "" : String(car.averageConsumptionL100km));
   const [saving, setSaving] = useState(false);
@@ -170,12 +137,15 @@ function CarConsumptionCell({ car, onUpdated }) {
       className="text-left text-sm text-slate-700 hover:text-[var(--primary)] hover:underline"
       title="Click to edit"
     >
-      {display != null ? `${display} L/100km` : "Default"}
+      {display != null
+        ? `${formatNumber(display, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} L/100km`
+        : "Default"}
     </button>
   );
 }
 
 export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs, setViewAs }) {
+  const { t, formatNumber } = useI18n();
   const [section, setSection] = useState("cars");
   const [cars, setCars] = useState([]);
   const [users, setUsers] = useState([]);
@@ -193,6 +163,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
   const [addCarBatteryLevel, setAddCarBatteryLevel] = useState("");
   const [addCarBatteryCapacityKwh, setAddCarBatteryCapacityKwh] = useState("");
   const [addCarLastServiceMileage, setAddCarLastServiceMileage] = useState("");
+  const [addCarLastServiceMonth, setAddCarLastServiceMonth] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
   const [inviteRole, setInviteRole] = useState("USER");
@@ -200,19 +171,12 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
   const [submitting, setSubmitting] = useState(false);
   const [invites, setInvites] = useState([]);
   const [reservations, setReservations] = useState([]);
-  const [showReserveModal, setShowReserveModal] = useState(false);
-  const [reserveCar, setReserveCar] = useState(null);
-  const [reservePurpose, setReservePurpose] = useState("");
-  const [reserveCarId, setReserveCarId] = useState("");
-  const [releaseModal, setReleaseModal] = useState(null);
-  const [releaseNewKm, setReleaseNewKm] = useState("");
-  const [releaseExceededReason, setReleaseExceededReason] = useState("");
-  const [releaseSubmitting, setReleaseSubmitting] = useState(false);
   const [defaultKmUsage, setDefaultKmUsage] = useState(company?.defaultKmUsage ?? 100);
   const [averageFuelPricePerLiter, setAverageFuelPricePerLiter] = useState(company?.averageFuelPricePerLiter ?? "");
   const [defaultConsumptionL100km, setDefaultConsumptionL100km] = useState(company?.defaultConsumptionL100km ?? "");
   const [priceBenzinePerLiter, setPriceBenzinePerLiter] = useState(company?.priceBenzinePerLiter ?? "");
   const [priceDieselPerLiter, setPriceDieselPerLiter] = useState(company?.priceDieselPerLiter ?? "");
+  const [priceHybridPerLiter, setPriceHybridPerLiter] = useState(company?.priceHybridPerLiter ?? "");
   const [priceElectricityPerKwh, setPriceElectricityPerKwh] = useState(company?.priceElectricityPerKwh ?? "");
   const [defaultKmSaving, setDefaultKmSaving] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -299,9 +263,6 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
     return x.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
   }
 
-  const myReservations = reservations.filter((r) => r.userId === user?.id);
-  const activeReservations = myReservations.filter((r) => (r.status || "").toLowerCase() === "active");
-
   async function handleRefreshCodes(reservationId) {
     setRefreshingCodeId(reservationId);
     setError("");
@@ -332,32 +293,6 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
     }
   }
 
-  function openReserve(car) {
-    setReserveCar(car || null);
-    setReserveCarId(car ? car.id : "");
-    setReservePurpose("");
-    setShowReserveModal(true);
-  }
-
-  async function handleReserve(e) {
-    e.preventDefault();
-    const carId = reserveCar?.id || reserveCarId;
-    if (!carId) return;
-    setSubmitting(true);
-    setError("");
-    try {
-      await apiCreateReservation(carId, reservePurpose || undefined);
-      setShowReserveModal(false);
-      setReserveCar(null);
-      setReserveCarId("");
-      load();
-    } catch (err) {
-      setError(err.message || "Failed to create reservation");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   const availableCars = cars.filter((c) => (c.status || "").toLowerCase() === "available");
   const totalCars = cars.length;
   const serviceDueCount = cars.filter((c) => needsService(c).need).length;
@@ -367,15 +302,6 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
           cars.reduce((sum, c) => sum + (typeof c.km === "number" ? c.km : 0), 0) / totalCars,
         )
       : 0;
-  const defaultKm = company?.defaultKmUsage ?? 100;
-  const releaseCurrentKm = releaseModal?.car?.km ?? 0;
-  const releaseKmUsed = (() => {
-    const n = parseInt(releaseNewKm, 10);
-    if (isNaN(n) || n < releaseCurrentKm) return null;
-    return n - releaseCurrentKm;
-  })();
-  const releaseExceedsLimit = defaultKm != null && releaseKmUsed != null && releaseKmUsed > defaultKm;
-
   // Filtered lists
   const filteredHistory = reservations.filter((r) => {
     const carStr = [r.car?.brand, r.car?.registrationNumber].filter(Boolean).join(" ").toLowerCase();
@@ -417,50 +343,6 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
     return true;
   });
 
-  async function openReleaseModal(r) {
-    setReleaseNewKm("");
-    setReleaseExceededReason("");
-    try {
-      const fresh = await apiGetCar(r.carId);
-      setReleaseModal({ id: r.id, car: fresh });
-    } catch {
-      setReleaseModal({ id: r.id, car: r.car });
-    }
-  }
-
-  async function submitRelease(e) {
-    e.preventDefault();
-    if (!releaseModal) return;
-    const newKm = parseInt(releaseNewKm, 10);
-    if (isNaN(newKm) || newKm < 0) {
-      setError("Please enter the current odometer reading (new km of the car).");
-      return;
-    }
-    if (newKm < releaseCurrentKm) {
-      setError(
-        "Odometer must be greater than or equal to the last known reading (" +
-          releaseCurrentKm +
-          " km). You cannot enter a lower value."
-      );
-      return;
-    }
-    if (releaseExceedsLimit && !releaseExceededReason.trim()) {
-      setError("You exceeded the company limit (" + defaultKm + " km). Please provide a reason.");
-      return;
-    }
-    setReleaseSubmitting(true);
-    setError("");
-    try {
-      await apiReleaseReservation(releaseModal.id, newKm, releaseExceedsLimit ? releaseExceededReason : undefined);
-      setReleaseModal(null);
-      load();
-    } catch (err) {
-      setError(err.message || "Failed to release");
-    } finally {
-      setReleaseSubmitting(false);
-    }
-  }
-
   async function saveCompanySettings(e) {
     e.preventDefault();
     const kmVal = parseInt(defaultKmUsage, 10);
@@ -483,6 +365,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
         defaultConsumptionL100km: toNum(defaultConsumptionL100km) ?? undefined,
         priceBenzinePerLiter: toNum(priceBenzinePerLiter) ?? undefined,
         priceDieselPerLiter: toNum(priceDieselPerLiter) ?? undefined,
+        priceHybridPerLiter: toNum(priceHybridPerLiter) ?? undefined,
         priceElectricityPerKwh: toNum(priceElectricityPerKwh) ?? undefined,
       });
       onCompanyUpdated?.();
@@ -491,16 +374,6 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
       setError(err.message || "Failed to save");
     } finally {
       setDefaultKmSaving(false);
-    }
-  }
-
-  async function cancelReservation(id) {
-    if (!confirm("Cancel this reservation?")) return;
-    try {
-      await apiCancelReservation(id);
-      load();
-    } catch (err) {
-      setError(err.message || "Failed to cancel");
     }
   }
 
@@ -538,8 +411,9 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
     if (company?.defaultConsumptionL100km !== undefined) setDefaultConsumptionL100km(company.defaultConsumptionL100km == null ? "" : String(company.defaultConsumptionL100km));
     if (company?.priceBenzinePerLiter !== undefined) setPriceBenzinePerLiter(company.priceBenzinePerLiter == null ? "" : String(company.priceBenzinePerLiter));
     if (company?.priceDieselPerLiter !== undefined) setPriceDieselPerLiter(company.priceDieselPerLiter == null ? "" : String(company.priceDieselPerLiter));
+    if (company?.priceHybridPerLiter !== undefined) setPriceHybridPerLiter(company.priceHybridPerLiter == null ? "" : String(company.priceHybridPerLiter));
     if (company?.priceElectricityPerKwh !== undefined) setPriceElectricityPerKwh(company.priceElectricityPerKwh == null ? "" : String(company.priceElectricityPerKwh));
-  }, [company?.defaultKmUsage, company?.averageFuelPricePerLiter, company?.defaultConsumptionL100km, company?.priceBenzinePerLiter, company?.priceDieselPerLiter, company?.priceElectricityPerKwh]);
+  }, [company?.defaultKmUsage, company?.averageFuelPricePerLiter, company?.defaultConsumptionL100km, company?.priceBenzinePerLiter, company?.priceDieselPerLiter, company?.priceHybridPerLiter, company?.priceElectricityPerKwh]);
 
   async function handleAddCar(e) {
     e.preventDefault();
@@ -556,9 +430,16 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
       const batteryCapacityKwh = batteryCapVal != null && !Number.isNaN(batteryCapVal) && batteryCapVal >= 0 ? batteryCapVal : null;
       const lastServiceVal = addCarLastServiceMileage.trim() === "" ? null : parseInt(addCarLastServiceMileage, 10);
       const lastServiceMileage = lastServiceVal != null && !Number.isNaN(lastServiceVal) && lastServiceVal >= 0 ? lastServiceVal : null;
+      const ymTrim = addCarLastServiceMonth.trim();
+      if (ymTrim && !LAST_SERVICE_YM.test(ymTrim)) {
+        setError("Last service month must be a valid month (year–month).");
+        setSubmitting(false);
+        return;
+      }
+      const lastServiceYearMonth = ymTrim && LAST_SERVICE_YM.test(ymTrim) ? ymTrim : undefined;
       await apiAddCar({
         brand: addCarBrand.trim(),
-        registrationNumber: addCarReg.trim(),
+        registrationNumber: addCarReg.trim().toUpperCase(),
         km: Number(addCarKm) || 0,
         status: addCarStatus,
         fuelType: addCarFuelType,
@@ -567,6 +448,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
         batteryLevel: (addCarFuelType === "Electric" || addCarFuelType === "Hybrid") ? batteryLevel : undefined,
         batteryCapacityKwh: (addCarFuelType === "Electric" || addCarFuelType === "Hybrid") ? batteryCapacityKwh : undefined,
         lastServiceMileage: lastServiceMileage ?? undefined,
+        lastServiceYearMonth,
       });
       setAddCarBrand("");
       setAddCarReg("");
@@ -578,6 +460,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
       setAddCarBatteryLevel("");
       setAddCarBatteryCapacityKwh("");
       setAddCarLastServiceMileage("");
+      setAddCarLastServiceMonth("");
       setShowAddCar(false);
       load();
     } catch (err) {
@@ -662,7 +545,43 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
     }
   }
 
-  const pageMeta = ADMIN_PAGE_META[section] || { title: "Admin", sub: "" };
+  const adminNavGroups = useMemo(
+    () => [
+      {
+        label: t("nav.sections.overview"),
+        items: [
+          { id: "company", label: t("nav.items.company"), icon: <Building2 className={ICON.s} aria-hidden /> },
+          { id: "statistics", label: t("nav.items.statistics"), icon: <BarChart2 className={ICON.s} aria-hidden /> },
+        ],
+      },
+      {
+        label: t("nav.sections.fleet"),
+        items: [
+          { id: "cars", label: t("nav.items.manageCars"), icon: <Car className={ICON.s} aria-hidden /> },
+          { id: "fleetCalendar", label: t("nav.items.fleetCalendar"), icon: <CalendarDays className={ICON.s} aria-hidden /> },
+          { id: "history", label: t("nav.items.history"), icon: <History className={ICON.s} aria-hidden /> },
+          { id: "verifyCode", label: t("nav.items.verifyCode"), icon: <KeyRound className={ICON.s} aria-hidden /> },
+        ],
+      },
+      {
+        label: t("nav.sections.admin"),
+        items: [
+          { id: "users", label: t("nav.items.manageUsers"), icon: <Users className={ICON.s} aria-hidden /> },
+          { id: "invites", label: t("nav.items.invites"), icon: <Mail className={ICON.s} aria-hidden /> },
+          { id: "aiVerification", label: t("nav.items.aiVerification"), icon: <FileScan className={ICON.s} aria-hidden /> },
+          { id: "databaseSettings", label: t("nav.items.databaseSettings"), icon: <Database className={ICON.s} aria-hidden /> },
+          { id: "auditLogs", label: t("nav.items.auditLogs"), icon: <ShieldCheck className={ICON.s} aria-hidden /> },
+        ],
+      },
+    ],
+    [t]
+  );
+
+  const metaKey = ADMIN_PAGE_META_KEYS[section];
+  const pageMeta =
+    metaKey != null
+      ? { title: t(`pageMeta.${metaKey}.title`), sub: t(`pageMeta.${metaKey}.sub`) }
+      : { title: t("nav.sections.admin"), sub: "" };
   const pageSub =
     section === "cars" && dataSourceConfig?.cars != null
       ? `${pageMeta.sub} — ${getProviderLabelWithTable(dataSourceConfig.cars, dataSourceConfig.carsTable)}`
@@ -671,8 +590,8 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
   return (
     <div className="flex h-full w-full min-h-0" style={{ background: "var(--main-bg)" }}>
       <Sidebar user={user} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} viewAs={viewAs} setViewAs={setViewAs}>
-        {ADMIN_NAV_GROUPS.map((group) => (
-          <NavSection key={group.label}>
+        {adminNavGroups.map((group, gi) => (
+          <NavSection key={gi}>
             <NavLabel>{group.label}</NavLabel>
             {group.items.map((s) => (
               <NavItem
@@ -690,13 +609,13 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
         ))}
       </Sidebar>
       <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
-        <header className="fleet-topbar shrink-0 z-10 flex flex-wrap items-center justify-between gap-3 py-3.5 px-4 sm:px-6 md:px-8">
+        <header className="fleet-topbar w-full min-w-0 shrink-0 z-10 flex flex-wrap items-center justify-between gap-3 py-3.5 px-4 sm:px-6 md:px-8">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
               className="md:hidden p-2 rounded-lg bg-slate-100 text-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-slate-200 transition-colors border border-slate-200/80"
-              aria-label="Open menu"
+              aria-label={t("common.openMenu")}
             >
               ☰
             </button>
@@ -706,34 +625,35 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <LanguageCurrencySwitcher variant="light" />
             {company?.joinCode && (
               <span className="join-badge-pill font-medium hidden sm:inline">
-                Join code: <span className="font-mono">{company.joinCode}</span>
+                {t("nav.joinCode")} <span className="font-mono">{company.joinCode}</span>
               </span>
             )}
             {section === "cars" && !dataSourceNotConfigured.cars && (
               <button
                 type="button"
-                onClick={() => setShowAddCar(true)}
+                onClick={() => setShowAddCar((v) => !v)}
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-white px-3.5 py-2 rounded-md shadow-sm transition-colors bg-[var(--primary)] hover:bg-[var(--primary-hover)]"
               >
                 <Plus className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
-                Add car
+                {showAddCar ? t("common.hideForm") : t("common.addCar")}
               </button>
             )}
             {(section === "users" || section === "invites") && !dataSourceNotConfigured.users && (
               <button
                 type="button"
-                onClick={() => setShowAddUser(true)}
+                onClick={() => setShowAddUser((v) => !v)}
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-white px-3.5 py-2 rounded-md shadow-sm transition-colors bg-[var(--primary)] hover:bg-[var(--primary-hover)]"
               >
                 <Plus className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
-                {section === "invites" ? "Invite user" : "Add user"}
+                {showAddUser ? t("common.close") : section === "invites" ? t("common.inviteUser") : t("common.addUser")}
               </button>
             )}
           </div>
         </header>
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-5 sm:p-6 md:px-8 md:pb-8 md:pt-6">
+        <main className="flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-5 sm:p-6 md:px-8 md:pb-8 md:pt-6">
         {company?.joinCode && (
           <p className="mb-4 text-xs text-slate-500 sm:hidden">
             Join code: <code className="font-mono text-slate-800 font-semibold">{company.joinCode}</code>
@@ -788,7 +708,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                 </div>
                 <div className="border-t border-slate-200 pt-4">
                   <p className="text-sm font-semibold text-slate-700 mb-2">Global fuel & electricity pricing (for Statistics)</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-slate-500 mb-1">Benzine (currency/L)</label>
                       <input
@@ -810,6 +730,19 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                         value={priceDieselPerLiter}
                         onChange={(e) => setPriceDieselPerLiter(e.target.value)}
                         placeholder="e.g. 1.45"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Hybrid — ICE (currency/L)</label>
+                      <p className="text-[11px] text-slate-400 mb-1">Liquid fuel part; falls back to Benzine/Diesel if empty.</p>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={priceHybridPerLiter}
+                        onChange={(e) => setPriceHybridPerLiter(e.target.value)}
+                        placeholder="e.g. 1.50"
                         className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
                       />
                     </div>
@@ -946,20 +879,10 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               <div className="bg-white border border-[var(--border-tertiary)] rounded-xl px-4 py-3">
                 <div className="text-[11px] text-slate-500 mb-1">Avg mileage</div>
                 <div className="text-2xl font-semibold text-slate-900">
-                  {averageMileage > 0 ? averageMileage.toLocaleString() : "—"}
+                  {averageMileage > 0 ? formatNumber(averageMileage, { maximumFractionDigits: 0 }) : "—"}
                 </div>
                 <div className="text-[11px] text-slate-500 mt-1">km across fleet</div>
               </div>
-            </div>
-            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-              <div className="flex-1 min-w-0" />
-              <button
-                type="button"
-                onClick={() => setShowAddCar(!showAddCar)}
-                className="px-4 py-2.5 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] shadow-sm transition-colors"
-              >
-                {showAddCar ? "Hide form" : "Add Car"}
-              </button>
             </div>
             <div className="flex flex-wrap gap-3 p-4 mb-4 bg-slate-50 rounded-xl border border-slate-200/80">
               <span className="text-sm font-semibold text-slate-600 self-center">Filters:</span>
@@ -1007,106 +930,169 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               </button>
             </div>
             {showAddCar && (
-              <form onSubmit={handleAddCar} className="flex flex-wrap gap-4 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-100 shadow-sm">
-                <input
-                  type="text"
-                  value={addCarBrand}
-                  onChange={(e) => setAddCarBrand(e.target.value)}
-                  placeholder="Brand"
-                  className="px-3 py-2 border border-slate-200 rounded-xl min-w-[120px] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                  required
-                />
-                <input
-                  type="text"
-                  value={addCarReg}
-                  onChange={(e) => setAddCarReg(e.target.value)}
-                  placeholder="Registration Number"
-                  className="px-3 py-2 border border-slate-200 rounded-xl min-w-[140px] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                  required
-                />
-                <input
-                  type="number"
-                  value={addCarKm}
-                  onChange={(e) => setAddCarKm(e.target.value)}
-                  placeholder="Km"
-                  min={0}
-                  className="px-3 py-2 border border-slate-200 rounded-xl w-24 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                />
-                <select
-                  value={addCarStatus}
-                  onChange={(e) => setAddCarStatus(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                >
-                  <option value="AVAILABLE">Available</option>
-                  <option value="RESERVED">Reserved</option>
-                  <option value="IN_MAINTENANCE">In maintenance</option>
-                </select>
-                <select
-                  value={addCarFuelType}
-                  onChange={(e) => setAddCarFuelType(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                  title="Fuel type"
-                >
-                  <option value="Benzine">Benzine</option>
-                  <option value="Diesel">Diesel</option>
-                  <option value="Electric">Electric</option>
-                  <option value="Hybrid">Hybrid</option>
-                </select>
-                {(addCarFuelType === "Benzine" || addCarFuelType === "Diesel") && (
-                  <input
-                    type="number"
-                    min={0}
-                    max={30}
-                    step={0.1}
-                    value={addCarConsumption}
-                    onChange={(e) => setAddCarConsumption(e.target.value)}
-                    placeholder="L/100km"
-                    className="px-3 py-2 border border-slate-200 rounded-xl w-24 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                  />
-                )}
-                {(addCarFuelType === "Electric" || addCarFuelType === "Hybrid") && (
-                  <>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={addCarBatteryLevel}
-                      onChange={(e) => setAddCarBatteryLevel(e.target.value)}
-                      placeholder="Battery %"
-                      className="px-3 py-2 border border-slate-200 rounded-xl w-24 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.1}
-                      value={addCarBatteryCapacityKwh}
-                      onChange={(e) => setAddCarBatteryCapacityKwh(e.target.value)}
-                      placeholder="Battery capacity (kWh)"
-                      className="px-3 py-2 border border-slate-200 rounded-xl w-36 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.1}
-                      value={addCarConsumptionKwh}
-                      onChange={(e) => setAddCarConsumptionKwh(e.target.value)}
-                      placeholder="kWh/100km"
-                      className="px-3 py-2 border border-slate-200 rounded-xl w-28 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                    />
-                  </>
-                )}
-                <input
-                  type="number"
-                  min={0}
-                  value={addCarLastServiceMileage}
-                  onChange={(e) => setAddCarLastServiceMileage(e.target.value)}
-                  placeholder="Last service km"
-                  className="px-3 py-2 border border-slate-200 rounded-xl w-28 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                  title="Odometer at last service (for maintenance forecast)"
-                />
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm transition-colors">
-                  Save Car
-                </button>
+              <form onSubmit={handleAddCar} className="mb-6 p-4 sm:p-5 bg-slate-50 rounded-xl border border-slate-100 shadow-sm space-y-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Vehicle</p>
+                  <div className="flex flex-wrap gap-3 items-end">
+                    <div className="flex flex-col gap-1 min-w-[120px]">
+                      <label htmlFor="add-car-brand" className="text-xs font-medium text-slate-600">Brand</label>
+                      <input
+                        id="add-car-brand"
+                        type="text"
+                        value={addCarBrand}
+                        onChange={(e) => setAddCarBrand(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 min-w-[140px]">
+                      <label htmlFor="add-car-reg" className="text-xs font-medium text-slate-600">Registration</label>
+                      <input
+                        id="add-car-reg"
+                        type="text"
+                        value={addCarReg}
+                        onChange={(e) => setAddCarReg(e.target.value.toUpperCase())}
+                        className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 w-28">
+                      <label htmlFor="add-car-km" className="text-xs font-medium text-slate-600">Current odometer (km)</label>
+                      <input
+                        id="add-car-km"
+                        type="number"
+                        value={addCarKm}
+                        onChange={(e) => setAddCarKm(e.target.value)}
+                        min={0}
+                        className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 min-w-[130px]">
+                      <label htmlFor="add-car-status" className="text-xs font-medium text-slate-600">Status</label>
+                      <select
+                        id="add-car-status"
+                        value={addCarStatus}
+                        onChange={(e) => setAddCarStatus(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                      >
+                        <option value="AVAILABLE">Available</option>
+                        <option value="RESERVED">Reserved</option>
+                        <option value="IN_MAINTENANCE">In maintenance</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1 min-w-[120px]">
+                      <label htmlFor="add-car-fuel" className="text-xs font-medium text-slate-600">Fuel type</label>
+                      <select
+                        id="add-car-fuel"
+                        value={addCarFuelType}
+                        onChange={(e) => setAddCarFuelType(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                      >
+                        <option value="Benzine">Benzine</option>
+                        <option value="Diesel">Diesel</option>
+                        <option value="Electric">Electric</option>
+                        <option value="Hybrid">Hybrid</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Fuel &amp; efficiency</p>
+                  <div className="flex flex-wrap gap-3 items-end">
+                    {(addCarFuelType === "Benzine" || addCarFuelType === "Diesel") && (
+                      <div className="flex flex-col gap-1 w-28">
+                        <label htmlFor="add-car-l100" className="text-xs font-medium text-slate-600">Consumption (L/100km)</label>
+                        <input
+                          id="add-car-l100"
+                          type="number"
+                          min={0}
+                          max={30}
+                          step={0.1}
+                          value={addCarConsumption}
+                          onChange={(e) => setAddCarConsumption(e.target.value)}
+                          placeholder="e.g. 7.5"
+                          className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                        />
+                      </div>
+                    )}
+                    {(addCarFuelType === "Electric" || addCarFuelType === "Hybrid") && (
+                      <>
+                        <div className="flex flex-col gap-1 w-24">
+                          <label htmlFor="add-car-batt-pct" className="text-xs font-medium text-slate-600">Battery %</label>
+                          <input
+                            id="add-car-batt-pct"
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={addCarBatteryLevel}
+                            onChange={(e) => setAddCarBatteryLevel(e.target.value)}
+                            className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1 min-w-[9rem]">
+                          <label htmlFor="add-car-batt-kwh" className="text-xs font-medium text-slate-600">Battery capacity (kWh)</label>
+                          <input
+                            id="add-car-batt-kwh"
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            value={addCarBatteryCapacityKwh}
+                            onChange={(e) => setAddCarBatteryCapacityKwh(e.target.value)}
+                            className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1 w-32">
+                          <label htmlFor="add-car-kwh100" className="text-xs font-medium text-slate-600">Use (kWh/100km)</label>
+                          <input
+                            id="add-car-kwh100"
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            value={addCarConsumptionKwh}
+                            onChange={(e) => setAddCarConsumptionKwh(e.target.value)}
+                            className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Service &amp; maintenance</p>
+                  <p className="text-xs text-slate-500 mb-3 max-w-2xl">
+                    For <strong className="text-slate-700">Benzine / Diesel / Hybrid</strong>, we flag an <strong className="text-slate-700">oil change</strong> when the odometer has moved more than <strong className="text-slate-700">10,000 km</strong> since the last service reading.
+                    For <strong className="text-slate-700">Electric</strong>, we suggest a <strong className="text-slate-700">battery check</strong> when the car has mileage recorded. Use the month of the last workshop visit and the odometer reading from that visit if you have them.
+                  </p>
+                  <div className="flex flex-wrap gap-3 items-end">
+                    <div className="flex flex-col gap-1 min-w-[11rem]">
+                      <label htmlFor="add-car-svc-month" className="text-xs font-medium text-slate-600">Last service (month &amp; year)</label>
+                      <input
+                        id="add-car-svc-month"
+                        type="month"
+                        value={addCarLastServiceMonth}
+                        onChange={(e) => setAddCarLastServiceMonth(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 w-36">
+                      <label htmlFor="add-car-svc-km" className="text-xs font-medium text-slate-600">Odometer at last service (km)</label>
+                      <input
+                        id="add-car-svc-km"
+                        type="number"
+                        min={0}
+                        value={addCarLastServiceMileage}
+                        onChange={(e) => setAddCarLastServiceMileage(e.target.value)}
+                        placeholder="Optional"
+                        className="px-3 py-2 border border-slate-200 rounded-xl focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3 items-center">
+                  <button type="submit" disabled={submitting} className="px-4 py-2.5 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm transition-colors">
+                    Save car
+                  </button>
+                </div>
               </form>
             )}
             <div className="w-full overflow-x-auto rounded-xl border border-slate-200/80 shadow-sm">
@@ -1133,19 +1119,48 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                         <td className="py-4 px-4">{c.brand}</td>
                         <td className="py-4 px-4">{c.registrationNumber}</td>
                         <td className="py-4 px-4"><FuelTypeBadge fuelType={c.fuelType} /></td>
-                        <td className="py-4 px-4">{c.km ?? 0}</td>
+                        <td className="py-4 px-4">{formatNumber(c.km ?? 0, { maximumFractionDigits: 0 })}</td>
                         <td className="py-4 px-4">
                           {(c.fuelType === "Electric" || c.fuelType === "Hybrid")
-                            ? (c.averageConsumptionKwh100km != null ? `${c.averageConsumptionKwh100km} kWh/100km` : "—")
+                            ? (c.averageConsumptionKwh100km != null
+                              ? `${formatNumber(c.averageConsumptionKwh100km, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} kWh/100km`
+                              : "—")
                             : <CarConsumptionCell car={c} onUpdated={load} />}
                         </td>
                         <td className="py-4 px-4">
                           {service.need ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200" title={service.since != null ? `${service.since} km since last service` : ""}>
-                              {service.type} due
+                            <span
+                              className="inline-flex flex-col gap-0.5 items-start"
+                              title={[
+                                service.since != null ? `${formatNumber(service.since, { maximumFractionDigits: 0 })} km since last recorded service` : null,
+                                formatLastServiceYearMonth(c.lastServiceYearMonth),
+                                c.lastServiceMileage != null ? `Last service odometer: ${formatNumber(c.lastServiceMileage, { maximumFractionDigits: 0 })} km` : null,
+                              ].filter(Boolean).join(" · ")}
+                            >
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                                {service.type} due
+                              </span>
+                              {(formatLastServiceYearMonth(c.lastServiceYearMonth) || c.lastServiceMileage != null) && (
+                                <span className="text-[11px] text-slate-500 max-w-[14rem] leading-snug">
+                                  {[
+                                    formatLastServiceYearMonth(c.lastServiceYearMonth),
+                                    c.lastServiceMileage != null ? `@ ${formatNumber(c.lastServiceMileage, { maximumFractionDigits: 0 })} km` : null,
+                                  ].filter(Boolean).join(" ")}
+                                </span>
+                              )}
                             </span>
                           ) : (
-                            <span className="text-slate-500 text-sm">—</span>
+                            (() => {
+                              const parts = [
+                                formatLastServiceYearMonth(c.lastServiceYearMonth),
+                                c.lastServiceMileage != null ? `${formatNumber(c.lastServiceMileage, { maximumFractionDigits: 0 })} km at last service` : null,
+                              ].filter(Boolean);
+                              return parts.length > 0 ? (
+                                <span className="text-slate-600 text-sm leading-snug">{parts.join(" · ")}</span>
+                              ) : (
+                                <span className="text-slate-400 text-sm">—</span>
+                              );
+                            })()
                           )}
                         </td>
                         <td className="py-4 px-4">
@@ -1162,8 +1177,18 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                         <td className="py-4 px-4">
                           {activeRes ? (
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center px-2 py-1 rounded-lg bg-[#1E293B]/10 text-[#1E293B] font-mono text-sm font-semibold tabular-nums" title="Start rental">{activeRes.pickup_code ?? "—"}</span>
-                              <span className="inline-flex items-center px-2 py-1 rounded-lg bg-[#1E293B]/10 text-[#1E293B] font-mono text-sm font-semibold tabular-nums" title="End rental">{activeRes.release_code ?? "—"}</span>
+                              <span className={ACCESS_CODE_SLOT_CLASS} title="Start rental">
+                                {activeRes.pickup_code != null ? activeRes.pickup_code : <span className="text-slate-400">—</span>}
+                              </span>
+                              {activeRes.pickup_code != null && (
+                                <AccessCodeQRButton code={activeRes.pickup_code} label="QR start" />
+                              )}
+                              <span className={ACCESS_CODE_SLOT_CLASS} title="End rental">
+                                {activeRes.release_code != null ? activeRes.release_code : <span className="text-slate-400">—</span>}
+                              </span>
+                              {activeRes.release_code != null && (
+                                <AccessCodeQRButton code={activeRes.release_code} label="QR end" />
+                              )}
                               <button
                                 type="button"
                                 onClick={() => handleRefreshCodes(activeRes.id)}
@@ -1196,6 +1221,29 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               </table>
             </div>
             </>
+            )}
+          </section>
+        )}
+
+        {section === "fleetCalendar" && (
+          <section className="w-full min-w-0 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Fleet calendar</h2>
+              <p className="text-sm text-slate-600 mb-4 max-w-3xl">
+                Week or day view lists each vehicle; blocks show who booked the car. Empty space means the car has no reservation in that period (subject to company rules).
+              </p>
+            </div>
+            {dataSourceNotConfigured.reservations ? (
+              <DataSourceNotConfiguredEmptyState layerLabel="Reservations" className="min-h-[200px] shrink-0" />
+            ) : loading ? (
+              <p className="text-slate-500 shrink-0">Loading…</p>
+            ) : (
+              <FleetBookingCalendar
+                reservations={reservations}
+                cars={cars}
+                variant="fleet"
+                className="flex-1 min-h-0"
+              />
             )}
           </section>
         )}
@@ -1269,13 +1317,6 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                   Source: {getProviderLabelWithTable(dataSourceConfig.users, dataSourceConfig.usersTable)}
                 </span>
               )}
-              <button
-                type="button"
-                onClick={() => setShowAddUser(true)}
-                className="px-4 py-2.5 min-h-[44px] bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] flex items-center gap-2 shadow-sm transition-colors"
-              >
-                Add User
-              </button>
             </div>
             {dataSourceNotConfigured.users ? (
               <DataSourceNotConfiguredEmptyState layerLabel="Users" className="min-h-[200px]" />
@@ -1352,7 +1393,11 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                       <td className="py-4 px-4">{m.email}</td>
                       <td className="py-4 px-4">{m.name}</td>
                       <td className="py-4 px-4">
-                        <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${m.role === "ADMIN" ? "bg-slate-600 text-white" : "bg-[var(--primary)]/90 text-white"}`}>
+                        <span
+                          className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${
+                            m.role === "ADMIN" ? "bg-blue-900 text-white" : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
                           {m.role}
                         </span>
                       </td>
@@ -1383,7 +1428,11 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                           <button
                             type="button"
                             onClick={() => handleRoleChange(m.userId, m.role === "ADMIN" ? "USER" : "ADMIN")}
-                            className="px-3 py-2 min-h-[44px] sm:min-h-0 bg-slate-600 text-white text-sm font-semibold rounded-xl hover:bg-slate-700 shadow-sm transition-colors"
+                            className={`px-3 py-2 min-h-[44px] sm:min-h-0 text-sm font-semibold rounded-xl shadow-sm transition-colors ${
+                              m.role === "ADMIN"
+                                ? "bg-blue-100 text-blue-900 hover:bg-blue-200"
+                                : "bg-blue-900 text-white hover:bg-blue-950"
+                            }`}
                           >
                             {m.role === "ADMIN" ? "Set User" : "Set Admin"}
                           </button>
@@ -1468,8 +1517,8 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
             ) : (
             <>
             <p className="text-sm text-slate-500 mb-4">All reservations in your company.</p>
-            <div className="flex flex-wrap gap-3 p-4 mb-4 bg-slate-50 rounded-xl border border-slate-200/80">
-              <span className="text-sm font-semibold text-slate-600 self-center">Filters:</span>
+            <div className="flex flex-wrap gap-x-3 gap-y-3 p-4 mb-4 bg-slate-50 rounded-xl border border-slate-200/80 items-end">
+              <span className="text-sm font-semibold text-slate-600 pb-2">Filters:</span>
               <input
                 type="text"
                 placeholder="Car (brand or reg.)"
@@ -1484,20 +1533,34 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                 onChange={(e) => setHistoryFilterUser(e.target.value)}
                 className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[140px] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
               />
-              <input
-                type="date"
-                placeholder="From date"
-                value={historyFilterDateFrom}
-                onChange={(e) => setHistoryFilterDateFrom(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
-              />
-              <input
-                type="date"
-                placeholder="To date"
-                value={historyFilterDateTo}
-                onChange={(e) => setHistoryFilterDateTo(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
-              />
+              <div className="flex flex-col gap-1 min-w-[11rem]">
+                <label htmlFor="history-filter-date-from" className="text-xs font-semibold text-slate-700 leading-tight">
+                  Reservation start — earliest day
+                </label>
+                <span className="text-[11px] text-slate-500 leading-snug">Include trips whose “Reserved at” date is this day or later</span>
+                <input
+                  id="history-filter-date-from"
+                  type="date"
+                  value={historyFilterDateFrom}
+                  onChange={(e) => setHistoryFilterDateFrom(e.target.value)}
+                  title="Lower bound for the reservation start date (Reserved at column)"
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-1 min-w-[11rem]">
+                <label htmlFor="history-filter-date-to" className="text-xs font-semibold text-slate-700 leading-tight">
+                  Reservation start — latest day
+                </label>
+                <span className="text-[11px] text-slate-500 leading-snug">Include trips whose “Reserved at” date is this day or earlier</span>
+                <input
+                  id="history-filter-date-to"
+                  type="date"
+                  value={historyFilterDateTo}
+                  onChange={(e) => setHistoryFilterDateTo(e.target.value)}
+                  title="Upper bound for the reservation start date (Reserved at column)"
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-ring)] outline-none"
+                />
+              </div>
               <select
                 value={historyFilterStatus}
                 onChange={(e) => setHistoryFilterStatus(e.target.value)}
@@ -1557,18 +1620,28 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
                         }`}>{r.status}</span>
                       </td>
                       <td className="py-4 px-4">
-                        {r.pickup_code != null || r.release_code != null ? (
-                          <span className="inline-flex items-center gap-1.5 font-mono text-sm tabular-nums">
-                            <span className="px-2 py-0.5 rounded bg-[#1E293B]/10 text-[#1E293B] font-semibold" title="Start rental">{r.pickup_code ?? "—"}</span>
-                            <span className="text-slate-300">/</span>
-                            <span className="px-2 py-0.5 rounded bg-[#1E293B]/10 text-[#1E293B] font-semibold" title="End rental">{r.release_code ?? "—"}</span>
-                          </span>
+                        {r.pickup_code != null || r.release_code != null || (r.status || "").toLowerCase() === "active" ? (
+                          <div className="flex flex-col gap-2 items-start">
+                            <span className="inline-flex flex-wrap items-center gap-1.5 font-mono text-sm tabular-nums">
+                              <span className={ACCESS_CODE_SLOT_CLASS} title="Start rental">
+                                {r.pickup_code != null ? r.pickup_code : <span className="text-slate-400">—</span>}
+                              </span>
+                              <span className="text-slate-300">/</span>
+                              <span className={ACCESS_CODE_SLOT_CLASS} title="End rental">
+                                {r.release_code != null ? r.release_code : <span className="text-slate-400">—</span>}
+                              </span>
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {r.pickup_code != null && <AccessCodeQRButton code={r.pickup_code} label="QR start" />}
+                              {r.release_code != null && <AccessCodeQRButton code={r.release_code} label="QR end" />}
+                            </div>
+                          </div>
                         ) : (
                           <span className="text-slate-400 text-sm">—</span>
                         )}
                       </td>
                       <td className="py-4 px-4">
-                        {(r.status || "").toLowerCase() === "active" && (r.pickup_code != null || r.release_code != null) ? (
+                        {(r.status || "").toLowerCase() === "active" ? (
                           <button
                             type="button"
                             onClick={() => handleRefreshCodes(r.id)}
@@ -1594,80 +1667,6 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
           </section>
         )}
 
-        {section === "myReservations" && (
-          <section className="w-full min-w-0">
-            <div className="flex flex-wrap items-center gap-3 mb-6">
-              <h2 className="text-2xl font-bold text-slate-800">My Reservations</h2>
-              {dataSourceConfig?.reservations != null && (
-                <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                  Source: {getProviderLabelWithTable(dataSourceConfig.reservations, dataSourceConfig.reservationsTable)}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => openReserve()}
-                className="px-4 py-2.5 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] shadow-sm transition-colors"
-              >
-                Reserve a car
-              </button>
-            </div>
-            {dataSourceNotConfigured.reservations ? (
-              <DataSourceNotConfiguredEmptyState layerLabel="Reservations" className="min-h-[200px]" />
-            ) : (
-            <div className="w-full overflow-hidden rounded-xl border border-slate-200/80 shadow-sm">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-slate-50 text-left">
-                    <th className="py-4 px-4 font-semibold text-slate-700">Car</th>
-                    <th className="py-4 px-4 font-semibold text-slate-700">Reserved at</th>
-                    <th className="py-4 px-4 font-semibold text-slate-700">Status</th>
-                    <th className="py-4 px-4 font-semibold text-slate-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="text-slate-800">
-                  {myReservations.map((r) => (
-                    <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
-                      <td className="py-4 px-4">{r.car?.brand} {r.car?.registrationNumber}</td>
-                      <td className="py-4 px-4">{formatDate(r.startDate)}</td>
-                      <td className="py-4 px-4">
-                        <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${
-                          (r.status || "").toLowerCase() === "active" ? "bg-emerald-100 text-emerald-800" :
-                          (r.status || "").toLowerCase() === "completed" ? "bg-[var(--primary)]/10 text-[var(--primary)]" :
-                          "bg-red-100 text-red-800"
-                        }`}>{r.status}</span>
-                      </td>
-                      <td className="py-4 px-4 flex gap-2">
-                        {(r.status || "").toLowerCase() === "active" && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => openReleaseModal(r)}
-                              className="px-3 py-1.5 bg-[var(--primary)] text-white text-sm font-semibold rounded-xl hover:bg-[var(--primary-hover)] shadow-sm transition-colors"
-                            >
-                              Release
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => cancelReservation(r.id)}
-                              className="px-3 py-1.5 bg-red-600 text-white text-sm font-semibold rounded-xl hover:bg-red-700 shadow-sm transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {myReservations.length === 0 && !loading && (
-                    <tr><td colSpan={4} className="py-10 px-4 text-center text-slate-500">No reservations. Reserve a car above.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            )}
-          </section>
-        )}
-
         {section === "aiVerification" && (() => {
           const aiUsers = users.filter((m) => m.drivingLicenceVerifiedBy === "AI");
           const aiApproved = aiUsers.filter((m) => m.drivingLicenceStatus === "APPROVED");
@@ -1675,10 +1674,23 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
           return (
           <section className="w-full min-w-0">
             <div className="mb-8 p-5 sm:p-6 rounded-xl bg-[#1E293B] text-white border border-slate-600/50 shadow-sm">
-              <h2 className="text-xl font-bold text-white mb-1">AI Verification</h2>
-              <p className="text-sm text-slate-300">
-                Driving licences verified by the Gemini AI. Admin can override any AI decision.
-              </p>
+              <div className="flex items-start gap-4">
+                <div
+                  className="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center border border-cyan-400/25 shadow-inner"
+                  style={{
+                    background: "linear-gradient(145deg, rgba(34,211,238,0.22) 0%, rgba(139,92,246,0.2) 100%)",
+                  }}
+                  aria-hidden
+                >
+                  <FileScan className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-100" strokeWidth={1.75} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-xl font-bold text-white mb-1">AI Verification</h2>
+                  <p className="text-sm text-slate-300">
+                    Licence photos are scanned and checked by Gemini. You can always approve or reject manually below.
+                  </p>
+                </div>
+              </div>
               <div className="flex gap-4 mt-3">
                 <span className="px-3 py-1 rounded-lg bg-emerald-600/20 text-emerald-300 text-sm font-semibold">{aiApproved.length} Approved</span>
                 <span className="px-3 py-1 rounded-lg bg-red-600/20 text-red-300 text-sm font-semibold">{aiRejected.length} Rejected</span>
@@ -1760,56 +1772,6 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
         </main>
       </div>
 
-      {/* Release car – new km (odometer) + reason if exceeded */}
-      {releaseModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 border border-slate-100">
-            <h3 className="text-lg font-semibold text-slate-800 mb-2">Release car</h3>
-            <p className="text-sm text-slate-500 mb-4">
-              {releaseModal.car?.brand} {releaseModal.car?.registrationNumber}
-              {releaseCurrentKm != null && (
-                <span className="block mt-1">Last known odometer (cannot go below this): {releaseCurrentKm} km</span>
-              )}
-            </p>
-            <form onSubmit={submitRelease} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-600 mb-1">Current odometer (must be ≥ {releaseCurrentKm} km)</label>
-                <input
-                  type="number"
-                  min={releaseCurrentKm}
-                  step={1}
-                  value={releaseNewKm}
-                  onChange={(e) => setReleaseNewKm(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                  placeholder={String(releaseCurrentKm)}
-                  required
-                />
-                {releaseKmUsed != null && releaseKmUsed >= 0 && (
-                  <p className="text-xs text-slate-500 mt-1">Km used: {releaseKmUsed} km {defaultKm != null && releaseKmUsed > defaultKm && "(exceeds company limit of " + defaultKm + " km)"}</p>
-                )}
-              </div>
-              {releaseExceedsLimit && (
-                <div>
-                  <label className="block text-sm font-semibold text-slate-600 mb-1">Reason for exceeding company limit (required)</label>
-                  <textarea
-                    value={releaseExceededReason}
-                    onChange={(e) => setReleaseExceededReason(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                    placeholder="Why did you exceed the allowed km?"
-                    rows={3}
-                    required
-                  />
-                </div>
-              )}
-              <div className="flex gap-2 justify-end">
-                <button type="button" onClick={() => setReleaseModal(null)} className="px-4 py-2 bg-slate-100 text-slate-800 font-semibold rounded-xl hover:bg-slate-200 transition-colors">Cancel</button>
-                <button type="submit" disabled={releaseSubmitting} className="px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm transition-colors">{releaseSubmitting ? "Releasing…" : "Release"}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Driving licence image modal */}
       {dlImageModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setDlImageModal(null)}>
@@ -1819,47 +1781,6 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
               <button type="button" onClick={() => setDlImageModal(null)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors" aria-label="Close">✕</button>
             </div>
             <img src={dlImageModal} alt="Driving licence" className="w-full h-auto rounded-xl border border-slate-200" />
-          </div>
-        </div>
-      )}
-
-      {/* Reserve car modal */}
-      {showReserveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-100">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-slate-800">Reserve a car</h3>
-              <button type="button" onClick={() => { setShowReserveModal(false); setReserveCar(null); }} className="text-2xl text-slate-500 hover:text-slate-800 transition-colors">&times;</button>
-            </div>
-            <form onSubmit={handleReserve} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-600 mb-1">Car</label>
-                {reserveCar ? (
-                  <p className="py-2 text-slate-800">{reserveCar.brand} {reserveCar.registrationNumber}</p>
-                ) : (
-                  <select
-                    value={reserveCarId}
-                    onChange={(e) => setReserveCarId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
-                    required
-                  >
-                    <option value="">Select car</option>
-                    {availableCars.map((c) => (
-                      <option key={c.id} value={c.id}>{c.brand} {c.registrationNumber}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-600 mb-1">Purpose (optional)</label>
-                <input type="text" value={reservePurpose} onChange={(e) => setReservePurpose(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none" placeholder="e.g. Client visit" />
-              </div>
-              <p className="text-xs text-slate-500">The car will be reserved instantly until you release it.</p>
-              <div className="flex gap-2 justify-end pt-2">
-                <button type="button" onClick={() => { setShowReserveModal(false); setReserveCar(null); }} className="px-4 py-2 bg-slate-100 text-slate-800 font-semibold rounded-xl hover:bg-slate-200 transition-colors">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm transition-colors">{submitting ? "Reserving…" : "Reserve"}</button>
-              </div>
-            </form>
           </div>
         </div>
       )}

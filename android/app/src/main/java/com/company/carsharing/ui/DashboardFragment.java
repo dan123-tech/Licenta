@@ -53,7 +53,7 @@ public class DashboardFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setToolbarTitle("Dashboard");
+            ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.nav_dashboard));
         }
         loadStats();
     }
@@ -86,8 +86,8 @@ public class DashboardFragment extends Fragment {
             }
             @Override
             public void onFailure(@NonNull Call<List<Car>> call, @NonNull Throwable t) {
-                totalCarsView.setText("—");
-                availableCarsView.setText("—");
+                totalCarsView.setText(getString(R.string.em_dash));
+                availableCarsView.setText(getString(R.string.em_dash));
             }
         });
 
@@ -104,7 +104,7 @@ public class DashboardFragment extends Fragment {
             }
             @Override
             public void onFailure(@NonNull Call<List<Reservation>> call, @NonNull Throwable t) {
-                activeReservationsView.setText("—");
+                activeReservationsView.setText(getString(R.string.em_dash));
             }
         });
 
@@ -117,7 +117,7 @@ public class DashboardFragment extends Fragment {
             }
             @Override
             public void onFailure(@NonNull Call<List<Member>> call, @NonNull Throwable t) {
-                if (totalUsersView.getText().toString().equals("—")) totalUsersView.setText("0");
+                if (totalUsersView.getText().toString().equals(getString(R.string.em_dash))) totalUsersView.setText("0");
             }
         });
     }

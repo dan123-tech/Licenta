@@ -54,23 +54,23 @@ public class RegisterActivity extends AppCompatActivity {
         String confirm = binding.confirmPassword.getText() != null ? binding.confirmPassword.getText().toString() : "";
 
         if (name.isEmpty()) {
-            showError("Please enter your name");
+            showError(getString(R.string.register_name_required));
             return;
         }
         if (email.isEmpty()) {
-            showError("Please enter your email");
+            showError(getString(R.string.register_email_required));
             return;
         }
         if (password.isEmpty()) {
-            showError("Please enter a password");
+            showError(getString(R.string.register_password_required));
             return;
         }
         if (password.length() < 8) {
-            showError("Password must be at least 8 characters");
+            showError(getString(R.string.register_password_min));
             return;
         }
         if (!password.equals(confirm)) {
-            showError("Passwords do not match");
+            showError(getString(R.string.register_passwords_mismatch));
             return;
         }
 
@@ -88,7 +88,7 @@ public class RegisterActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     binding.progress.setVisibility(View.GONE);
                     binding.buttonRegister.setEnabled(true);
-                    Toast.makeText(RegisterActivity.this, "Account created. Please log in.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(RegisterActivity.this, getString(R.string.account_created_login), Toast.LENGTH_LONG).show();
                     startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
                     finish();
                 });
@@ -99,7 +99,7 @@ public class RegisterActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     binding.progress.setVisibility(View.GONE);
                     binding.buttonRegister.setEnabled(true);
-                    showError(message != null ? message : "Registration failed");
+                    showError(message != null ? message : getString(R.string.registration_failed));
                 });
             }
         });

@@ -33,7 +33,15 @@ export async function GET() {
                 schema: {
                   type: "object",
                   required: ["email", "password"],
-                  properties: { email: { type: "string", format: "email" }, password: { type: "string" } },
+                  properties: {
+                    email: { type: "string", format: "email" },
+                    password: { type: "string" },
+                    clientType: {
+                      type: "string",
+                      enum: ["web", "mobile"],
+                      description: "Session channel; default web. New login revokes other sessions on the same channel only.",
+                    },
+                  },
                 },
               },
             },

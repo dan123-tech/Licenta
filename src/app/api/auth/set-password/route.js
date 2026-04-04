@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import { getInviteByToken, acceptInvite, findUserByEmail } from "@/lib/users";
-import { hashPassword, setSession } from "@/lib/auth";
+import { hashPassword, createUserSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 
@@ -51,7 +51,7 @@ export async function POST(request) {
   const member = await acceptInvite(token, user.id);
   if (!member) return errorResponse("Could not enroll", 400);
 
-  await setSession(
+  const webSessionId = await createUserSession(
     {
       userId: user.id,
       email: user.email,
@@ -59,11 +59,13 @@ export async function POST(request) {
       companyId: member.companyId,
       role: member.role,
     },
+    "web",
     request
   );
 
   return jsonResponse({
     user: { id: user.id, email: user.email, name: user.name, role: member.role, companyId: member.companyId },
     company: { id: member.company.id, name: member.company.name },
+    webSessionId,
   });
 }

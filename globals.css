@@ -148,7 +148,9 @@ body {
 .fleet-topbar {
   background: var(--card-bg);
   border-bottom: 1px solid var(--border-tertiary);
-  height: var(--topbar-height);
+  min-height: var(--topbar-height);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ─── Tables ──────────────────────────────────────────────── */

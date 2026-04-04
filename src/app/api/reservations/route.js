@@ -152,7 +152,13 @@ export async function POST(request) {
       const end = new Date(endDate);
       if (end <= start) return errorResponse("End must be after start", 422);
       reservation = await createReservation(out.session.userId, carId, start, end, purpose);
-      await updateCar(carId, reservation.car.companyId, { status: "RESERVED" });
+      // Future time-window bookings must not flip the car to RESERVED immediately; the car stays
+      // AVAILABLE until the slot starts so others can book non-overlapping periods (e.g. 12–14
+      // while another user has 14–15). Instant bookings still set RESERVED above.
+      const now = Date.now();
+      if (start.getTime() <= now) {
+        await updateCar(carId, reservation.car.companyId, { status: "RESERVED" });
+      }
     }
     await writeAuditLog({
       companyId: out.session.companyId,

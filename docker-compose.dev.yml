@@ -1,0 +1,46 @@
+# Development overlay: mount the repo into the app container so edits on your machine
+# apply immediately (Next.js hot reload). No need to rebuild after changing src/, etc.
+#
+# Usage (from repo root):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Or: npm run docker:dev
+#
+# First start may take a minute (npm install into the volume). Later starts are faster.
+# If you change package.json, run: docker compose -f docker-compose.yml -f docker-compose.dev.yml exec app npm install --legacy-peer-deps
+# Or remove the volume: docker volume rm licenta_dani-main_app_dev_node_modules (name may differ; use docker volume ls)
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Your working copy (includes all modifications)
+      - .:/app
+      # Linux modules inside the container (do not use Windows host node_modules)
+      - app_dev_node_modules:/app/node_modules
+      - app_dev_next:/app/.next
+      # Keep same upload volume as production compose
+      - uploads_data:/app/public/uploads
+    environment:
+      NODE_ENV: development
+      # File watching when using Docker Desktop on Windows/macOS
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        if [ ! -d node_modules/next ]; then
+          echo "[dev] Installing dependencies..."
+          npm install --legacy-peer-deps
+        fi
+        npx prisma generate
+        npx prisma migrate deploy
+        exec npm run dev
+
+volumes:
+  app_dev_node_modules:
+  app_dev_next:

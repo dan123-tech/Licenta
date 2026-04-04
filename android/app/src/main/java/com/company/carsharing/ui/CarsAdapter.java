@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat;
 
 import com.company.carsharing.R;
 import com.company.carsharing.models.Car;
+import com.company.carsharing.util.I18n;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,18 +52,21 @@ public class CarsAdapter extends BaseAdapter {
         }
         Car car = cars.get(position);
         TextView title = row.findViewById(R.id.car_title);
+        TextView fuel = row.findViewById(R.id.car_fuel);
         TextView status = row.findViewById(R.id.car_status);
         TextView subtitle = row.findViewById(R.id.car_subtitle);
         title.setText(car.getBrand() + (car.getModel() != null && !car.getModel().isEmpty() ? " " + car.getModel() : ""));
+        FuelTypeUi.styleFuelChip(fuel, car.getFuelType());
         String statusStr = car.getStatus() != null ? car.getStatus() : "";
-        status.setText(statusStr);
+        status.setText(I18n.carStatus(context, statusStr));
         int statusColor = ContextCompat.getColor(context, com.company.carsharing.R.color.on_surface_variant);
         if ("AVAILABLE".equalsIgnoreCase(statusStr)) statusColor = ContextCompat.getColor(context, com.company.carsharing.R.color.status_available);
         else if ("RESERVED".equalsIgnoreCase(statusStr)) statusColor = ContextCompat.getColor(context, com.company.carsharing.R.color.status_reserved);
         else if ("IN_MAINTENANCE".equalsIgnoreCase(statusStr)) statusColor = ContextCompat.getColor(context, com.company.carsharing.R.color.status_maintenance);
         status.setBackgroundColor(statusColor);
         status.setTextColor(android.graphics.Color.WHITE);
-        String sub = (car.getRegistrationNumber() != null ? car.getRegistrationNumber() : "") + " · " + car.getKm() + " km";
+        String sub = (car.getRegistrationNumber() != null ? car.getRegistrationNumber() : "") + " · "
+                + context.getString(R.string.km_suffix_fmt, car.getKm());
         if (car.getAverageConsumptionL100km() != null) sub += " · " + car.getAverageConsumptionL100km() + " L/100km";
         subtitle.setText(sub);
         row.findViewById(R.id.car_edit).setOnClickListener(v -> listener.onEdit(car));

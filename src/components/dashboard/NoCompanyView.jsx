@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { apiCreateCompany, apiJoinCompany } from "@/lib/api";
+import { useI18n } from "@/i18n/I18nProvider";
 
 export default function NoCompanyView({ onJoined }) {
+  const { t } = useI18n();
   const [createName, setCreateName] = useState("");
   const [createDomain, setCreateDomain] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -18,7 +20,7 @@ export default function NoCompanyView({ onJoined }) {
     setLoading(true);
     try {
       await apiCreateCompany(createName.trim(), createDomain.trim() || null);
-      setSuccess("Company created. You are the admin.");
+      setSuccess(t("noCompany.successCreate"));
       setCreateName("");
       setCreateDomain("");
       onJoined?.();
@@ -36,7 +38,7 @@ export default function NoCompanyView({ onJoined }) {
     setLoading(true);
     try {
       await apiJoinCompany(joinCode.trim());
-      setSuccess("You have joined the company.");
+      setSuccess(t("noCompany.successJoin"));
       setJoinCode("");
       onJoined?.();
     } catch (err) {
@@ -48,8 +50,8 @@ export default function NoCompanyView({ onJoined }) {
 
   return (
     <div className="max-w-2xl mx-auto py-12 px-6 sm:px-8">
-      <h1 className="text-2xl font-bold text-slate-800 mb-2">Welcome</h1>
-      <p className="text-slate-500 mb-8">Create a company or join one with a code.</p>
+      <h1 className="text-2xl font-bold text-slate-800 mb-2">{t("noCompany.title")}</h1>
+      <p className="text-slate-500 mb-8">{t("noCompany.subtitle")}</p>
 
       {error && (
         <div className="mb-6 p-3 rounded-xl bg-red-50 text-red-700 border border-red-100 text-sm">
@@ -64,10 +66,10 @@ export default function NoCompanyView({ onJoined }) {
 
       <div className="grid gap-8 md:grid-cols-2">
         <div className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] p-6 border border-slate-100/80">
-          <h2 className="text-lg font-semibold text-slate-800 mb-4">Create a company</h2>
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">{t("noCompany.createHeading")}</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-600 mb-1">Company name</label>
+              <label className="block text-sm font-semibold text-slate-600 mb-1">{t("noCompany.companyName")}</label>
               <input
                 type="text"
                 value={createName}
@@ -78,7 +80,7 @@ export default function NoCompanyView({ onJoined }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-600 mb-1">Domain (optional)</label>
+              <label className="block text-sm font-semibold text-slate-600 mb-1">{t("noCompany.domainOptional")}</label>
               <input
                 type="text"
                 value={createDomain}
@@ -92,16 +94,16 @@ export default function NoCompanyView({ onJoined }) {
               disabled={loading}
               className="w-full py-2.5 bg-[var(--primary)] text-white font-semibold rounded-xl hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm transition-colors"
             >
-              {loading ? "Creating…" : "Create company"}
+              {loading ? t("noCompany.creating") : t("noCompany.createCompany")}
             </button>
           </form>
         </div>
 
         <div className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] p-6 border border-slate-100/80">
-          <h2 className="text-lg font-semibold text-slate-800 mb-4">Join with a code</h2>
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">{t("noCompany.joinHeading")}</h2>
           <form onSubmit={handleJoin} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-600 mb-1">Join code</label>
+              <label className="block text-sm font-semibold text-slate-600 mb-1">{t("noCompany.joinCode")}</label>
               <input
                 type="text"
                 value={joinCode}
@@ -116,7 +118,7 @@ export default function NoCompanyView({ onJoined }) {
               disabled={loading}
               className="w-full py-2.5 bg-slate-600 text-white font-semibold rounded-xl hover:bg-slate-700 disabled:opacity-50 shadow-sm transition-colors"
             >
-              {loading ? "Joining…" : "Join company"}
+              {loading ? t("noCompany.joining") : t("noCompany.joinCompany")}
             </button>
           </form>
         </div>

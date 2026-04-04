@@ -12,10 +12,16 @@ import { requireCompany, requireAdmin, jsonResponse, errorResponse, dataSourceNo
 import { writeAuditLog } from "@/lib/audit";
 
 const FUEL_TYPES = ["Benzine", "Diesel", "Electric", "Hybrid"];
+const YEAR_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const patchSchema = z.object({
   brand: z.string().min(1).max(100).optional(),
   model: z.string().max(100).optional().nullable(),
-  registrationNumber: z.string().min(1).max(50).optional(),
+  registrationNumber: z
+    .string()
+    .min(1)
+    .max(50)
+    .transform((s) => s.trim().toUpperCase())
+    .optional(),
   km: z.number().int().min(0).optional(),
   status: z.enum(["AVAILABLE", "RESERVED", "IN_MAINTENANCE"]).optional(),
   fuelType: z.enum(FUEL_TYPES).optional(),
@@ -24,6 +30,10 @@ const patchSchema = z.object({
   batteryLevel: z.union([z.number().min(0).max(100).int(), z.null()]).optional(),
   batteryCapacityKwh: z.union([z.number().min(0).max(500), z.null()]).optional(),
   lastServiceMileage: z.union([z.number().int().min(0), z.null()]).optional(),
+  lastServiceYearMonth: z.preprocess(
+    (v) => (v === "" || v === undefined ? undefined : v === null ? null : String(v).trim()),
+    z.union([z.null(), z.string().regex(YEAR_MONTH)]).optional(),
+  ),
 });
 
 export async function GET(_request, { params }) {
@@ -71,6 +81,7 @@ export async function GET(_request, { params }) {
     batteryLevel: car.batteryLevel ?? null,
     batteryCapacityKwh: car.batteryCapacityKwh ?? null,
     lastServiceMileage: car.lastServiceMileage ?? null,
+    lastServiceYearMonth: car.lastServiceYearMonth ?? null,
     ...(canSeeHistory && {
       reservations: car.reservations.map((r) => ({
         id: r.id,

@@ -108,7 +108,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             android.widget.TextView sub = header.findViewById(R.id.nav_header_subtitle);
             if (title != null) title.setText(user != null && user.getName() != null && !user.getName().isEmpty()
                     ? user.getName() : (user != null ? user.getEmail() : ""));
-            String roleLabel = user != null && "ADMIN".equalsIgnoreCase(user.getRole()) ? "Admin" : "Member";
+            String roleLabel = user != null && "ADMIN".equalsIgnoreCase(user.getRole())
+                    ? getString(R.string.role_display_admin) : getString(R.string.role_display_member);
             String companyName = company != null ? company.getName() : "";
             if (sub != null) sub.setText(roleLabel + (companyName.isEmpty() ? "" : " · " + companyName));
         }
@@ -151,6 +152,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         else if (id == R.id.nav_company_settings) showFragment(new CompanySettingsFragment());
         else if (id == R.id.nav_available_cars) showFragment(new AvailableCarsFragment());
         else if (id == R.id.nav_my_reservations) showFragment(new MyReservationsFragment());
+        else if (id == R.id.nav_booking_calendar) showFragment(BookingCalendarFragment.newInstance(false));
+        else if (id == R.id.nav_fleet_calendar) showFragment(BookingCalendarFragment.newInstance(true));
         else if (id == R.id.nav_driving_licence) showFragment(new DrivingLicenceFragment());
         else if (id == R.id.nav_audit_logs) showFragment(new AuditLogsFragment());
         return true;

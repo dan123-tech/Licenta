@@ -24,6 +24,8 @@ public class Company {
     private Double priceBenzinePerLiter;
     @SerializedName("priceDieselPerLiter")
     private Double priceDieselPerLiter;
+    @SerializedName("priceHybridPerLiter")
+    private Double priceHybridPerLiter;
     @SerializedName("priceElectricityPerKwh")
     private Double priceElectricityPerKwh;
     @SerializedName("_count")
@@ -45,6 +47,7 @@ public class Company {
     public double getDefaultConsumptionL100km() { return defaultConsumptionL100km != null ? defaultConsumptionL100km : 7.5; }
     public Double getPriceBenzinePerLiter() { return priceBenzinePerLiter; }
     public Double getPriceDieselPerLiter() { return priceDieselPerLiter; }
+    public Double getPriceHybridPerLiter() { return priceHybridPerLiter; }
     public Double getPriceElectricityPerKwh() { return priceElectricityPerKwh; }
     public Count getCount() { return count; }
 }

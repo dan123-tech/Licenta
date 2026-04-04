@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -19,252 +19,149 @@ import {
 import { Info } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import FuelTypeBadge from "@/components/FuelTypeBadge";
+import { fuelChartColor } from "@/lib/fuelTheme";
+import { computeStatsForPeriod } from "@/lib/statistics-period";
+import { useI18n } from "@/i18n/I18nProvider";
 
 const CO2_KG_PER_L_BENZINE = 2.31;
 const CO2_KG_PER_L_DIESEL = 2.68;
 const CO2_ELECTRIC_KG_PER_KWH = 0.2; // optional grid constant; use 0 for "0 direct"
 
-function getStartOfMonth(d) {
-  const x = new Date(d);
-  x.setDate(1);
-  x.setHours(0, 0, 0, 0);
-  return x.getTime();
+/** CO₂ bars — dark blue (not black) */
+const CO2_BAR_FILL = "#1e40af";
+const CO2_BAR_ACTIVE = "#1d4ed8";
+
+/** Car usage: min width per bar so many cars scroll horizontally */
+const CAR_USAGE_PX_PER_CAR = 56;
+
+function carBrandModel(c) {
+  const m = [c.brand, c.model].filter(Boolean).join(" ").trim();
+  return m || c.brand || "—";
 }
 
-function getStartOfDay(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x.getTime();
-}
-
-function isCurrentMonth(ms) {
-  const now = new Date();
-  return getStartOfMonth(ms) === getStartOfMonth(now.getTime());
-}
-
-const FUEL_COLORS = { Benzine: "#F59E0B", Diesel: "#64748B", Electric: "#10B981", Hybrid: "#14B8A6" };
+const STATS_PERIODS = /** @type {const} */ (["7d", "30d", "6m", "1y"]);
 
 export default function StatisticsDashboard({ reservations = [], company, users = [], cars = [] }) {
+  const { t, formatCurrency, formatNumber, locale } = useI18n();
+
+  const formatCarConsumption = useCallback(
+    (c, defaultL100, defaultKwh100) => {
+      const dec1 = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+      const ft = c.fuelType ?? "Benzine";
+      const l100 = c.averageConsumptionL100km ?? defaultL100;
+      const kwh = c.averageConsumptionKwh100km ?? defaultKwh100;
+      if (ft === "Electric") return `${formatNumber(kwh, dec1)} kWh/100km`;
+      if (ft === "Hybrid") return `${formatNumber(l100, dec1)} L + ${formatNumber(kwh, dec1)} kWh/100km`;
+      return `${formatNumber(l100, dec1)} L/100km`;
+    },
+    [formatNumber]
+  );
+  const [statsPeriod, setStatsPeriod] = useState("30d");
   const priceBenzine = company?.priceBenzinePerLiter ?? company?.averageFuelPricePerLiter ?? 0;
   const priceDiesel = company?.priceDieselPerLiter ?? company?.averageFuelPricePerLiter ?? 0;
+  const priceHybrid = company?.priceHybridPerLiter ?? 0;
   const priceElectricity = company?.priceElectricityPerKwh ?? 0;
   const fuelPrice = company?.averageFuelPricePerLiter ?? priceBenzine ?? 0;
+  const hasFuelPrices =
+    Boolean(priceBenzine || priceDiesel || priceHybrid || priceElectricity || fuelPrice);
   const defaultL100 = company?.defaultConsumptionL100km ?? 7.5;
   const defaultKwh100 = 20;
   const carMap = useMemo(() => Object.fromEntries((cars || []).map((c) => [c.id, c])), [cars]);
 
-  function getCar(carId) {
-    return carMap[carId] ?? null;
-  }
-
-  function getL100ForCar(carId) {
-    const car = getCar(carId);
-    return car?.averageConsumptionL100km ?? defaultL100;
-  }
-
-  function getKwh100ForCar(carId) {
-    const car = getCar(carId);
-    return car?.averageConsumptionKwh100km ?? defaultKwh100;
-  }
-
-  function getFuelTypeForCar(carId) {
-    const car = getCar(carId);
-    return car?.fuelType ?? "Benzine";
-  }
-
-  function fuelCostForReservation(r) {
-    const km = r.releasedKmUsed ?? 0;
-    if (km <= 0) return 0;
-    const carId = r.carId || r.car?.id;
-    const car = getCar(carId);
-    const ft = car?.fuelType ?? "Benzine";
-    if (ft === "Electric") {
-      const kwh100 = getKwh100ForCar(carId);
-      return (km / 100) * kwh100 * (priceElectricity || 0);
+  const periodDeps = useMemo(() => {
+    function getCar(carId) {
+      return carMap[carId] ?? null;
     }
-    if (ft === "Hybrid") {
-      const l100 = getL100ForCar(carId);
-      const kwh100 = getKwh100ForCar(carId);
-      const fuelPart = (km / 100) * l100 * (priceBenzine || priceDiesel || 0);
-      const elecPart = (km / 100) * kwh100 * (priceElectricity || 0);
-      return fuelPart + elecPart;
+    function getL100ForCar(carId) {
+      const car = getCar(carId);
+      return car?.averageConsumptionL100km ?? defaultL100;
     }
-    const l100 = getL100ForCar(carId);
-    const price = ft === "Diesel" ? priceDiesel : priceBenzine;
-    return (km / 100) * l100 * (price || 0);
-  }
-
-  function co2KgForReservation(r) {
-    const km = r.releasedKmUsed ?? 0;
-    if (km <= 0) return 0;
-    const carId = r.carId || r.car?.id;
-    const car = getCar(carId);
-    const ft = car?.fuelType ?? "Benzine";
-    if (ft === "Electric") return (km / 100) * getKwh100ForCar(carId) * CO2_ELECTRIC_KG_PER_KWH;
-    if (ft === "Diesel") return (km / 100) * getL100ForCar(carId) * CO2_KG_PER_L_DIESEL;
-    return (km / 100) * getL100ForCar(carId) * CO2_KG_PER_L_BENZINE;
-  }
-
-  const stats = useMemo(() => {
-    const active = reservations.filter((r) => (r.status || "").toLowerCase() === "active");
-    const completed = reservations.filter((r) => (r.status || "").toLowerCase() === "completed");
-    const thisMonth = completed.filter((r) => r.updatedAt && isCurrentMonth(new Date(r.updatedAt).getTime()));
-    const totalKmThisMonth = thisMonth.reduce((s, r) => s + (r.releasedKmUsed ?? 0), 0);
-    const estimatedFuelCostThisMonth = thisMonth.reduce((s, r) => s + fuelCostForReservation(r), 0);
-
-    const byUser = {};
-    reservations.forEach((r) => {
-      const uid = r.userId || r.user?.id;
-      if (uid) {
-        byUser[uid] = (byUser[uid] || 0) + 1;
-      }
-    });
-    const topUsers = Object.entries(byUser)
-      .map(([userId, count]) => {
-        const u = users.find((m) => m.userId === userId || m.id === userId);
-        return { userId, count, name: u?.name || "Unknown", email: u?.email || "" };
-      })
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    const byCar = {};
-    reservations.forEach((r) => {
-      const cid = r.carId || r.car?.id;
-      if (cid) {
-        byCar[cid] = (byCar[cid] || 0) + (r.releasedKmUsed ?? 0);
-      }
-    });
-    const carUsage = cars.map((c) => ({
-      id: c.id,
-      name: `${c.brand} ${c.registrationNumber}`,
-      km: byCar[c.id] ?? 0,
-      reservations: reservations.filter((r) => (r.carId || r.car?.id) === c.id).length,
-    })).sort((a, b) => b.km - a.km);
-
-    const byCarFuelCost = {};
-    completed.forEach((r) => {
-      const cid = r.carId || r.car?.id;
-      if (cid) byCarFuelCost[cid] = (byCarFuelCost[cid] || 0) + fuelCostForReservation(r);
-    });
-    const efficiencyLeaderboard = cars.map((c) => ({
-      id: c.id,
-      name: `${c.brand} ${c.registrationNumber}`,
-      km: byCar[c.id] ?? 0,
-      fuelCost: byCarFuelCost[c.id] ?? 0,
-      l100: c.averageConsumptionL100km ?? defaultL100,
-    })).sort((a, b) => b.fuelCost - a.fuelCost);
-
-    const now = Date.now();
-    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-    const byDay = {};
-    for (let i = 0; i < 30; i++) {
-      const d = new Date(thirtyDaysAgo + i * 24 * 60 * 60 * 1000);
-      const key = getStartOfDay(d);
-      byDay[key] = { date: d.toISOString().slice(0, 10), fuelCost: 0, km: 0 };
+    function getKwh100ForCar(carId) {
+      const car = getCar(carId);
+      return car?.averageConsumptionKwh100km ?? defaultKwh100;
     }
-    completed.forEach((r) => {
-      if (!r.updatedAt) return;
-      const t = new Date(r.updatedAt).getTime();
-      if (t < thirtyDaysAgo || t > now) return;
-      const key = getStartOfDay(t);
-      if (!byDay[key]) byDay[key] = { date: new Date(key).toISOString().slice(0, 10), fuelCost: 0, km: 0 };
+    function getFuelTypeForCar(carId) {
+      const car = getCar(carId);
+      return car?.fuelType ?? "Benzine";
+    }
+    function fuelCostForReservation(r) {
       const km = r.releasedKmUsed ?? 0;
-      byDay[key].km += km;
-      byDay[key].fuelCost += fuelCostForReservation(r);
-    });
-    const fuelTrend = Object.keys(byDay)
-      .sort((a, b) => Number(a) - Number(b))
-      .map((k) => byDay[k]);
-
-    const co2ByDay = Object.keys(byDay)
-      .sort((a, b) => Number(a) - Number(b))
-      .map((k) => {
-        const d = byDay[k];
-        let co2 = 0;
-        completed.forEach((r) => {
-          if (!r.updatedAt) return;
-          const t = new Date(r.updatedAt).getTime();
-          if (getStartOfDay(t) === Number(k)) co2 += co2KgForReservation(r);
-        });
-        return { ...d, co2Kg: Math.round(co2 * 100) / 100 };
-      });
-
-    const efficiencyByConsumption = [...cars]
-      .map((c) => {
-        const ft = c.fuelType ?? "Benzine";
-        const consumption = ft === "Electric" || ft === "Hybrid"
-          ? (c.averageConsumptionKwh100km ?? defaultKwh100)
-          : (c.averageConsumptionL100km ?? defaultL100);
-        const unit = ft === "Electric" || ft === "Hybrid" ? "kWh/100km" : "L/100km";
-        return { id: c.id, name: `${c.brand} ${c.registrationNumber}`, fuelType: ft, consumption, unit };
-      })
-      .sort((a, b) => a.consumption - b.consumption);
-
-    const fuelTypeCount = { Benzine: 0, Diesel: 0, Electric: 0, Hybrid: 0 };
-    cars.forEach((c) => {
-      const ft = c.fuelType ?? "Benzine";
-      fuelTypeCount[ft] = (fuelTypeCount[ft] ?? 0) + 1;
-    });
-    const fuelCategoryPie = Object.entries(fuelTypeCount)
-      .filter(([, n]) => n > 0)
-      .map(([name, value]) => ({ name, value }));
-
-    const costByFuelType = { Benzine: 0, Diesel: 0, Electric: 0, Hybrid: 0 };
-    completed.forEach((r) => {
+      if (km <= 0) return 0;
       const carId = r.carId || r.car?.id;
-      const ft = getFuelTypeForCar(carId);
-      costByFuelType[ft] = (costByFuelType[ft] ?? 0) + fuelCostForReservation(r);
+      const car = getCar(carId);
+      const ft = car?.fuelType ?? "Benzine";
+      if (ft === "Electric") {
+        const kwh100 = getKwh100ForCar(carId);
+        return (km / 100) * kwh100 * (priceElectricity || 0);
+      }
+      if (ft === "Hybrid") {
+        const l100 = getL100ForCar(carId);
+        const kwh100 = getKwh100ForCar(carId);
+        const hybridLitersPrice = priceHybrid || priceBenzine || priceDiesel || 0;
+        const fuelPart = (km / 100) * l100 * hybridLitersPrice;
+        const elecPart = (km / 100) * kwh100 * (priceElectricity || 0);
+        return fuelPart + elecPart;
+      }
+      const l100 = getL100ForCar(carId);
+      const price = ft === "Diesel" ? priceDiesel : priceBenzine;
+      return (km / 100) * l100 * (price || 0);
+    }
+    function co2KgForReservation(r) {
+      const km = r.releasedKmUsed ?? 0;
+      if (km <= 0) return 0;
+      const carId = r.carId || r.car?.id;
+      const car = getCar(carId);
+      const ft = car?.fuelType ?? "Benzine";
+      if (ft === "Electric") return (km / 100) * getKwh100ForCar(carId) * CO2_ELECTRIC_KG_PER_KWH;
+      if (ft === "Diesel") return (km / 100) * getL100ForCar(carId) * CO2_KG_PER_L_DIESEL;
+      return (km / 100) * getL100ForCar(carId) * CO2_KG_PER_L_BENZINE;
+    }
+    return { fuelCostForReservation, co2KgForReservation, getFuelTypeForCar };
+  }, [carMap, priceBenzine, priceDiesel, priceHybrid, priceElectricity, defaultL100, defaultKwh100]);
+
+  const stats = useMemo(
+    () =>
+      computeStatsForPeriod(statsPeriod, {
+        reservations,
+        users,
+        cars,
+        ...periodDeps,
+        carBrandModel,
+        formatCarConsumption,
+        defaultL100,
+        defaultKwh100,
+        t,
+        locale,
+      }),
+    [statsPeriod, reservations, users, cars, periodDeps, defaultL100, defaultKwh100, t, locale, formatCarConsumption],
+  );
+
+  function buildStatsSnapshot(periodKey) {
+    return computeStatsForPeriod(periodKey, {
+      reservations,
+      users,
+      cars,
+      ...periodDeps,
+      carBrandModel,
+      formatCarConsumption,
+      defaultL100,
+      defaultKwh100,
+      t,
+      locale,
     });
-    const costByFuelCategoryBar = Object.entries(costByFuelType).map(([fuelType, cost]) => ({ fuelType, cost: Math.round(cost * 100) / 100 }));
+  }
 
-    const totalCo2ThisMonth = completed
-      .filter((r) => r.updatedAt && isCurrentMonth(new Date(r.updatedAt).getTime()))
-      .reduce((s, r) => s + co2KgForReservation(r), 0);
-
-    const rangeRemaining = cars
-      .filter((c) => (c.fuelType === "Electric" || c.fuelType === "Hybrid") && c.batteryLevel != null && c.batteryCapacityKwh > 0 && (c.averageConsumptionKwh100km ?? 0) > 0)
-      .map((c) => {
-        const pct = (c.batteryLevel ?? 0) / 100;
-        const cap = c.batteryCapacityKwh ?? 0;
-        const kwh100 = c.averageConsumptionKwh100km ?? defaultKwh100;
-        const range = pct * (100 / kwh100) * cap;
-        return { id: c.id, name: `${c.brand} ${c.registrationNumber}`, fuelType: c.fuelType, batteryLevel: c.batteryLevel, rangeKm: Math.round(range) };
-      });
-
-    const maintenanceDue = cars.filter((c) => {
-      const km = c.km ?? 0;
-      const last = c.lastServiceMileage ?? 0;
-      const ft = (c.fuelType ?? "Benzine").toLowerCase();
-      if (ft === "electric") return km > 0;
-      return (ft === "hybrid" || ft === "benzine" || ft === "diesel") && (km - last) > 10000;
-    }).map((c) => ({ id: c.id, name: `${c.brand} ${c.registrationNumber}`, fuelType: c.fuelType, km: c.km, lastServiceMileage: c.lastServiceMileage }));
-
-    return {
-      activeCount: active.length,
-      totalKmThisMonth,
-      estimatedFuelCostThisMonth,
-      totalCo2ThisMonth,
-      topUsers,
-      carUsage,
-      fuelTrend,
-      efficiencyLeaderboard,
-      efficiencyByConsumption,
-      co2ByDay,
-      fuelCategoryPie,
-      costByFuelCategoryBar,
-      rangeRemaining,
-      maintenanceDue,
-    };
-  }, [reservations, users, cars, fuelPrice, priceBenzine, priceDiesel, priceElectricity, defaultL100, defaultKwh100, carMap]);
-
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = (periodKey) => {
+    const s = buildStatsSnapshot(periodKey);
+    const periodHuman = t(`stats.period.${periodKey}`);
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const pageW = doc.internal.pageSize.getWidth();
     let y = 14;
+    const locStr = locale === "ro" ? "ro-RO" : "en-GB";
 
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text("Statistics & Reports", 14, y);
+    doc.text(t("stats.title"), 14, y);
     y += 8;
 
     if (company?.name) {
@@ -275,31 +172,33 @@ export default function StatisticsDashboard({ reservations = [], company, users 
     }
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    doc.text(`Generated on ${new Date().toLocaleString()}`, 14, y);
+    doc.text(t("stats.pdfGeneratedOn", { datetime: new Date().toLocaleString(locStr) }), 14, y);
+    y += 6;
+    doc.text(t("stats.pdfPeriodLine", { period: periodHuman }), 14, y);
     doc.setTextColor(0, 0, 0);
     y += 12;
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("Summary", 14, y);
+    doc.text(t("stats.pdfSummary"), 14, y);
     y += 8;
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`Total active reservations: ${stats.activeCount}`, 14, y);
+    doc.text(`${t("stats.pdfActive")}: ${s.activeCount}`, 14, y);
     y += 6;
-    doc.text(`Total mileage this month: ${stats.totalKmThisMonth.toLocaleString()} km`, 14, y);
+    doc.text(`${t("stats.pdfKmRange")}: ${s.totalKmPeriod.toLocaleString(locStr)} km`, 14, y);
     y += 6;
-    const fuelStr = fuelPrice > 0
-      ? stats.estimatedFuelCostThisMonth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : "— (set fuel price in Company settings)";
-    doc.text(`Estimated fuel costs (this month): ${fuelStr}`, 14, y);
+    const fuelStr = hasFuelPrices ? formatCurrency(s.estimatedFuelCostPeriod) : t("stats.pdfNoPrice");
+    doc.text(`${t("stats.pdfEstCostRange")}: ${fuelStr}`, 14, y);
+    y += 6;
+    doc.text(`${t("stats.pdfCo2Range")}: ${s.totalCo2Period.toFixed(1)} kg`, 14, y);
     y += 14;
 
     autoTable(doc, {
       startY: y,
-      head: [["#", "Name", "Email", "Reservations"]],
-      body: stats.topUsers.map((u, i) => [i + 1, u.name, u.email, String(u.count)]),
+      head: [[t("stats.colRank"), t("stats.colName"), t("stats.colEmail"), t("stats.colReservations")]],
+      body: s.topUsers.map((u, i) => [i + 1, u.name, u.email, String(u.count)]),
       theme: "grid",
       headStyles: { fillColor: [71, 130, 246], fontSize: 9 },
       bodyStyles: { fontSize: 9 },
@@ -314,18 +213,28 @@ export default function StatisticsDashboard({ reservations = [], company, users 
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("Efficiency Leaderboard (by estimated fuel cost)", 14, y);
+    doc.text(t("stats.pdfCostLeader"), 14, y);
     y += 8;
 
     autoTable(doc, {
       startY: y,
-      head: [["#", "Car", "Km driven", "L/100km", "Est. fuel cost"]],
-      body: stats.efficiencyLeaderboard.map((row, i) => [
+      head: [
+        [
+          t("stats.colRank"),
+          t("stats.colMakeModel"),
+          t("stats.colPlate"),
+          t("stats.colKm"),
+          t("stats.colConsumption"),
+          t("stats.colEstCost"),
+        ],
+      ],
+      body: s.efficiencyLeaderboard.map((row, i) => [
         i + 1,
-        row.name,
-        `${row.km.toLocaleString()} km`,
-        `${row.l100} L/100km`,
-        fuelPrice > 0 ? row.fuelCost.toFixed(2) : "—",
+        row.brandModel,
+        row.registrationNumber,
+        `${row.km.toLocaleString(locStr)} km`,
+        row.consumptionDisplay,
+        hasFuelPrices ? formatCurrency(row.fuelCost) : "—",
       ]),
       theme: "grid",
       headStyles: { fillColor: [71, 130, 246], fontSize: 9 },
@@ -341,15 +250,16 @@ export default function StatisticsDashboard({ reservations = [], company, users 
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("Car usage (km driven)", 14, y);
+    doc.text(t("stats.pdfCarUsage"), 14, y);
     y += 8;
 
     autoTable(doc, {
       startY: y,
-      head: [["Car", "Km driven", "Reservations"]],
-      body: stats.carUsage.map((row) => [
-        row.name,
-        `${row.km.toLocaleString()} km`,
+      head: [[t("stats.colMakeModel"), t("stats.colPlate"), t("stats.colKm"), t("stats.colReservations")]],
+      body: s.carUsage.map((row) => [
+        row.brandModel,
+        row.plate,
+        `${row.km.toLocaleString(locStr)} km`,
         String(row.reservations),
       ]),
       theme: "grid",
@@ -359,75 +269,155 @@ export default function StatisticsDashboard({ reservations = [], company, users 
     });
     y = doc.lastAutoTable.finalY + 10;
 
-    const totalFuel30 = stats.fuelTrend.reduce((s, d) => s + d.fuelCost, 0);
-    if (fuelPrice > 0 && (totalFuel30 > 0 || y < 260)) {
+    const totalFuelTrend = s.fuelTrend.reduce((acc, d) => acc + d.fuelCost, 0);
+    if (hasFuelPrices && (totalFuelTrend > 0 || y < 260)) {
       if (y > 255) {
         doc.addPage();
         y = 14;
       }
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      doc.text(`Estimated fuel expenditure (last 30 days): ${totalFuel30.toFixed(2)}`, 14, y);
+      doc.text(`${t("stats.pdfFuelTrendTotal")}: ${formatCurrency(totalFuelTrend)}`, 14, y);
     }
 
-    doc.save(`statistics-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`statistics-${periodKey}-${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   return (
     <section className="w-full max-w-[1600px] min-w-0 mx-auto">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-[#1E293B]">Statistics & Reports</h2>
-        <button
-          type="button"
-          onClick={handleDownloadPdf}
-          className="px-4 py-2.5 bg-[#185FA5] text-white font-semibold rounded-xl hover:bg-[#144a84] shadow-sm transition-colors flex items-center gap-2"
-        >
-          <span>Download PDF Report</span>
-        </button>
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#1E293B]">{t("stats.title")}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide mr-1">{t("stats.downloadReports")}</span>
+            {STATS_PERIODS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => handleDownloadPdf(p)}
+                className="px-3 py-2 text-xs font-semibold rounded-lg bg-[#185FA5] text-white hover:bg-[#144a84] shadow-sm transition-colors"
+              >
+                {t("stats.downloadPdfFor", { period: t(`stats.periodShort.${p}`) })}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{t("stats.rangeLabel")}</p>
+          <div
+            className="inline-flex flex-wrap rounded-xl p-1 bg-slate-100 border border-slate-200/80"
+            role="tablist"
+            aria-label={t("stats.rangeLabel")}
+          >
+            {STATS_PERIODS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                role="tab"
+                aria-selected={statsPeriod === p}
+                onClick={() => setStatsPeriod(p)}
+                className={`px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                  statsPeriod === p ? "bg-white text-[#185FA5] shadow-sm" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {t(`stats.period.${p}`)}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-slate-500 mt-2 max-w-3xl">{t("stats.rangeHint")}</p>
+        </div>
       </div>
 
       {/* Top-level metric cards - Navy/Slate theme */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6">
-          <p className="text-sm font-medium text-slate-500 mb-1">Total active reservations</p>
+          <p className="text-sm font-medium text-slate-500 mb-1">{t("stats.activeReservations")}</p>
           <p className="text-2xl font-bold text-[#1E293B]">{stats.activeCount}</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6">
-          <p className="text-sm font-medium text-slate-500 mb-1">Total mileage this month</p>
-          <p className="text-2xl font-bold text-[#1E293B]">{stats.totalKmThisMonth.toLocaleString()} km</p>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6">
-          <p className="text-sm font-medium text-slate-500 mb-1 flex items-center gap-1.5">
-            Est. fuel/electricity cost (this month)
-            <span className="inline-flex text-slate-400 hover:text-slate-600 cursor-help" title="Per-fuel prices from Company settings."><Info className="w-4 h-4 shrink-0" /></span>
-          </p>
+          <p className="text-sm font-medium text-slate-500 mb-1">{t("stats.mileagePeriod")}</p>
+          <p className="text-xs text-slate-400 mb-1">{t(`stats.period.${statsPeriod}`)}</p>
           <p className="text-2xl font-bold text-[#1E293B]">
-            {(priceBenzine || priceDiesel || priceElectricity || fuelPrice) ? stats.estimatedFuelCostThisMonth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
+            {stats.totalKmPeriod.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB")} km
           </p>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6">
           <p className="text-sm font-medium text-slate-500 mb-1 flex items-center gap-1.5">
-            CO₂ this month (kg)
-            <span className="inline-flex text-slate-400 hover:text-slate-600 cursor-help" title="2.31 kg/L Benzine, 2.68 kg/L Diesel, Electric uses grid factor."><Info className="w-4 h-4 shrink-0" /></span>
+            {t("stats.estCostPeriod")}
+            <span className="inline-flex text-slate-400 hover:text-slate-600 cursor-help" title={t("stats.costHint")}><Info className="w-4 h-4 shrink-0" /></span>
           </p>
-          <p className="text-2xl font-bold text-[#1E293B]">{stats.totalCo2ThisMonth.toFixed(1)} kg</p>
+          <p className="text-xs text-slate-400 mb-1">{t(`stats.period.${statsPeriod}`)}</p>
+          <p className="text-2xl font-bold text-[#1E293B]">
+            {hasFuelPrices ? formatCurrency(stats.estimatedFuelCostPeriod) : "—"}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-6">
+          <p className="text-sm font-medium text-slate-500 mb-1 flex items-center gap-1.5">
+            {t("stats.co2Period")}
+            <span className="inline-flex text-slate-400 hover:text-slate-600 cursor-help" title={t("stats.co2Hint")}><Info className="w-4 h-4 shrink-0" /></span>
+          </p>
+          <p className="text-xs text-slate-400 mb-1">{t(`stats.period.${statsPeriod}`)}</p>
+          <p className="text-2xl font-bold text-[#1E293B]">{stats.totalCo2Period.toFixed(1)} kg</p>
+        </div>
+      </div>
+
+      {/* Unit prices (aligned with fuel colors) */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 mb-8">
+        <h3 className="text-sm font-semibold text-[#1E293B] mb-3">{t("stats.unitPricesTitle")}</h3>
+        <p className="text-xs text-slate-500 mb-4">{t("stats.unitPricesSub")}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { type: "Benzine", label: t("fuelTypes.benzine"), per: "liter", display: priceBenzine || fuelPrice },
+            { type: "Diesel", label: t("fuelTypes.diesel"), per: "liter", display: priceDiesel || fuelPrice },
+            { type: "Hybrid", label: t("fuelTypes.hybridIceLabel"), per: "liter", display: priceHybrid || priceBenzine || priceDiesel || fuelPrice },
+            { type: "Electric", label: t("fuelTypes.electricitySupply"), per: "kwh", display: priceElectricity },
+          ].map((row) => {
+            const v = row.display;
+            const show = typeof v === "number" && v > 0;
+            const suffix = row.per === "kwh" ? t("common.perKwh") : t("common.perLiter");
+            return (
+              <div
+                key={row.type}
+                className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm bg-slate-50/50"
+                style={{ borderLeftWidth: 4, borderLeftColor: fuelChartColor(row.type) }}
+              >
+                <p className="text-xs font-medium text-slate-500">{row.label}</p>
+                <p className="font-semibold text-[#1E293B] tabular-nums">
+                  {show ? `${Number(v).toFixed(2)}${suffix}` : "—"}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* CO2 chart */}
       <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm p-4 mb-8">
-        <h3 className="text-lg font-semibold text-[#1E293B] mb-4">Carbon footprint (last 30 days)</h3>
+        <h3 className="text-lg font-semibold text-[#1E293B] mb-4">
+          {t("stats.co2ChartTitlePeriod", { period: t(`stats.period.${statsPeriod}`) })}
+        </h3>
         <div className="w-full min-h-[260px]" style={{ height: 260 }}>
           {stats.co2ByDay.every((d) => d.co2Kg === 0) ? (
-            <div className="h-full flex items-center justify-center text-slate-500 min-h-[260px]">No CO₂ data in the last 30 days</div>
+            <div className="h-full flex items-center justify-center text-slate-500 min-h-[260px]">
+              {t("stats.co2EmptyPeriod", { period: t(`stats.period.${statsPeriod}`) })}
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={stats.co2ByDay} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 12 }} unit=" kg" />
-                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} formatter={(v) => [`${v} kg CO₂`, "CO₂"]} />
-                <Bar dataKey="co2Kg" fill="#0F172A" radius={[4, 4, 0, 0]} name="CO₂ (kg)" />
+                <Tooltip
+                  contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }}
+                  formatter={(v) => [`${v} kg CO₂`, t("stats.co2Tooltip")]}
+                />
+                <Bar
+                  dataKey="co2Kg"
+                  fill={CO2_BAR_FILL}
+                  radius={[4, 4, 0, 0]}
+                  name={t("stats.co2SeriesName")}
+                  activeBar={{ fill: CO2_BAR_ACTIVE }}
+                />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -436,32 +426,32 @@ export default function StatisticsDashboard({ reservations = [], company, users 
 
       {/* Fuel Efficiency Leaderboard (by consumption: most efficient first) */}
       <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden mb-8">
-        <h3 className="text-lg font-semibold text-[#1E293B] p-4 border-b border-slate-100">Fuel efficiency leaderboard</h3>
-        <p className="text-sm text-slate-500 px-4 pb-3">Ranked from most efficient (lowest consumption) to least. L/100km for fuel cars, kWh/100km for Electric/Hybrid.</p>
+        <h3 className="text-lg font-semibold text-[#1E293B] p-4 border-b border-slate-100">{t("stats.efficiencyTitle")}</h3>
+        <p className="text-sm text-slate-500 px-4 pb-3">{t("stats.efficiencySub")}</p>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 text-left">
-                <th className="py-4 px-4 font-semibold text-slate-700">#</th>
-                <th className="py-4 px-4 font-semibold text-slate-700">Car</th>
-                <th className="py-4 px-4 font-semibold text-slate-700">Fuel type</th>
-                <th className="py-4 px-4 font-semibold text-slate-700">Consumption</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colRank")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colMakeModel")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colPlate")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colFuel")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colConsumption")}</th>
               </tr>
             </thead>
             <tbody className="text-slate-800">
               {stats.efficiencyByConsumption.length === 0 ? (
-                <tr><td colSpan={4} className="py-10 px-4 text-center text-slate-500">No cars</td></tr>
+                <tr><td colSpan={5} className="py-10 px-4 text-center text-slate-500">{t("stats.noCars")}</td></tr>
               ) : (
                 stats.efficiencyByConsumption.map((row, i) => (
                   <tr key={row.id} className="border-t border-slate-100 hover:bg-slate-50/80">
                     <td className="py-4 px-4">{i + 1}</td>
-                    <td className="py-4 px-4 font-medium">{row.name}</td>
+                    <td className="py-4 px-4 font-medium">{row.brandModel}</td>
+                    <td className="py-4 px-4 text-slate-600 tabular-nums">{row.registrationNumber}</td>
                     <td className="py-4 px-4">
-                      <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium border ${row.fuelType === "Electric" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : row.fuelType === "Diesel" ? "bg-slate-200 text-slate-800 border-slate-300" : row.fuelType === "Hybrid" ? "bg-teal-100 text-teal-800 border-teal-200" : "bg-amber-100 text-amber-800 border-amber-200"}`}>
-                        {row.fuelType}
-                      </span>
+                      <FuelTypeBadge fuelType={row.fuelType} />
                     </td>
-                    <td className="py-4 px-4">{row.consumption} {row.unit}</td>
+                    <td className="py-4 px-4">{row.consumptionLabel}</td>
                   </tr>
                 ))
               )}
@@ -473,15 +463,15 @@ export default function StatisticsDashboard({ reservations = [], company, users 
       {/* Fuel category: pie (car count) + bar (cost) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4">
-          <h3 className="text-lg font-semibold text-[#1E293B] mb-4">Fleet by fuel type</h3>
+          <h3 className="text-lg font-semibold text-[#1E293B] mb-4">{t("stats.fleetFuelTitle")}</h3>
           <div className="w-full min-h-[260px]">
             {stats.fuelCategoryPie.length === 0 ? (
-              <div className="h-[260px] flex items-center justify-center text-slate-500">No cars</div>
+              <div className="h-[260px] flex items-center justify-center text-slate-500">{t("stats.noCars")}</div>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
                   <Pie data={stats.fuelCategoryPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={(e) => `${e.name}: ${e.value}`}>
-                    {stats.fuelCategoryPie.map((e, i) => <Cell key={e.name} fill={FUEL_COLORS[e.name] || "#94A3B8"} />)}
+                    {stats.fuelCategoryPie.map((e) => <Cell key={e.name} fill={fuelChartColor(e.name)} />)}
                   </Pie>
                   <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} />
                 </PieChart>
@@ -490,19 +480,21 @@ export default function StatisticsDashboard({ reservations = [], company, users 
           </div>
         </div>
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4">
-          <h3 className="text-lg font-semibold text-[#1E293B] mb-4">Cost per fuel category (completed trips)</h3>
+          <h3 className="text-lg font-semibold text-[#1E293B] mb-4">
+          {t("stats.costFuelTitlePeriod", { period: t(`stats.period.${statsPeriod}`) })}
+        </h3>
           <div className="w-full min-h-[260px]">
             {stats.costByFuelCategoryBar.every((d) => d.cost === 0) ? (
-              <div className="h-[260px] flex items-center justify-center text-slate-500">No cost data</div>
+              <div className="h-[260px] flex items-center justify-center text-slate-500">{t("stats.noCostData")}</div>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={stats.costByFuelCategoryBar} layout="vertical" margin={{ top: 10, right: 30, left: 60, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis type="number" tick={{ fontSize: 12 }} />
-                  <YAxis type="category" dataKey="fuelType" tick={{ fontSize: 12 }} width={50} />
+                  <YAxis type="category" dataKey="fuelType" tick={{ fontSize: 12 }} width={72} />
                   <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} />
                   <Bar dataKey="cost" radius={[0, 4, 4, 0]}>
-                    {stats.costByFuelCategoryBar.map((e, i) => <Cell key={e.fuelType} fill={FUEL_COLORS[e.fuelType] || "#94A3B8"} />)}
+                    {stats.costByFuelCategoryBar.map((e) => <Cell key={e.fuelType} fill={fuelChartColor(e.fuelType)} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -514,33 +506,37 @@ export default function StatisticsDashboard({ reservations = [], company, users 
       {/* Range remaining (EV/Hybrid) + Maintenance due */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4">
-          <h3 className="text-lg font-semibold text-[#1E293B] mb-4">Range remaining (EV / Hybrid)</h3>
-          <p className="text-sm text-slate-500 mb-3">(Battery % / 100) × (100 / Consumption) × Battery capacity (kWh)</p>
+          <h3 className="text-lg font-semibold text-[#1E293B] mb-4">{t("stats.rangeTitle")}</h3>
+          <p className="text-sm text-slate-500 mb-3">{t("stats.rangeFormula")}</p>
           {stats.rangeRemaining.length === 0 ? (
-            <p className="text-slate-500">No EV/Hybrid cars with battery data</p>
+            <p className="text-slate-500">{t("stats.rangeEmpty")}</p>
           ) : (
             <ul className="space-y-2">
               {stats.rangeRemaining.map((r) => (
-                <li key={r.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-                  <span className="font-medium text-slate-800">{r.name}</span>
+                <li key={r.id} className="flex flex-wrap items-center gap-2 justify-between py-2 border-b border-slate-100 last:border-0">
+                  <span className="font-medium text-slate-800">{r.brandModel}</span>
+                  <span className="text-slate-500 text-sm tabular-nums">{r.plate}</span>
                   <span className="text-[#1E293B] font-semibold">{r.rangeKm} km</span>
-                  <span className="text-xs text-slate-500">({r.batteryLevel}% bat.)</span>
+                  <span className="text-xs text-slate-500">({t("stats.batSuffix", { level: r.batteryLevel })})</span>
+                  <FuelTypeBadge fuelType={r.fuelType} />
                 </li>
               ))}
             </ul>
           )}
         </div>
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4">
-          <h3 className="text-lg font-semibold text-[#1E293B] mb-4">Service required</h3>
-          <p className="text-sm text-slate-500 mb-3">Oil change &gt;10,000 km since last service (fuel/hybrid); battery check for electric.</p>
+          <h3 className="text-lg font-semibold text-[#1E293B] mb-4">{t("stats.serviceTitle")}</h3>
+          <p className="text-sm text-slate-500 mb-3">{t("stats.serviceSub")}</p>
           {stats.maintenanceDue.length === 0 ? (
-            <p className="text-slate-500">No cars due for service</p>
+            <p className="text-slate-500">{t("stats.serviceEmpty")}</p>
           ) : (
             <ul className="space-y-2">
               {stats.maintenanceDue.map((c) => (
-                <li key={c.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-                  <span className="font-medium text-slate-800">{c.name}</span>
-                  <span className="inline-flex px-2 py-0.5 rounded-md text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">Due</span>
+                <li key={c.id} className="flex flex-wrap items-center gap-2 justify-between py-2 border-b border-slate-100 last:border-0">
+                  <span className="font-medium text-slate-800">{c.brandModel}</span>
+                  <span className="text-slate-500 text-sm tabular-nums">{c.plate}</span>
+                  <FuelTypeBadge fuelType={c.fuelType} />
+                  <span className="inline-flex px-2 py-0.5 rounded-md text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">{t("stats.serviceDueBadge")}</span>
                 </li>
               ))}
             </ul>
@@ -550,35 +546,39 @@ export default function StatisticsDashboard({ reservations = [], company, users 
 
       {/* Efficiency Leaderboard (by fuel cost - original) */}
       <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden mb-8">
-        <h3 className="text-lg font-semibold text-[#1E293B] p-4 border-b border-slate-100">Efficiency by estimated cost (completed trips)</h3>
-        <p className="text-sm text-slate-500 px-4 pb-3">Cars ranked by total estimated fuel/electricity cost (highest = least efficient).</p>
+        <h3 className="text-lg font-semibold text-[#1E293B] p-4 border-b border-slate-100">{t("stats.costLeaderTitle")}</h3>
+        <p className="text-sm text-slate-500 px-4 pb-3">
+          {t("stats.costLeaderSubPeriod", { period: t(`stats.period.${statsPeriod}`) })}
+        </p>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 text-left">
-                <th className="py-4 px-4 font-semibold text-slate-700">#</th>
-                <th className="py-4 px-4 font-semibold text-slate-700">Car</th>
-                <th className="py-4 px-4 font-semibold text-slate-700">Km driven</th>
-                <th className="py-4 px-4 font-semibold text-slate-700">Consumption (L/100km)</th>
-                <th className="py-4 px-4 font-semibold text-slate-700">Est. fuel cost</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colRank")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colMakeModel")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colPlate")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colFuelShort")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colKm")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colConsumption")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colEstCost")}</th>
               </tr>
             </thead>
             <tbody className="text-slate-800">
               {stats.efficiencyLeaderboard.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-10 px-4 text-center text-slate-500">No data yet</td>
+                  <td colSpan={7} className="py-10 px-4 text-center text-slate-500">{t("stats.noData")}</td>
                 </tr>
               ) : (
                 stats.efficiencyLeaderboard.map((row, i) => (
                   <tr key={row.id} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
                     <td className="py-4 px-4">{i + 1}</td>
-                    <td className="py-4 px-4 font-medium">{row.name}</td>
-                    <td className="py-4 px-4">{row.km.toLocaleString()} km</td>
-                    <td className="py-4 px-4">{row.l100} L/100km</td>
+                    <td className="py-4 px-4 font-medium">{row.brandModel}</td>
+                    <td className="py-4 px-4 text-slate-600 tabular-nums">{row.registrationNumber}</td>
+                    <td className="py-4 px-4"><FuelTypeBadge fuelType={row.fuelType} /></td>
+                    <td className="py-4 px-4">{row.km.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB")} km</td>
+                    <td className="py-4 px-4">{row.consumptionDisplay}</td>
                     <td className="py-4 px-4">
-                      {fuelPrice > 0
-                        ? row.fuelCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                        : "—"}
+                      {hasFuelPrices ? formatCurrency(row.fuelCost) : "—"}
                     </td>
                   </tr>
                 ))
@@ -590,21 +590,22 @@ export default function StatisticsDashboard({ reservations = [], company, users 
 
       {/* Top users table */}
       <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden mb-8">
-        <h3 className="text-lg font-semibold text-slate-800 p-4 border-b border-slate-100">Top users by reservations</h3>
+        <h3 className="text-lg font-semibold text-slate-800 p-4 border-b border-slate-100">{t("stats.topUsersTitle")}</h3>
+        <p className="text-sm text-slate-500 px-4 pb-2">{t("stats.topUsersSubPeriod", { period: t(`stats.period.${statsPeriod}`) })}</p>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 text-left">
-                <th className="py-4 px-4 font-semibold text-slate-700">#</th>
-                <th className="py-4 px-4 font-semibold text-slate-700">Name</th>
-                <th className="py-4 px-4 font-semibold text-slate-700">Email</th>
-                <th className="py-4 px-4 font-semibold text-slate-700">Reservations</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colRank")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colName")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colEmail")}</th>
+                <th className="py-4 px-4 font-semibold text-slate-700">{t("stats.colReservations")}</th>
               </tr>
             </thead>
             <tbody className="text-slate-800">
               {stats.topUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-10 px-4 text-center text-slate-500">No data yet</td>
+                  <td colSpan={4} className="py-10 px-4 text-center text-slate-500">{t("stats.noData")}</td>
                 </tr>
               ) : (
                 stats.topUsers.map((u, i) => (
@@ -621,37 +622,110 @@ export default function StatisticsDashboard({ reservations = [], company, users 
         </div>
       </div>
 
-      {/* Car usage bar chart */}
+      {/* Car usage bar chart (horizontal scroll when many cars) */}
       <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm p-4 mb-8">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">Car usage (km driven)</h3>
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">{t("stats.carUsageTitle")}</h3>
         <div className="w-full min-h-[300px]" style={{ height: 300 }}>
           {stats.carUsage.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-slate-500 min-h-[300px]">No car usage data yet</div>
+            <div className="h-full flex items-center justify-center text-slate-500 min-h-[300px]">{t("stats.carUsageEmpty")}</div>
           ) : (
-            <ResponsiveContainer width="100%" height={300} minHeight={300}>
-              <BarChart data={stats.carUsage} margin={{ top: 10, right: 10, left: 0, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" height={60} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }}
-                  formatter={(value) => [`${value} km`, "Km driven"]}
-                />
-                <Bar dataKey="km" fill="#185FA5" radius={[4, 4, 0, 0]} name="Km driven" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div
+              className="h-[300px] w-full overflow-x-auto overflow-y-hidden rounded-lg border border-slate-100/80 bg-slate-50/30"
+              style={{ scrollbarGutter: "stable" }}
+            >
+              <div
+                className="h-full"
+                style={{
+                  width: `max(100%, ${stats.carUsage.length * CAR_USAGE_PX_PER_CAR}px)`,
+                  minWidth: "100%",
+                }}
+              >
+                <ResponsiveContainer width="100%" height={300} minHeight={300}>
+                  <BarChart
+                    data={stats.carUsage}
+                    margin={{ top: 10, right: 16, left: 8, bottom: 56 }}
+                    barCategoryGap="12%"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis
+                      dataKey="plate"
+                      tick={{ fontSize: 10, fill: "#64748b" }}
+                      angle={-30}
+                      textAnchor="end"
+                      height={52}
+                      interval={0}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} width={44} />
+                    <Tooltip
+                      cursor={{ fill: "rgba(24, 95, 165, 0.08)" }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload;
+                        const car = carMap[d.id];
+                        const locStr = locale === "ro" ? "ro-RO" : "en-GB";
+                        const odo = car?.km != null ? `${Number(car.km).toLocaleString(locStr)} km` : null;
+                        return (
+                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-lg max-w-xs">
+                            <p className="font-semibold text-[#1E293B] leading-snug">{d.brandModel}</p>
+                            <p className="text-sm text-slate-600 tabular-nums mt-0.5">{d.plate}</p>
+                            {car?.fuelType ? (
+                              <div className="mt-2">
+                                <FuelTypeBadge fuelType={car.fuelType} />
+                              </div>
+                            ) : null}
+                            <dl className="mt-2 space-y-1 text-sm text-slate-700">
+                              <div className="flex justify-between gap-4">
+                                <dt className="text-slate-500">{t("stats.chartKmDriven")}</dt>
+                                <dd className="font-medium tabular-nums">{Number(d.km).toLocaleString(locStr)} km</dd>
+                              </div>
+                              <div className="flex justify-between gap-4">
+                                <dt className="text-slate-500">{t("stats.colReservations")}</dt>
+                                <dd className="font-medium tabular-nums">{d.reservations}</dd>
+                              </div>
+                              {odo ? (
+                                <div className="flex justify-between gap-4">
+                                  <dt className="text-slate-500">{t("stats.carUsageOdometer")}</dt>
+                                  <dd className="font-medium tabular-nums">{odo}</dd>
+                                </div>
+                              ) : null}
+                              {car?.status ? (
+                                <div className="flex justify-between gap-4">
+                                  <dt className="text-slate-500">{t("stats.carUsageStatus")}</dt>
+                                  <dd className="font-medium text-slate-800">{car.status}</dd>
+                                </div>
+                              ) : null}
+                            </dl>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar
+                      dataKey="km"
+                      fill="#185FA5"
+                      radius={[4, 4, 0, 0]}
+                      name={t("stats.chartKmDriven")}
+                      activeBar={{ fill: "#124a87" }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
       {/* Fuel expenditure line chart (last 30 days) */}
       <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm p-4">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">Estimated fuel expenditure (last 30 days)</h3>
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">
+          {t("stats.fuelTrendTitlePeriod", { period: t(`stats.period.${statsPeriod}`) })}
+        </h3>
         <div className="w-full min-h-[280px]" style={{ height: 280 }}>
-          {fuelPrice <= 0 ? (
-            <div className="h-full flex items-center justify-center text-slate-500 min-h-[280px]">Set average fuel price in Company settings to see estimates</div>
+          {!hasFuelPrices ? (
+            <div className="h-full flex items-center justify-center text-slate-500 min-h-[280px]">{t("stats.fuelTrendNoPrice")}</div>
           ) : stats.fuelTrend.every((d) => d.fuelCost === 0) ? (
-            <div className="h-full flex items-center justify-center text-slate-500 min-h-[280px]">No fuel expenditure data in the last 30 days</div>
+            <div className="h-full flex items-center justify-center text-slate-500 min-h-[280px]">
+              {t("stats.fuelTrendEmptyPeriod", { period: t(`stats.period.${statsPeriod}`) })}
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={280} minHeight={280}>
               <LineChart data={stats.fuelTrend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
@@ -660,11 +734,14 @@ export default function StatisticsDashboard({ reservations = [], company, users 
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip
                   contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }}
-                  formatter={(value, name) => [name === "fuelCost" ? Number(value).toFixed(2) : value, name === "fuelCost" ? "Fuel cost" : "Km"]}
+                  formatter={(value, name) => [
+                    name === "fuelCost" ? formatCurrency(Number(value)) : value,
+                    name === "fuelCost" ? t("stats.chartFuelCost") : t("stats.chartKm"),
+                  ]}
                 />
                 <Legend />
-                <Line type="monotone" dataKey="fuelCost" stroke="#185FA5" strokeWidth={2} dot={{ r: 2 }} name="Fuel cost" />
-                <Line type="monotone" dataKey="km" stroke="#64748B" strokeWidth={2} dot={{ r: 2 }} name="Km" />
+                <Line type="monotone" dataKey="fuelCost" stroke="#185FA5" strokeWidth={2} dot={{ r: 2 }} name={t("stats.chartFuelCost")} />
+                <Line type="monotone" dataKey="km" stroke="#64748B" strokeWidth={2} dot={{ r: 2 }} name={t("stats.chartKm")} />
               </LineChart>
             </ResponsiveContainer>
           )}

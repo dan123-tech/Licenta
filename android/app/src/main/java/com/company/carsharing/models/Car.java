@@ -19,6 +19,8 @@ public class Car {
     private String fuelType;
     @SerializedName("averageConsumptionL100km")
     private Double averageConsumptionL100km;
+    @SerializedName("averageConsumptionKwh100km")
+    private Double averageConsumptionKwh100km;
 
     public String getId() { return id; }
     public String getBrand() { return brand; }
@@ -28,4 +30,5 @@ public class Car {
     public String getStatus() { return status; }
     public String getFuelType() { return fuelType; }
     public Double getAverageConsumptionL100km() { return averageConsumptionL100km; }
+    public Double getAverageConsumptionKwh100km() { return averageConsumptionKwh100km; }
 }

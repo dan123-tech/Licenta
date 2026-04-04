@@ -11,10 +11,11 @@ import { requireCompany, requireAdmin, jsonResponse, errorResponse, dataSourceNo
 import { writeAuditLog } from "@/lib/audit";
 
 const FUEL_TYPES = ["Benzine", "Diesel", "Electric", "Hybrid"];
+const YEAR_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const postSchema = z.object({
   brand: z.string().min(1).max(100),
   model: z.string().max(100).optional().nullable(),
-  registrationNumber: z.string().min(1).max(50),
+  registrationNumber: z.string().min(1).max(50).transform((s) => s.trim().toUpperCase()),
   km: z.number().int().min(0).optional().default(0),
   status: z.enum(["AVAILABLE", "RESERVED", "IN_MAINTENANCE"]).optional().default("AVAILABLE"),
   fuelType: z.enum(FUEL_TYPES).optional().default("Benzine"),
@@ -23,6 +24,9 @@ const postSchema = z.object({
   batteryLevel: z.union([z.number().min(0).max(100).int(), z.null()]).optional(),
   batteryCapacityKwh: z.union([z.number().min(0).max(500), z.null()]).optional(),
   lastServiceMileage: z.union([z.number().int().min(0), z.null()]).optional(),
+  lastServiceYearMonth: z
+    .preprocess((v) => (v === "" || v === null || v === undefined ? undefined : String(v).trim()), z.string().max(7).optional())
+    .refine((v) => v === undefined || YEAR_MONTH.test(v), { message: "lastServiceYearMonth must be YYYY-MM" }),
 });
 
 export async function GET(request) {
@@ -67,6 +71,7 @@ export async function GET(request) {
           batteryLevel: c.batteryLevel ?? null,
           batteryCapacityKwh: c.batteryCapacityKwh ?? null,
           lastServiceMileage: c.lastServiceMileage ?? null,
+          lastServiceYearMonth: c.lastServiceYearMonth ?? null,
           _count: c._count ?? { reservations: 0 },
         }))
       );
@@ -96,6 +101,7 @@ export async function GET(request) {
       batteryLevel: c.batteryLevel ?? null,
       batteryCapacityKwh: c.batteryCapacityKwh ?? null,
       lastServiceMileage: c.lastServiceMileage ?? null,
+      lastServiceYearMonth: c.lastServiceYearMonth ?? null,
       _count: c._count,
     }))
   );
@@ -141,6 +147,7 @@ export async function POST(request) {
           batteryLevel: car.batteryLevel ?? null,
           batteryCapacityKwh: car.batteryCapacityKwh ?? null,
           lastServiceMileage: car.lastServiceMileage ?? null,
+          lastServiceYearMonth: car.lastServiceYearMonth ?? null,
         },
         201
       );
@@ -174,6 +181,7 @@ export async function POST(request) {
       batteryLevel: car.batteryLevel ?? null,
       batteryCapacityKwh: car.batteryCapacityKwh ?? null,
       lastServiceMileage: car.lastServiceMileage ?? null,
+      lastServiceYearMonth: car.lastServiceYearMonth ?? null,
     },
     201
   );

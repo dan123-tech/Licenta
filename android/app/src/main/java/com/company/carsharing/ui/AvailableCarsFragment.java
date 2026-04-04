@@ -9,15 +9,14 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
+import com.company.carsharing.R;
 import com.company.carsharing.data.SessionHolder;
 import com.company.carsharing.data.repository.AuthRepository;
 import com.company.carsharing.databinding.FragmentAvailableCarsBinding;
 import com.company.carsharing.models.Car;
 import com.company.carsharing.network.RetrofitClient;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -30,7 +29,7 @@ public class AvailableCarsFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentAvailableCarsBinding.inflate(inflater, container, false);
-        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarTitle("Available Cars");
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.nav_available_cars));
         adapter = new AvailableCarsAdapter(requireContext(), this::reserve);
         binding.availableCarsList.setAdapter(adapter);
         loadCars();
@@ -49,7 +48,7 @@ public class AvailableCarsFragment extends Fragment {
                     binding.availableCarsEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
                     binding.availableCarsList.setVisibility(empty ? View.GONE : View.VISIBLE);
                 } else {
-                    binding.availableCarsEmpty.setText("Could not load cars (HTTP " + response.code() + ")");
+                    binding.availableCarsEmpty.setText(getString(R.string.could_not_load_cars_http, response.code()));
                     binding.availableCarsEmpty.setVisibility(View.VISIBLE);
                     binding.availableCarsList.setVisibility(View.GONE);
                 }
@@ -57,34 +56,21 @@ public class AvailableCarsFragment extends Fragment {
             @Override
             public void onFailure(Call<List<Car>> call, Throwable t) {
                 if (binding == null || getActivity() == null) return;
-                binding.availableCarsEmpty.setText("Network error: " + (t.getMessage() != null ? t.getMessage() : "check connection"));
+                binding.availableCarsEmpty.setText(getString(R.string.network_error_fmt,
+                        t.getMessage() != null ? t.getMessage() : getString(R.string.check_connection)));
                 binding.availableCarsEmpty.setVisibility(View.VISIBLE);
                 binding.availableCarsList.setVisibility(View.GONE);
-                Toast.makeText(requireContext(), "Failed to load available cars", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), getString(R.string.failed_load_available_cars), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void reserve(Car car) {
         if (SessionHolder.getUser() != null && "APPROVED".equalsIgnoreCase(SessionHolder.getUser().getDrivingLicenceStatus())) {
-            Map<String, Object> body = new HashMap<>();
-            body.put("carId", car.getId());
-            body.put("purpose", (Object) null);
-            RetrofitClient.getApiService(new AuthRepository(requireContext()).getSessionPreferences())
-                    .createReservation(body).enqueue(new Callback<com.company.carsharing.models.Reservation>() {
-                @Override
-                public void onResponse(Call<com.company.carsharing.models.Reservation> call, Response<com.company.carsharing.models.Reservation> response) {
-                    if (response.isSuccessful()) {
-                        Toast.makeText(requireContext(), "Reserved", Toast.LENGTH_SHORT).show();
-                        loadCars();
-                    } else Toast.makeText(requireContext(), "Cannot reserve (check driving licence)", Toast.LENGTH_SHORT).show();
-                }
-                @Override
-                public void onFailure(Call<com.company.carsharing.models.Reservation> call, Throwable t) {
-                    Toast.makeText(requireContext(), t.getMessage() != null ? t.getMessage() : "Failed", Toast.LENGTH_SHORT).show();
-                }
-            });
-        } else Toast.makeText(requireContext(), "Driving licence must be approved to reserve", Toast.LENGTH_SHORT).show();
+            ReservationScheduleDialog.show(this, car, this::loadCars);
+        } else {
+            Toast.makeText(requireContext(), getString(R.string.driving_licence_required), Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override

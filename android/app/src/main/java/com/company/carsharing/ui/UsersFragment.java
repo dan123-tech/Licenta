@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
+import com.company.carsharing.R;
 import com.company.carsharing.data.SessionHolder;
 import com.company.carsharing.data.repository.AuthRepository;
 import com.company.carsharing.databinding.FragmentUsersBinding;
@@ -34,7 +35,7 @@ public class UsersFragment extends Fragment implements UsersAdapter.OnUserAction
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentUsersBinding.inflate(inflater, container, false);
-        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarTitle("Manage Users");
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.nav_users));
         String currentUserId = SessionHolder.getUser() != null ? SessionHolder.getUser().getId() : null;
         usersAdapter = new UsersAdapter(requireContext(), currentUserId, SessionHolder.isAdmin(), this);
         binding.usersList.setAdapter(usersAdapter);
@@ -49,13 +50,13 @@ public class UsersFragment extends Fragment implements UsersAdapter.OnUserAction
     }
 
     private void showInviteDialog() {
-        View dialogView = LayoutInflater.from(requireContext()).inflate(com.company.carsharing.R.layout.dialog_invite_user, null);
-        com.google.android.material.textfield.TextInputEditText emailEt = dialogView.findViewById(com.company.carsharing.R.id.dialog_invite_email_et);
-        com.google.android.material.textfield.TextInputEditText nameEt = dialogView.findViewById(com.company.carsharing.R.id.dialog_invite_name_et);
-        Spinner roleSpinner = dialogView.findViewById(com.company.carsharing.R.id.dialog_invite_role);
-        TextView errorTv = dialogView.findViewById(com.company.carsharing.R.id.dialog_invite_error);
-        View cancelBtn = dialogView.findViewById(com.company.carsharing.R.id.dialog_invite_cancel);
-        View saveBtn = dialogView.findViewById(com.company.carsharing.R.id.dialog_invite_save);
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_invite_user, null);
+        com.google.android.material.textfield.TextInputEditText emailEt = dialogView.findViewById(R.id.dialog_invite_email_et);
+        com.google.android.material.textfield.TextInputEditText nameEt = dialogView.findViewById(R.id.dialog_invite_name_et);
+        Spinner roleSpinner = dialogView.findViewById(R.id.dialog_invite_role);
+        TextView errorTv = dialogView.findViewById(R.id.dialog_invite_error);
+        View cancelBtn = dialogView.findViewById(R.id.dialog_invite_cancel);
+        View saveBtn = dialogView.findViewById(R.id.dialog_invite_save);
 
         roleSpinner.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_dropdown_item, new String[]{"USER", "ADMIN"}));
         AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(dialogView).setCancelable(true).create();
@@ -66,7 +67,7 @@ public class UsersFragment extends Fragment implements UsersAdapter.OnUserAction
             String name = nameEt.getText() != null ? nameEt.getText().toString().trim() : "";
             String role = (String) roleSpinner.getSelectedItem();
             if (email.isEmpty()) {
-                errorTv.setText("Email is required");
+                errorTv.setText(getString(R.string.email_required));
                 errorTv.setVisibility(View.VISIBLE);
                 return;
             }
@@ -82,16 +83,16 @@ public class UsersFragment extends Fragment implements UsersAdapter.OnUserAction
                     if (response.isSuccessful() || response.code() == 201) {
                         dialog.dismiss();
                         loadUsers();
-                        Toast.makeText(requireContext(), "Invite created. Share the token with the user.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(requireContext(), getString(R.string.invite_created_hint), Toast.LENGTH_LONG).show();
                     } else {
-                        errorTv.setText(response.code() == 400 ? "Invalid email or already invited" : "Failed to invite");
+                        errorTv.setText(response.code() == 400 ? getString(R.string.invalid_email_or_invited) : getString(R.string.failed_to_invite));
                         errorTv.setVisibility(View.VISIBLE);
                     }
                 }
                 @Override
                 public void onFailure(Call<Object> call, Throwable t) {
                     if (getActivity() != null) {
-                        errorTv.setText("Network error");
+                        errorTv.setText(getString(R.string.network_error));
                         errorTv.setVisibility(View.VISIBLE);
                     }
                 }
@@ -105,15 +106,15 @@ public class UsersFragment extends Fragment implements UsersAdapter.OnUserAction
         String userId = member.getUserId();
         if (userId == null) return;
         if (userId.equals(SessionHolder.getUser() != null ? SessionHolder.getUser().getId() : null)) {
-            Toast.makeText(requireContext(), "Cannot change your own role", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), getString(R.string.cannot_change_own_role), Toast.LENGTH_SHORT).show();
             return;
         }
         String[] roles = new String[]{"USER", "ADMIN"};
         int selected = "ADMIN".equalsIgnoreCase(member.getRole()) ? 1 : 0;
         new AlertDialog.Builder(requireContext())
-                .setTitle("Change role")
+                .setTitle(R.string.change_role_title)
                 .setSingleChoiceItems(roles, selected, null)
-                .setPositiveButton("OK", (d, w) -> {
+                .setPositiveButton(R.string.ok, (d, w) -> {
                     int which = ((AlertDialog) d).getListView().getCheckedItemPosition();
                     if (which < 0) return;
                     String newRole = roles[which];
@@ -126,19 +127,19 @@ public class UsersFragment extends Fragment implements UsersAdapter.OnUserAction
                             if (getActivity() != null) {
                                 if (response.isSuccessful()) {
                                     loadUsers();
-                                    Toast.makeText(requireContext(), "Role updated", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(requireContext(), getString(R.string.role_updated), Toast.LENGTH_SHORT).show();
                                 } else {
-                                    Toast.makeText(requireContext(), response.code() == 400 ? "Cannot change role" : "Failed", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(requireContext(), response.code() == 400 ? getString(R.string.cannot_change_role) : getString(R.string.failed_generic), Toast.LENGTH_SHORT).show();
                                 }
                             }
                         }
                         @Override
                         public void onFailure(Call<Void> call, Throwable t) {
-                            if (getActivity() != null) Toast.makeText(requireContext(), "Network error", Toast.LENGTH_SHORT).show();
+                            if (getActivity() != null) Toast.makeText(requireContext(), getString(R.string.network_error), Toast.LENGTH_SHORT).show();
                         }
                     });
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.cancel, null)
                 .show();
     }
 
@@ -152,13 +153,16 @@ public class UsersFragment extends Fragment implements UsersAdapter.OnUserAction
                 if (getActivity() != null) {
                     if (response.isSuccessful()) {
                         loadUsers();
-                        Toast.makeText(requireContext(), "Driving licence " + status.toLowerCase(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(),
+                                "APPROVED".equalsIgnoreCase(status)
+                                        ? getString(R.string.dl_toast_approved) : getString(R.string.dl_toast_rejected),
+                                Toast.LENGTH_SHORT).show();
                     }
                 }
             }
             @Override
             public void onFailure(Call<Void> call, Throwable t) {
-                if (getActivity() != null) Toast.makeText(requireContext(), "Network error", Toast.LENGTH_SHORT).show();
+                if (getActivity() != null) Toast.makeText(requireContext(), getString(R.string.network_error), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -180,13 +184,15 @@ public class UsersFragment extends Fragment implements UsersAdapter.OnUserAction
         String userId = member.getUserId();
         if (userId == null) return;
         if (userId.equals(SessionHolder.getUser() != null ? SessionHolder.getUser().getId() : null)) {
-            Toast.makeText(requireContext(), "Cannot remove yourself", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), getString(R.string.cannot_remove_self), Toast.LENGTH_SHORT).show();
             return;
         }
+        String who = member.getName() != null && !member.getName().isEmpty()
+                ? member.getName() : (member.getEmail() != null ? member.getEmail() : "");
         new AlertDialog.Builder(requireContext())
-                .setTitle("Remove user")
-                .setMessage("Remove " + (member.getName() != null ? member.getName() : member.getEmail()) + " from the company?")
-                .setPositiveButton("Remove", (d, w) -> {
+                .setTitle(R.string.remove_user_title)
+                .setMessage(getString(R.string.remove_user_message_fmt, who))
+                .setPositiveButton(R.string.remove, (d, w) -> {
                     RetrofitClient.getApiService(new AuthRepository(requireContext()).getSessionPreferences())
                             .removeUser(userId).enqueue(new Callback<Void>() {
                         @Override
@@ -194,19 +200,19 @@ public class UsersFragment extends Fragment implements UsersAdapter.OnUserAction
                             if (getActivity() != null) {
                                 if (response.isSuccessful()) {
                                     loadUsers();
-                                    Toast.makeText(requireContext(), "User removed", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(requireContext(), getString(R.string.user_removed), Toast.LENGTH_SHORT).show();
                                 } else {
-                                    Toast.makeText(requireContext(), response.code() == 400 ? "Cannot remove yourself" : "Failed", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(requireContext(), response.code() == 400 ? getString(R.string.cannot_remove_yourself_error) : getString(R.string.failed_generic), Toast.LENGTH_SHORT).show();
                                 }
                             }
                         }
                         @Override
                         public void onFailure(Call<Void> call, Throwable t) {
-                            if (getActivity() != null) Toast.makeText(requireContext(), "Network error", Toast.LENGTH_SHORT).show();
+                            if (getActivity() != null) Toast.makeText(requireContext(), getString(R.string.network_error), Toast.LENGTH_SHORT).show();
                         }
                     });
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.cancel, null)
                 .show();
     }
 

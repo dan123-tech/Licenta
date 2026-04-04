@@ -83,7 +83,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>
-          © {new Date().getFullYear()} FleetAdmin · All rights reserved
+          © 2026 FleetAdmin · powered by Daniel Cocu
         </p>
       </div>
 

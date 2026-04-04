@@ -5,25 +5,37 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="24dp">
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="New reservation" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/on_surface" />
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_marginTop="12dp" android:text="Car" android:textColor="@color/on_surface_variant" android:textSize="14sp" />
-    <Spinner android:id="@+id/dialog_res_car"
+    <TextView android:id="@+id/dialog_res_title"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="@string/new_reservation_title" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/on_surface" />
+    <LinearLayout android:id="@+id/dialog_res_car_section"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginTop="4dp" />
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="@string/dialog_car_label" android:textColor="@color/on_surface_variant" android:textSize="14sp" />
+        <Spinner android:id="@+id/dialog_res_car"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp" />
+    </LinearLayout>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/reservation_dialog_hints"
+        android:textColor="@color/on_surface_variant"
+        android:textSize="12sp"
+        android:lineSpacingExtra="2dp" />
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_marginTop="12dp" android:text="Schedule reservation (date, hour, min)" android:textColor="@color/on_surface" android:textSize="14sp" android:textStyle="bold" />
+        android:layout_marginTop="12dp" android:text="@string/dialog_schedule_title" android:textColor="@color/on_surface" android:textSize="14sp" android:textStyle="bold" />
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_marginTop="4dp" android:text="Leave empty to reserve now. Or pick start and end date and time for later." android:textColor="@color/on_surface_variant" android:textSize="12sp" />
+        android:layout_marginTop="4dp" android:text="@string/dialog_schedule_hint" android:textColor="@color/on_surface_variant" android:textSize="12sp" />
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/dialog_res_start_layout"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:hint="Start date and time (optional)"
+        android:hint="@string/hint_start_datetime_optional"
         app:boxStrokeColor="@color/accent">
         <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_res_start"
             android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="datetime" android:focusable="false" android:clickable="true" />
@@ -34,7 +46,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:hint="End date and time (optional)"
+        android:hint="@string/hint_end_datetime_optional"
         app:boxStrokeColor="@color/accent">
         <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_res_end"
             android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="datetime" android:focusable="false" android:clickable="true" />
@@ -45,7 +57,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:hint="Purpose (optional)"
+        android:hint="@string/hint_purpose_optional"
         app:boxStrokeColor="@color/accent">
         <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_res_purpose_et"
             android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="text" />
@@ -55,9 +67,9 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:orientation="horizontal">
         <com.google.android.material.button.MaterialButton android:id="@+id/dialog_res_cancel"
             android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginEnd="8dp"
-            android:text="Cancel" app:backgroundTint="@color/on_surface_variant" />
+            android:text="@string/cancel" app:backgroundTint="@color/on_surface_variant" />
         <com.google.android.material.button.MaterialButton android:id="@+id/dialog_res_save"
             android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-            android:text="Reserve" app:backgroundTint="@color/accent" />
+            android:text="@string/reserve" app:backgroundTint="@color/accent" />
     </LinearLayout>
 </LinearLayout>

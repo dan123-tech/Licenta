@@ -1,14 +1,13 @@
 # HTTPS reverse proxy → Next.js `app` service (port 3000 inside the compose network).
 #
-# docker-compose maps host 8443 → container 443. Use:
+# Host maps 8443 → container 443. Open:
 #   https://localhost:8443
 #   https://<your-LAN-IP>:8443
 #
-# Self-signed: Caddy "internal" CA — browsers warn until you trust root.crt from the
-# caddy data volume (path inside container: /data/caddy/pki/authorities/local/root.crt).
+# TLS uses PEM files mounted at /certs (see docker-compose). Generate them once:
+#   npm run certs:local
 #
-# Production on a real domain: map host 80:80 and 443:443 in compose, set email below,
-# and replace the :443 block with:
+# Production on a real domain: map 80:80 and 443:443, set global email in { }, and use:
 #   yourdomain.com { reverse_proxy app:3000 }
 
 {
@@ -17,6 +16,6 @@
 
 # Container listens on 443; host publishes it as :8443 (avoids reserved Windows :80).
 :443 {
-	tls internal
+	tls /certs/cert.pem /certs/key.pem
 	reverse_proxy app:3000
 }

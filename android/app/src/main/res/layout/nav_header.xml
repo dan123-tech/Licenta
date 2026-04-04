@@ -33,7 +33,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="F"
+                android:text="@string/brand_initial"
                 android:textColor="@color/brand_icon_fg"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -49,7 +49,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="FleetAdmin"
+                android:text="@string/brand_name"
                 android:textColor="#FFFFFF"
                 android:textSize="13sp"
                 android:textStyle="bold"
@@ -58,7 +58,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Car sharing platform"
+                android:text="@string/brand_tagline"
                 android:textColor="#59FFFFFF"
                 android:textSize="10sp"
                 android:layout_marginTop="1dp" />
@@ -89,7 +89,7 @@
             android:layout_height="28dp"
             android:background="@color/brand_primary"
             android:gravity="center"
-            android:text="U"
+            android:text="@string/avatar_initial_user"
             android:textColor="@color/brand_icon_fg"
             android:textSize="11sp"
             android:textStyle="bold" />
@@ -105,7 +105,7 @@
                 android:id="@+id/nav_header_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="User name"
+                android:text="@string/unknown_user_placeholder"
                 android:textColor="#E6FFFFFF"
                 android:textSize="12sp"
                 android:textStyle="bold"

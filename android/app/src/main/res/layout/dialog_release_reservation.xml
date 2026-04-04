@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:padding="24dp">
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="Release car" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/on_surface" />
+        android:text="@string/release_car_title" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/on_surface" />
     <TextView android:id="@+id/dialog_release_current_km"
         android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:layout_marginTop="12dp" android:textColor="@color/on_surface_variant" android:textSize="14sp" />
@@ -16,7 +16,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:hint="New odometer km"
+        android:hint="@string/hint_new_odometer"
         app:boxStrokeColor="@color/accent">
         <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_release_new_km_et"
             android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="number" />
@@ -27,7 +27,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:hint="Exceeded km reason (if you used more than company default)"
+        android:hint="@string/hint_exceeded_km_reason"
         app:boxStrokeColor="@color/accent">
         <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_release_reason_et"
             android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textMultiLine" android:minLines="2" />
@@ -37,9 +37,9 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:orientation="horizontal">
         <com.google.android.material.button.MaterialButton android:id="@+id/dialog_release_cancel"
             android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginEnd="8dp"
-            android:text="Cancel" app:backgroundTint="@color/on_surface_variant" />
+            android:text="@string/cancel" app:backgroundTint="@color/on_surface_variant" />
         <com.google.android.material.button.MaterialButton android:id="@+id/dialog_release_save"
             android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-            android:text="Release" app:backgroundTint="@color/accent" />
+            android:text="@string/release" app:backgroundTint="@color/accent" />
     </LinearLayout>
 </LinearLayout>

@@ -13,10 +13,12 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
+import com.company.carsharing.R;
 import com.company.carsharing.data.SessionHolder;
 import com.company.carsharing.data.repository.AuthRepository;
 import com.company.carsharing.databinding.FragmentDrivingLicenceBinding;
 import com.company.carsharing.network.RetrofitClient;
+import com.company.carsharing.util.I18n;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -46,9 +48,9 @@ public class DrivingLicenceFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentDrivingLicenceBinding.inflate(inflater, container, false);
-        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarTitle("Driving licence");
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.nav_driving_licence));
         String status = SessionHolder.getUser() != null ? SessionHolder.getUser().getDrivingLicenceStatus() : null;
-        binding.dlStatus.setText(status != null ? status : "Not set");
+        binding.dlStatus.setText(I18n.drivingLicenceStatusForDisplay(requireContext(), status));
         binding.dlUploadGallery.setOnClickListener(v -> getContentLauncher.launch("image/*"));
         binding.dlTakePhoto.setOnClickListener(v -> {
             try {
@@ -57,7 +59,7 @@ public class DrivingLicenceFragment extends Fragment {
                         requireContext().getPackageName() + ".fileprovider", photo);
                 takePictureLauncher.launch(cameraImageUri);
             } catch (Exception e) {
-                Toast.makeText(requireContext(), "Camera not available", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), getString(R.string.camera_not_available), Toast.LENGTH_SHORT).show();
             }
         });
         return binding.getRoot();
@@ -68,24 +70,24 @@ public class DrivingLicenceFragment extends Fragment {
             File cache = new File(requireContext().getCacheDir(), "dl_upload_" + System.currentTimeMillis() + ".jpg");
             try (InputStream in = requireContext().getContentResolver().openInputStream(uri);
                  FileOutputStream out = new FileOutputStream(cache)) {
-                if (in == null) { Toast.makeText(requireContext(), "Could not read image", Toast.LENGTH_SHORT).show(); return; }
+                if (in == null) { Toast.makeText(requireContext(), getString(R.string.could_not_read_image), Toast.LENGTH_SHORT).show(); return; }
                 byte[] buf = new byte[8192];
                 int n;
                 while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
             }
             uploadFile(cache);
         } catch (Exception e) {
-            Toast.makeText(requireContext(), e.getMessage() != null ? e.getMessage() : "Error", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), e.getMessage() != null ? e.getMessage() : getString(R.string.error_generic), Toast.LENGTH_SHORT).show();
         }
     }
 
     private void uploadFile(File file) {
         if (file == null || !file.exists()) {
-            Toast.makeText(requireContext(), "No image", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), getString(R.string.no_image), Toast.LENGTH_SHORT).show();
             return;
         }
         binding.dlMessage.setVisibility(View.VISIBLE);
-        binding.dlMessage.setText("Uploading…");
+        binding.dlMessage.setText(getString(R.string.uploading));
         RequestBody body = RequestBody.create(MediaType.parse("image/jpeg"), file);
         MultipartBody.Part part = MultipartBody.Part.createFormData("file", file.getName(), body);
         RetrofitClient.getApiService(new AuthRepository(requireContext()).getSessionPreferences())
@@ -95,18 +97,18 @@ public class DrivingLicenceFragment extends Fragment {
                 if (getActivity() == null) return;
                 binding.dlMessage.setVisibility(View.VISIBLE);
                 if (response.isSuccessful()) {
-                    binding.dlMessage.setText("Uploaded successfully. Waiting for admin review.");
+                    binding.dlMessage.setText(getString(R.string.upload_success_pending));
                     // Session cache is stale here — show PENDING which is the server state after upload
-                    binding.dlStatus.setText("PENDING");
+                    binding.dlStatus.setText(getString(R.string.dl_status_pending_label));
                 } else {
-                    binding.dlMessage.setText("Upload failed");
+                    binding.dlMessage.setText(getString(R.string.upload_failed));
                 }
             }
             @Override
             public void onFailure(Call<java.util.Map<String, Object>> call, Throwable t) {
                 if (getActivity() != null) {
                     binding.dlMessage.setVisibility(View.VISIBLE);
-                    binding.dlMessage.setText(t.getMessage() != null ? t.getMessage() : "Error");
+                    binding.dlMessage.setText(t.getMessage() != null ? t.getMessage() : getString(R.string.error_generic));
                 }
             }
         });

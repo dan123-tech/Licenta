@@ -35,6 +35,7 @@ public class CompanySettingsFragment extends Fragment {
     private EditText defaultKmInput;
     private EditText benzineInput;
     private EditText dieselInput;
+    private EditText hybridInput;
     private EditText electricityInput;
 
     @Nullable
@@ -47,11 +48,12 @@ public class CompanySettingsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setToolbarTitle("Company Settings");
+            ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.nav_company_settings));
         }
         defaultKmInput = view.findViewById(R.id.company_settings_default_km);
         benzineInput = view.findViewById(R.id.company_settings_benzine);
         dieselInput = view.findViewById(R.id.company_settings_diesel);
+        hybridInput = view.findViewById(R.id.company_settings_hybrid);
         electricityInput = view.findViewById(R.id.company_settings_electricity);
         Button save = view.findViewById(R.id.company_settings_save);
 
@@ -60,6 +62,7 @@ public class CompanySettingsFragment extends Fragment {
             defaultKmInput.setText(String.valueOf(company.getDefaultKmUsage()));
             setFuel(benzineInput, company.getPriceBenzinePerLiter());
             setFuel(dieselInput, company.getPriceDieselPerLiter());
+            setFuel(hybridInput, company.getPriceHybridPerLiter());
             setFuel(electricityInput, company.getPriceElectricityPerKwh());
         }
 
@@ -77,11 +80,11 @@ public class CompanySettingsFragment extends Fragment {
         try {
             km = Integer.parseInt(kmStr);
             if (km < 1 || km > 10000) {
-                Toast.makeText(requireContext(), "Enter a value between 1 and 10000", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), getString(R.string.enter_km_range), Toast.LENGTH_SHORT).show();
                 return;
             }
         } catch (NumberFormatException e) {
-            Toast.makeText(requireContext(), "Enter a valid number", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), getString(R.string.enter_valid_number), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -91,24 +94,26 @@ public class CompanySettingsFragment extends Fragment {
         body.put("defaultKmUsage", km);
         Double benzine = parseDouble(benzineInput);
         Double diesel = parseDouble(dieselInput);
+        Double hybrid = parseDouble(hybridInput);
         Double electricity = parseDouble(electricityInput);
         if (benzine != null) body.put("priceBenzinePerLiter", benzine);
         if (diesel != null) body.put("priceDieselPerLiter", diesel);
+        if (hybrid != null) body.put("priceHybridPerLiter", hybrid);
         if (electricity != null) body.put("priceElectricityPerKwh", electricity);
 
         api.updateCompanyCurrent(body).enqueue(new Callback<Company>() {
             @Override
             public void onResponse(@NonNull Call<Company> call, @NonNull Response<Company> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    Toast.makeText(requireContext(), "Saved", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), getString(R.string.saved), Toast.LENGTH_SHORT).show();
                     SessionHolder.set(SessionHolder.getUser(), response.body());
                 } else {
-                    Toast.makeText(requireContext(), "Failed to save", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), getString(R.string.failed_to_save), Toast.LENGTH_SHORT).show();
                 }
             }
             @Override
             public void onFailure(@NonNull Call<Company> call, @NonNull Throwable t) {
-                Toast.makeText(requireContext(), t.getMessage() != null ? t.getMessage() : "Error", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), t.getMessage() != null ? t.getMessage() : getString(R.string.error_generic), Toast.LENGTH_SHORT).show();
             }
         });
     }

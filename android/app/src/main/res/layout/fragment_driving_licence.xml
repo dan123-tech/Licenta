@@ -13,7 +13,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Driving licence"
+            android:text="@string/dl_fragment_title"
             android:textSize="22sp"
             android:textStyle="bold"
             android:textColor="?attr/colorOnSurface"
@@ -32,7 +32,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Status"
+                    android:text="@string/dl_status_label"
                     android:textSize="14sp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
                 <TextView
@@ -43,13 +43,13 @@
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="@color/on_surface"
-                    android:text="Loading…" />
+                    android:text="@string/loading" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Upload or update your driving licence"
+            android:text="@string/dl_upload_hint"
             android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="?attr/colorOnSurface"
@@ -58,14 +58,14 @@
             android:id="@+id/dl_upload_gallery"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Choose from gallery"
+            android:text="@string/choose_from_gallery"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_marginBottom="8dp" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/dl_take_photo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Take photo"
+            android:text="@string/take_photo"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_marginBottom="16dp" />
         <TextView

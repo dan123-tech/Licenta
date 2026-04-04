@@ -10,6 +10,7 @@ import android.widget.TextView;
 
 import com.company.carsharing.R;
 import com.company.carsharing.models.Member;
+import com.company.carsharing.util.I18n;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,12 +61,25 @@ public class UsersAdapter extends BaseAdapter {
         ((TextView) row.findViewById(R.id.user_title)).setText(name);
         TextView roleTv = row.findViewById(R.id.user_role);
         String role = m.getRole() != null ? m.getRole() : "";
-        roleTv.setText(role);
+        String roleDisplay;
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            roleDisplay = context.getString(R.string.role_display_admin);
+        } else if ("USER".equalsIgnoreCase(role)) {
+            roleDisplay = context.getString(R.string.role_display_member);
+        } else {
+            roleDisplay = role;
+        }
+        roleTv.setText(roleDisplay);
         int roleColor = "ADMIN".equalsIgnoreCase(role)
                 ? androidx.core.content.ContextCompat.getColor(context, R.color.role_admin)
                 : androidx.core.content.ContextCompat.getColor(context, R.color.role_user);
         roleTv.setTextColor(roleColor);
-        String sub = (m.getEmail() != null ? m.getEmail() : "") + (m.getDrivingLicenceStatus() != null ? " · DL:" + m.getDrivingLicenceStatus() : "");
+        String em = m.getEmail() != null ? m.getEmail() : "";
+        String sub = em;
+        if (m.getDrivingLicenceStatus() != null) {
+            sub = context.getString(R.string.user_dl_status_fmt, em, context.getString(R.string.dl_short_label),
+                    I18n.drivingLicenceStatusForDisplay(context, m.getDrivingLicenceStatus()));
+        }
         ((TextView) row.findViewById(R.id.user_subtitle)).setText(sub);
 
         View roleBtn = row.findViewById(R.id.user_role_btn);
@@ -92,8 +106,9 @@ public class UsersAdapter extends BaseAdapter {
         row.setOnLongClickListener(v -> {
             if (!isAdmin || isSelf) return false;
             PopupMenu popup = new PopupMenu(context, v);
-            popup.getMenu().add(0, 0, 0, "ADMIN".equalsIgnoreCase(m.getRole()) ? "Demote to User" : "Promote to Admin");
-            popup.getMenu().add(0, 1, 1, "Remove");
+            popup.getMenu().add(0, 0, 0, "ADMIN".equalsIgnoreCase(m.getRole())
+                    ? context.getString(R.string.menu_demote_user) : context.getString(R.string.menu_promote_admin));
+            popup.getMenu().add(0, 1, 1, context.getString(R.string.remove));
             popup.setOnMenuItemClickListener(item -> {
                 if (item.getItemId() == 0) listener.onChangeRole(m);
                 else if (item.getItemId() == 1) listener.onRemove(m);

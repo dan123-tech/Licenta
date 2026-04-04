@@ -9,6 +9,7 @@ import android.widget.TextView;
 
 import com.company.carsharing.R;
 import com.company.carsharing.models.Reservation;
+import com.company.carsharing.util.I18n;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,19 +52,22 @@ public class ReservationsAdapter extends BaseAdapter {
             row = LayoutInflater.from(context).inflate(R.layout.item_reservation, parent, false);
         }
         Reservation r = reservations.get(position);
-        String carStr = r.getCar() != null ? r.getCar().getBrand() + " " + (r.getCar().getRegistrationNumber() != null ? r.getCar().getRegistrationNumber() : "") : "Car";
-        ((TextView) row.findViewById(R.id.res_title)).setText(carStr + " · " + (r.getStatus() != null ? r.getStatus() : ""));
-        String sub = (r.getPurpose() != null && !r.getPurpose().isEmpty() ? r.getPurpose() : "") + (r.getCar() != null ? " · " + r.getCar().getKm() + " km" : "");
+        String carStr = r.getCar() != null ? r.getCar().getBrand() + " " + (r.getCar().getRegistrationNumber() != null ? r.getCar().getRegistrationNumber() : "") : context.getString(R.string.history_fallback_car);
+        String statusLabel = I18n.reservationStatus(context, r.getStatus());
+        ((TextView) row.findViewById(R.id.res_title)).setText(carStr + " · " + statusLabel);
+        String sub = (r.getPurpose() != null && !r.getPurpose().isEmpty() ? r.getPurpose() : "")
+                + (r.getCar() != null ? " · " + context.getString(R.string.km_suffix_fmt, r.getCar().getKm()) : "");
         if (r.getStartDate() != null || r.getEndDate() != null) {
             String dates = formatDateRange(r.getStartDate(), r.getEndDate());
             if (!dates.isEmpty()) sub = sub.isEmpty() ? dates : sub + " · " + dates;
         }
         ((TextView) row.findViewById(R.id.res_subtitle)).setText(sub);
-        String pickup = r.getPickupCode() != null ? r.getPickupCode() : "—";
-        String release = r.getReleaseCode() != null ? r.getReleaseCode() : "—";
+        String dash = context.getString(R.string.em_dash);
+        String pickup = r.getPickupCode() != null ? r.getPickupCode() : dash;
+        String release = r.getReleaseCode() != null ? r.getReleaseCode() : dash;
         ((TextView) row.findViewById(R.id.res_pickup_code)).setText(pickup);
         ((TextView) row.findViewById(R.id.res_release_code)).setText(release);
-        String codeStatus = getCodeTimerStatus(r);
+        String codeStatus = getCodeTimerStatus(context, r);
         TextView timerTv = row.findViewById(R.id.res_code_timer);
         timerTv.setText(codeStatus);
         timerTv.setVisibility(codeStatus.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
@@ -102,7 +106,7 @@ public class ReservationsAdapter extends BaseAdapter {
     }
 
     /** 30-min code window: Pending (before valid), Active (valid now), Expired (after 30 min). */
-    private String getCodeTimerStatus(Reservation r) {
+    private String getCodeTimerStatus(Context ctx, Reservation r) {
         String validFrom = r.getCodeValidFrom();
         if (validFrom == null || validFrom.isEmpty()) return "";
         try {
@@ -111,9 +115,9 @@ public class ReservationsAdapter extends BaseAdapter {
             long fromMs = iso.parse(validFrom).getTime();
             long now = System.currentTimeMillis();
             long windowMs = TimeUnit.MINUTES.toMillis(30);
-            if (now < fromMs) return "Code valid in " + ((fromMs - now) / 60000) + " min (30 min from reservation start)";
-            if (now < fromMs + windowMs) return "Code valid now, expires in " + ((fromMs + windowMs - now) / 60000) + " min";
-            return "Code window expired";
+            if (now < fromMs) return ctx.getString(R.string.code_valid_in_fmt, (int) ((fromMs - now) / 60000));
+            if (now < fromMs + windowMs) return ctx.getString(R.string.code_valid_now_fmt, (int) ((fromMs + windowMs - now) / 60000));
+            return ctx.getString(R.string.code_window_expired);
         } catch (Exception e) {
             return "";
         }

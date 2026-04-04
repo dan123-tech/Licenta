@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Car, ArrowRight, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle } from "lucide-react";
 import { apiLogin } from "@/lib/api";
+import { useI18n } from "@/i18n/I18nProvider";
+import LanguageCurrencySwitcher from "@/components/LanguageCurrencySwitcher";
+import FleetShareBrandBlock from "@/components/FleetShareBrandBlock";
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -19,7 +23,7 @@ export default function LoginPage() {
       await apiLogin(email, password);
       window.location.assign("/dashboard");
     } catch (err) {
-      setError(err.message || "Invalid credentials. Please try again.");
+      setError(err.message || t("login.errorFallback"));
     } finally {
       setLoading(false);
     }
@@ -35,37 +39,29 @@ export default function LoginPage() {
         className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col justify-between p-10 shrink-0"
         style={{ background: "var(--sidebar-bg)" }}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: "var(--brand-icon-bg)" }}
-          >
-            <Car className="w-5 h-5" strokeWidth={1.6} style={{ color: "var(--brand-icon-fg)" }} />
-          </div>
-          <span className="text-white font-bold text-lg tracking-tight">FleetAdmin</span>
-        </div>
+        <FleetShareBrandBlock tone="dark" size="xl" priority className="max-w-full" />
 
         {/* Central content */}
         <div>
           <h2
-            className="text-4xl font-bold text-white leading-tight mb-4"
+            className="text-4xl font-bold leading-tight mb-4"
             style={{ letterSpacing: "-0.04em" }}
           >
-            Manage your
+            <span style={{ color: "#f5a623" }}>{t("landing.branding.fleetSmarterAccent")}</span>
+            <span className="text-white">{t("landing.branding.fleetSmarterLine1Rest")}</span>
             <br />
-            fleet smarter.
+            <span className="text-white">{t("landing.branding.fleetSmarterLine2")}</span>
           </h2>
           <p className="text-base" style={{ color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
-            Reserve vehicles, track usage, and keep your team moving — all from one place.
+            {t("landing.branding.fleetSmarterSub")}
           </p>
 
           {/* Feature list */}
           <div className="mt-8 space-y-3">
             {[
-              "AI-powered driving licence verification",
-              "Real-time fleet availability",
-              "Reservation history & analytics",
+              t("landing.branding.bullet1"),
+              t("landing.branding.bullet2"),
+              t("landing.branding.bullet3"),
             ].map((f) => (
               <div key={f} className="flex items-center gap-3">
                 <div
@@ -83,32 +79,28 @@ export default function LoginPage() {
         </div>
 
         <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>
-          © {new Date().getFullYear()} FleetAdmin · All rights reserved
+          {t("common.copyright")}
         </p>
       </div>
 
       {/* ── Right panel (form) */}
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-[400px]">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-2.5 mb-8">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: "var(--brand-icon-bg)" }}
-            >
-              <Car className="w-4 h-4" strokeWidth={1.6} style={{ color: "var(--brand-icon-fg)" }} />
-            </div>
-            <span className="text-slate-900 font-bold text-base">FleetAdmin</span>
+          <div className="flex justify-end mb-4">
+            <LanguageCurrencySwitcher variant="light" />
+          </div>
+          <div className="lg:hidden mb-8">
+            <FleetShareBrandBlock tone="light" size="md" className="max-w-full" />
           </div>
 
           <h1
             className="text-2xl font-bold mb-1"
             style={{ color: "var(--text)", letterSpacing: "-0.03em" }}
           >
-            Welcome back
+            {t("login.title")}
           </h1>
           <p className="text-sm mb-8" style={{ color: "var(--text-muted)" }}>
-            Sign in to access your fleet dashboard.
+            {t("login.subtitle")}
           </p>
 
           {error && (
@@ -124,7 +116,7 @@ export default function LoginPage() {
                 className="block text-[13px] font-semibold mb-1.5"
                 style={{ color: "var(--text)" }}
               >
-                Email address
+                {t("login.email")}
               </label>
               <input
                 type="email"
@@ -155,7 +147,7 @@ export default function LoginPage() {
                   className="block text-[13px] font-semibold"
                   style={{ color: "var(--text)" }}
                 >
-                  Password
+                  {t("login.password")}
                 </label>
               </div>
               <input
@@ -208,11 +200,11 @@ export default function LoginPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Signing in…
+                  {t("login.submitting")}
                 </>
               ) : (
                 <>
-                  Sign in
+                  {t("login.submit")}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -220,13 +212,13 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-6 text-center text-[13px]" style={{ color: "var(--text-muted)" }}>
-            Don&apos;t have an account?{" "}
+            {t("login.noAccount")}{" "}
             <Link
               href="/register"
               className="font-semibold hover:underline"
               style={{ color: "var(--primary)" }}
             >
-              Create one
+              {t("login.createOne")}
             </Link>
           </p>
         </div>

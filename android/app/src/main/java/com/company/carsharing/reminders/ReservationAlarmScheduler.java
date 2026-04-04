@@ -27,6 +27,8 @@ public final class ReservationAlarmScheduler {
     private static final String PREFS = "booking_alarm_scheduler";
     private static final String KEY_KEYS = "alarm_keys";
     private static final long MAX_SPAN_MS = 14L * 24 * 60 * 60 * 1000;
+    /** Local notification ~15 minutes before reservation start (matches web / server FCM intent). */
+    private static final long BEFORE_START_MS = 15L * 60 * 1000;
     private static final String TAG = "ReservationAlarms";
 
     private ReservationAlarmScheduler() {}
@@ -78,14 +80,32 @@ public final class ReservationAlarmScheduler {
 
             boolean longBooking = (endMs - startMs) > MAX_SPAN_MS;
             String carLabel = buildCarLabel(r);
+            String pickup = r.getPickupCode() != null ? r.getPickupCode().trim() : "";
+
+            long beforeAt = startMs - BEFORE_START_MS;
+            if (beforeAt > now) {
+                String key = r.getId() + ":before15";
+                String title = app.getString(com.company.carsharing.R.string.booking_before_15_title);
+                String body = carLabel.isEmpty()
+                        ? app.getString(com.company.carsharing.R.string.booking_before_15_body)
+                        : app.getString(com.company.carsharing.R.string.booking_before_15_body_car, carLabel);
+                scheduleOne(app, am, newKeys, key, beforeAt, title, body);
+            }
 
             if (startMs > now) {
                 String key = r.getId() + ":start";
-                scheduleOne(app, am, newKeys, key, startMs,
-                        app.getString(com.company.carsharing.R.string.booking_start_title),
-                        carLabel.isEmpty()
-                                ? app.getString(com.company.carsharing.R.string.booking_start_body)
-                                : app.getString(com.company.carsharing.R.string.booking_start_body_car, carLabel));
+                String title = app.getString(com.company.carsharing.R.string.booking_start_title);
+                String body;
+                if (!pickup.isEmpty()) {
+                    body = carLabel.isEmpty()
+                            ? app.getString(com.company.carsharing.R.string.booking_start_body_with_code, pickup)
+                            : app.getString(com.company.carsharing.R.string.booking_start_body_car_with_code, carLabel, pickup);
+                } else {
+                    body = carLabel.isEmpty()
+                            ? app.getString(com.company.carsharing.R.string.booking_start_body)
+                            : app.getString(com.company.carsharing.R.string.booking_start_body_car, carLabel);
+                }
+                scheduleOne(app, am, newKeys, key, startMs, title, body);
             }
 
             if (!longBooking && endMs > now) {
@@ -157,7 +177,8 @@ public final class ReservationAlarmScheduler {
         return PendingIntent.getBroadcast(app, reqCode, intent, flags);
     }
 
-    private static long parseIsoToMillis(String iso) {
+    /** Parse API ISO date strings to epoch ms (UTC). */
+    public static long parseIsoToMillis(String iso) {
         if (iso == null || iso.isEmpty()) return -1;
         String[] patterns = {
                 "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",

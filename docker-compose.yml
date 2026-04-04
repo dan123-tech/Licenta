@@ -1,6 +1,10 @@
 # Company Car Sharing – database + app + HTTPS (Caddy)
 # Run:  docker compose up -d
 # Stop: docker compose down
+#
+# Live code sync (host edits apply without rebuilding the app image):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#   or: npm run docker:dev
 # App:  http://localhost:3000  |  https://localhost:8443 (see deploy/Caddyfile if you use 443)
 # DB:   postgresql://postgres:postgres@localhost:5432/company_car_sharing
 
@@ -58,6 +62,8 @@ services:
       - "8443:443"
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Self-signed PEMs from `npm run certs:local` (deploy/certs/.gitignore keeps keys local)
+      - ./deploy/certs:/certs:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

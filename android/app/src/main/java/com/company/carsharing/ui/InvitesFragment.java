@@ -10,6 +10,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
+import com.company.carsharing.R;
 import com.company.carsharing.data.repository.AuthRepository;
 import com.company.carsharing.databinding.FragmentInvitesBinding;
 import com.company.carsharing.models.Invite;
@@ -29,7 +30,7 @@ public class InvitesFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentInvitesBinding.inflate(inflater, container, false);
-        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarTitle("Invites");
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.nav_invites));
         binding.invitesList.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, lines));
         loadInvites();
         return binding.getRoot();
@@ -52,7 +53,8 @@ public class InvitesFragment extends Fragment {
             public void onFailure(Call<List<Invite>> call, Throwable t) {
                 if (getActivity() != null) {
                     Toast.makeText(requireContext(),
-                            "Could not load invites: " + (t.getMessage() != null ? t.getMessage() : "network error"),
+                            getString(R.string.invites_load_error_fmt,
+                                    t.getMessage() != null ? t.getMessage() : getString(R.string.network_error_short)),
                             Toast.LENGTH_SHORT).show();
                 }
             }

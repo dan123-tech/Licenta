@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useI18n } from "@/i18n/I18nProvider";
 
 /**
  * Floating AI Help-Bot chat widget.
@@ -10,13 +11,9 @@ import { useState, useRef, useEffect } from "react";
  *   - Developer Mode (toggle): includes code snippets, file paths, commands
  */
 export default function AiChatBubble() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      role: "ai",
-      text: "Hi! I'm your **FleetStream AI Assistant**.\n\nI can help you with:\n\n- Understanding how features work\n- Troubleshooting problems\n- Answering questions about the system\n\nAsk me anything!",
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [devMode, setDevMode] = useState(false);
@@ -24,6 +21,13 @@ export default function AiChatBubble() {
   const [sessionId] = useState(() => `web_${Date.now()}`);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length > 0) return prev;
+      return [{ role: "ai", text: t("aiChat.welcome") }];
+    });
+  }, [t]);
 
   useEffect(() => {
     if (open && bottomRef.current) {
@@ -80,7 +84,7 @@ export default function AiChatBubble() {
           ...prev,
           {
             role: "ai",
-            text: `**Error:** ${data.error || "Something went wrong."}`,
+            text: `**${t("aiChat.errorPrefix")}** ${data.error || t("aiChat.errorGeneric")}`,
             isError: true,
           },
         ]);
@@ -97,7 +101,7 @@ export default function AiChatBubble() {
         ...prev,
         {
           role: "ai",
-          text: "**Connection error.** Make sure the Help-Bot service is running.",
+          text: t("aiChat.connectionError"),
           isError: true,
         },
       ]);
@@ -108,9 +112,7 @@ export default function AiChatBubble() {
   }
 
   function clearChat() {
-    setMessages([
-      { role: "ai", text: "Chat cleared. How can I help you?" },
-    ]);
+    setMessages([{ role: "ai", text: t("aiChat.cleared") }]);
   }
 
   /**
@@ -242,7 +244,11 @@ export default function AiChatBubble() {
       : "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.7)] animate-pulse";
 
   const statusText =
-    botStatus === "online" ? "Online" : botStatus === "offline" ? "Offline" : "Connecting...";
+    botStatus === "online"
+      ? t("aiChat.statusOnline")
+      : botStatus === "offline"
+        ? t("aiChat.statusOffline")
+        : t("aiChat.statusConnecting");
 
   return (
     <>
@@ -273,7 +279,7 @@ export default function AiChatBubble() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-label="AI Help"
+          aria-label={t("aiChat.toggleAria")}
           className={`relative w-14 h-14 rounded-2xl text-white shadow-lg flex items-center justify-center transition-all duration-300 ${
             open
               ? "bg-slate-700 hover:bg-slate-800 rotate-0"
@@ -315,14 +321,14 @@ export default function AiChatBubble() {
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-white font-bold text-sm">FleetStream AI</h3>
-              <p className="text-blue-100/70 text-xs">Powered by Gemini 2.0 Flash</p>
+              <h3 className="text-white font-bold text-sm">{t("aiChat.title")}</h3>
+              <p className="text-blue-100/70 text-xs">{t("aiChat.poweredBy")}</p>
             </div>
             <div className="flex items-center gap-1.5">
               {/* Developer mode toggle */}
               <button
                 onClick={() => setDevMode((v) => !v)}
-                title={devMode ? "Developer Mode ON – click to switch to User Mode" : "User Mode – click to switch to Developer Mode"}
+                title={devMode ? t("aiChat.devModeOnTitle") : t("aiChat.devModeOffTitle")}
                 className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all duration-200 ${
                   devMode
                     ? "bg-amber-400/30 text-amber-200 hover:bg-amber-400/40"
@@ -341,7 +347,7 @@ export default function AiChatBubble() {
               {/* Clear chat button */}
               <button
                 onClick={clearChat}
-                title="Clear chat"
+                title={t("aiChat.clearChatTitle")}
                 className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -359,13 +365,16 @@ export default function AiChatBubble() {
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
               </svg>
-              <span className="font-medium">Developer Mode</span>
-              <span className="text-amber-500">— responses include code snippets & file paths</span>
+              <span className="font-medium">{t("aiChat.devBannerTitle")}</span>
+              <span className="text-amber-500">{t("aiChat.devBannerHint")}</span>
             </div>
           )}
 
           {/* Messages */}
           <div className="flex-1 p-4 overflow-y-auto space-y-3 min-h-[240px] max-h-[55vh] bg-slate-50/50">
+            {messages.length === 0 && (
+              <p className="text-xs text-slate-400 text-center py-6">{t("common.loading")}</p>
+            )}
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "ai" && (
@@ -405,7 +414,7 @@ export default function AiChatBubble() {
                   <span className="w-2 h-2 bg-slate-400 rounded-full" style={{ animation: "ai-dots 1.4s infinite 0s" }} />
                   <span className="w-2 h-2 bg-slate-400 rounded-full" style={{ animation: "ai-dots 1.4s infinite 0.2s" }} />
                   <span className="w-2 h-2 bg-slate-400 rounded-full" style={{ animation: "ai-dots 1.4s infinite 0.4s" }} />
-                  <span className="text-xs ml-1.5">Thinking...</span>
+                  <span className="text-xs ml-1.5">{t("aiChat.thinking")}</span>
                 </div>
               </div>
             )}
@@ -419,8 +428,8 @@ export default function AiChatBubble() {
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <span>Help-Bot is offline.</span>
-              <button onClick={checkBotHealth} className="underline font-medium hover:text-amber-900">Retry</button>
+              <span>{t("aiChat.offlineBanner")}</span>
+              <button onClick={checkBotHealth} className="underline font-medium hover:text-amber-900">{t("aiChat.retry")}</button>
             </div>
           )}
 
@@ -431,7 +440,7 @@ export default function AiChatBubble() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isLoading ? "Waiting for response..." : "Ask something..."}
+              placeholder={isLoading ? t("aiChat.placeholderLoading") : t("aiChat.placeholderAsk")}
               disabled={isLoading}
               className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-all disabled:opacity-50"
             />

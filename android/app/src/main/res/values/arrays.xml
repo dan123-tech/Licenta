@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- API values; labels come from strings.xml (localized) -->
+    <string-array name="fuel_type_api">
+        <item>Benzine</item>
+        <item>Diesel</item>
+        <item>Electric</item>
+        <item>Hybrid</item>
+    </string-array>
+    <string-array name="car_status_api">
+        <item>AVAILABLE</item>
+        <item>RESERVED</item>
+        <item>IN_MAINTENANCE</item>
+    </string-array>
+    <!-- Labels for audit log filter chips (API values are fixed in AuditLogsFragment) -->
+    <string-array name="audit_filter_labels">
+        <item>All</item>
+        <item>Car</item>
+        <item>Reservation</item>
+        <item>Company</item>
+        <item>User</item>
+    </string-array>
+</resources>

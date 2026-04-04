@@ -52,13 +52,18 @@ public class BookingReminderReceiver extends BroadcastReceiver {
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
         );
 
+        String safeBody = body != null ? body : "";
         NotificationCompat.Builder b = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher)
                 .setContentTitle(title != null ? title : context.getString(R.string.app_name))
-                .setContentText(body != null ? body : "")
+                .setContentText(safeBody)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
                 .setContentIntent(pi);
+
+        if (safeBody.length() > 72) {
+            b.setStyle(new NotificationCompat.BigTextStyle().bigText(safeBody));
+        }
 
         nm.notify(nid, b.build());
     }

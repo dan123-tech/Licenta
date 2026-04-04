@@ -9,6 +9,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
+import com.company.carsharing.R;
 import com.company.carsharing.data.repository.AuthRepository;
 import com.company.carsharing.databinding.FragmentHistoryBinding;
 import com.company.carsharing.models.Reservation;
@@ -27,7 +28,7 @@ public class HistoryFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentHistoryBinding.inflate(inflater, container, false);
-        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarTitle("History");
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.history_screen_title));
         adapter = new HistoryAdapter(requireContext());
         binding.historyList.setAdapter(adapter);
         loadHistory();
@@ -47,7 +48,8 @@ public class HistoryFragment extends Fragment {
             public void onFailure(Call<List<Reservation>> call, Throwable t) {
                 if (getActivity() != null) {
                     Toast.makeText(requireContext(),
-                            "Could not load history: " + (t.getMessage() != null ? t.getMessage() : "network error"),
+                            getString(R.string.history_load_error_fmt,
+                                    t.getMessage() != null ? t.getMessage() : getString(R.string.network_error_short)),
                             Toast.LENGTH_SHORT).show();
                 }
             }

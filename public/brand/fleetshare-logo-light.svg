@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" width="480" height="160">
+  <defs>
+    <style>
+      .logo-bg    { fill: #f8fafc; }
+      .icon-plate { fill: #eff6ff; }
+      .badge-ring { fill: none; stroke: #bae6fd; stroke-width: 1; }
+      .car-body   { fill: #0369a1; }
+      .car-roof   { fill: #0284c7; }
+      .car-glass  { fill: #7dd3fc; opacity: 0.5; }
+      .car-bumper { fill: #075985; }
+      .wheel-out  { fill: #0c1a2e; }
+      .wheel-mid  { fill: #0ea5e9; }
+      .wheel-hub  { fill: #0c1a2e; }
+      .headlight  { fill: #bae6fd; }
+      .taillight  { fill: #fbbf24; }
+      .arrow-ring { fill: none; stroke: #0369a1; stroke-width: 2; stroke-linecap: round; }
+      .road-line  { fill: none; stroke: #bae6fd; stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 4 4; }
+      .dot-user   { fill: #0369a1; }
+      .connect    { fill: none; stroke: #0369a1; stroke-width: 1; stroke-linecap: round; opacity: 0.35; }
+      .word-main  { font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 36px; letter-spacing: -1px; fill: #0f172a; }
+      .word-accent{ fill: #0369a1; }
+      .tagline    { font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; font-weight: 400; font-size: 9px; letter-spacing: 3.5px; fill: #94a3b8; }
+      .divider    { fill: none; stroke: #e2e8f0; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect width="480" height="160" rx="12" class="logo-bg"/>
+  <rect x="24" y="24" width="112" height="112" rx="20" class="icon-plate"/>
+  <rect x="24" y="24" width="112" height="112" rx="20" class="badge-ring"/>
+
+  <line x1="80" y1="44" x2="80" y2="68" class="road-line"/>
+  <line x1="80" y1="90" x2="80" y2="114" class="road-line"/>
+
+  <path d="M44,68 A36,36 0 0,0 44,90" class="arrow-ring"/>
+  <path d="M44,68 L50,62 M44,68 L50,74" fill="none" stroke="#0369a1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M116,90 A36,36 0 0,0 116,68" class="arrow-ring"/>
+  <path d="M116,90 L110,96 M116,90 L110,84" fill="none" stroke="#0369a1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="50" y="76" width="60" height="22" rx="5" class="car-body"/>
+  <path d="M62,76 C63,64 97,64 98,76 Z" class="car-roof"/>
+  <path d="M67,76 C68,68 92,68 93,76 Z" class="car-glass"/>
+  <rect x="50" y="90" width="14" height="6" rx="2" class="car-bumper"/>
+  <rect x="96" y="90" width="14" height="6" rx="2" class="car-bumper"/>
+
+  <path d="M51,91 Q55,102 65,102 Q75,102 79,91" fill="#075985"/>
+  <path d="M81,91 Q85,102 95,102 Q105,102 109,91" fill="#075985"/>
+
+  <circle cx="65" cy="100" r="9" class="wheel-out"/>
+  <circle cx="65" cy="100" r="5.5" class="wheel-mid"/>
+  <circle cx="65" cy="100" r="2.5" class="wheel-hub"/>
+  <circle cx="95" cy="100" r="9" class="wheel-out"/>
+  <circle cx="95" cy="100" r="5.5" class="wheel-mid"/>
+  <circle cx="95" cy="100" r="2.5" class="wheel-hub"/>
+
+  <rect x="50" y="79" width="5" height="4" rx="1.5" class="headlight"/>
+  <rect x="105" y="79" width="5" height="4" rx="1.5" class="taillight"/>
+
+  <circle cx="62"  cy="56" r="4" class="dot-user" opacity="0.5"/>
+  <circle cx="80"  cy="52" r="5" class="dot-user"/>
+  <circle cx="98"  cy="56" r="4" class="dot-user" opacity="0.5"/>
+  <path d="M62,60 Q71,56 80,57 Q89,56 98,60" class="connect"/>
+
+  <line x1="152" y1="32" x2="152" y2="128" class="divider"/>
+
+  <text x="172" y="96" class="word-main">
+    <tspan>Fleet</tspan><tspan class="word-accent">Share</tspan>
+  </text>
+  <text x="174" y="118" class="tagline">COMPANY CAR SHARING</text>
+  <circle cx="168" cy="113" r="2" fill="#0369a1" opacity="0.5"/>
+</svg>

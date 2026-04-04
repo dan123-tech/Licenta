@@ -1,6 +1,6 @@
 /**
  * Lightweight HTTP + WebSocket proxy.
- * Listens on 0.0.0.0:3001 and forwards all traffic to localhost:3000.
+ * Listens on 0.0.0.0:3001 (override with env PROXY_PORT, e.g. 3010) and forwards to localhost:3000.
  *
  * This allows the app to be reached at both:
  *   • http://localhost:3000        (direct)
@@ -16,7 +16,50 @@ const net = require("net");
 
 const TARGET_HOST = "127.0.0.1";
 const TARGET_PORT = 3000;
-const PROXY_PORT = 3001;
+const PROXY_PORT = Number(process.env.PROXY_PORT) || 3001;
+
+/** Hop-by-hop headers: do not forward (RFC 9110). */
+const HOP_BY_HOP = new Set([
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+  "proxy-connection",
+]);
+
+/**
+ * Copy upstream headers to the client response. Set-Cookie must be appended per cookie;
+ * passing the raw headers object to writeHead() can merge/join cookies incorrectly and
+ * break login (session never sticks when using http://<LAN-IP>:3001).
+ */
+function forwardResponseHeaders(upstreamRes, clientRes) {
+  const h = upstreamRes.headers;
+  const setCookie = h["set-cookie"];
+
+  for (const key of Object.keys(h)) {
+    if (HOP_BY_HOP.has(key.toLowerCase())) continue;
+    if (key.toLowerCase() === "set-cookie") continue;
+    const val = h[key];
+    if (val === undefined) continue;
+    if (Array.isArray(val)) {
+      for (const v of val) clientRes.appendHeader(key, v);
+    } else {
+      clientRes.setHeader(key, val);
+    }
+  }
+
+  if (setCookie) {
+    if (Array.isArray(setCookie)) {
+      for (const c of setCookie) clientRes.appendHeader("Set-Cookie", c);
+    } else {
+      clientRes.setHeader("Set-Cookie", setCookie);
+    }
+  }
+}
 
 // ── HTTP request proxy ────────────────────────────────────────────────────────
 
@@ -33,7 +76,8 @@ function proxyRequest(req, res) {
   };
 
   const upstream = http.request(options, (upstreamRes) => {
-    res.writeHead(upstreamRes.statusCode, upstreamRes.headers);
+    res.statusCode = upstreamRes.statusCode;
+    forwardResponseHeaders(upstreamRes, res);
     upstreamRes.pipe(res, { end: true });
   });
 

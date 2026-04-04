@@ -148,7 +148,10 @@ body {
 .fleet-topbar {
   background: var(--card-bg);
   border-bottom: 1px solid var(--border-tertiary);
-  height: var(--topbar-height);
+  /* Grow with wrapped content (title + language/currency + actions); fixed height clipped the bar */
+  min-height: var(--topbar-height);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ─── Tables ──────────────────────────────────────────────── */
@@ -211,4 +214,37 @@ body {
 }
 .animate-page {
   animation: fadeSlideUp 0.25s ease-out both;
+}
+
+/* react-big-calendar (FleetBookingCalendar) */
+.fleet-rbc .rbc-toolbar {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.fleet-rbc .rbc-toolbar button {
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+.fleet-rbc .rbc-toolbar button.rbc-active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.fleet-rbc .rbc-header,
+.fleet-rbc .rbc-time-header-content {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+.fleet-rbc .rbc-today {
+  background-color: rgba(29, 78, 216, 0.06);
+}
+.fleet-rbc .rbc-off-range-bg {
+  background: #f8fafc;
 }

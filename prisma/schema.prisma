@@ -70,6 +70,10 @@ model User {
   drivingLicenceVerifiedBy  String?              // "AI" | "ADMIN" – who set the status
   fcmToken                  String?              // FCM device token for booking reminders (mobile)
   fcmTokenUpdatedAt         DateTime?
+  /** Random id for cookie session; new web login replaces → other browser tabs log out */
+  activeWebSessionToken     String?
+  /** Random id for mobile cookie session; independent from web */
+  activeMobileSessionToken  String?
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
@@ -94,6 +98,7 @@ model Company {
   defaultConsumptionL100km  Float?   @default(7.5) // default L/100km when car has no consumption set
   priceBenzinePerLiter      Float?   // global pricing: Benzine (currency/L)
   priceDieselPerLiter       Float?   // global pricing: Diesel (currency/L)
+  priceHybridPerLiter       Float?   // ICE part of Hybrid (currency/L); falls back to Benzine/Diesel if unset
   priceElectricityPerKwh    Float?   // global pricing: Electricity (currency/kWh)
   dataSourceConfig          Json?    // { users, cars, reservations, usersTable?, carsTable?, reservationsTable? }
   dataSourceCredentials     Json?    // encrypted { "users:SQL_SERVER": { tableName, ...credentials } } per layer:provider
@@ -163,6 +168,7 @@ model Car {
   batteryLevel               Int?       // 0-100 for EV/Hybrid
   batteryCapacityKwh         Float?     // total battery capacity (kWh) for EV/Hybrid range
   lastServiceMileage         Int?       // odometer at last service (maintenance forecast)
+  lastServiceYearMonth       String?    @db.VarChar(7) // "YYYY-MM" when last service was done (optional)
   createdAt                  DateTime   @default(now())
   updatedAt                  DateTime   @updatedAt
 
@@ -192,7 +198,8 @@ model Reservation {
   releasedExceededReason      String?              // reason when km exceeded company default
   releasedExceededStatus      ExceededApprovalStatus? // PENDING_APPROVAL | APPROVED | REJECTED
   releasedExceededAdminComment String?             // admin observations (visible to user)
-  pushReminderStartSentAt      DateTime?            // server FCM: start-of-booking reminder sent
+  pushReminderBeforeStartSentAt DateTime?           // server FCM: ~15 min before start reminder sent
+  pushReminderStartSentAt      DateTime?            // server FCM: start-of-booking reminder sent (incl. pickup code)
   pushReminderEndSentAt        DateTime?            // server FCM: end-of-booking reminder sent
   createdAt                  DateTime             @default(now())
   updatedAt                  DateTime             @updatedAt

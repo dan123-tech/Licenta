@@ -14,13 +14,399 @@
     <string name="already_have_account">Already have an account? Log in</string>
     <string name="create_account_link">Create account</string>
     <string name="booking_reminders_channel_name">Booking reminders</string>
-    <string name="booking_reminders_channel_desc">Start and end of your car reservations</string>
+    <string name="booking_reminders_channel_desc">Reminders before start, pickup code at start, and end of your reservations</string>
+    <string name="booking_before_15_title">Booking soon</string>
+    <string name="booking_before_15_body">Your car reservation starts in about 15 minutes.</string>
+    <string name="booking_before_15_body_car">Your reservation for %1$s starts in about 15 minutes.</string>
     <string name="booking_start_title">Booking starting</string>
     <string name="booking_start_body">Your car reservation is starting now.</string>
     <string name="booking_start_body_car">Your reservation for %1$s is starting now.</string>
+    <string name="booking_start_body_with_code">Your car reservation is starting now. Pickup code: %1$s</string>
+    <string name="booking_start_body_car_with_code">Your reservation for %1$s is starting now. Pickup code: %2$s</string>
     <string name="booking_end_title">Booking ending</string>
     <string name="booking_end_body">Your car reservation end time has been reached.</string>
     <string name="booking_end_body_car">Your reservation for %1$s has reached its end time.</string>
     <string name="server_url_hint">API server URL</string>
     <string name="server_url_helper">Emulator: http://10.0.2.2:3000 — Phone on same Wi‑Fi: http://YOUR-PC-IP:3000 (run ipconfig, IPv4 Address). Your PC must run npm run dev.</string>
+    <string name="new_reservation_title">New reservation</string>
+    <string name="reserve_car_title_fmt">Reserve: %1$s</string>
+    <string name="reservation_dialog_hints">You cannot overlap two of your own bookings on different cars (e.g. 13:55–14:00 on one car and 13:57–14:50 on another).\n\nSchedule: pick start and end so the car is yours only in that window. The car stays available for others until your slot starts, if their times do not overlap yours.\n\nReserve now: starts immediately. If another user already booked a future slot on this car, your session ends when their booking starts.</string>
+    <string name="reservation_created_scheduled">Reservation created for your time slot.</string>
+    <string name="reservation_created_instant_until">Reserved now until %1$s. Others can still book this car for times that do not overlap.</string>
+    <string name="reservation_created_instant">Reservation created.</string>
+    <string name="reservation_user_time_overlap">You already have an active booking in that time window (including on another car). Change the times or end that booking first.</string>
+    <string name="reservation_invalid_request">Invalid request</string>
+    <string name="failed_create_reservation">Failed to create reservation</string>
+    <string name="calendar_all_cars">All cars</string>
+    <string name="calendar_vehicle_label">Vehicle</string>
+    <string name="calendar_empty">No reservations match this filter.</string>
+    <string name="calendar_subtitle_personal">Your bookings (soonest first). Pull to refresh. Filter by vehicle or show all cars.</string>
+    <string name="calendar_subtitle_fleet">Company-wide bookings. Filter by vehicle or show all cars.</string>
+
+    <string name="loading">Loading…</string>
+    <string name="statistics_title">Statistics</string>
+    <string name="statistics_export_hint">Export PDF for any range (opens share sheet).</string>
+    <string name="statistics_pdf_7d">PDF · 7d</string>
+    <string name="statistics_pdf_30d">PDF · 30d</string>
+    <string name="statistics_pdf_6m">PDF · 6m</string>
+    <string name="statistics_pdf_1y">PDF · 1y</string>
+    <string name="statistics_period_label">Period for charts &amp; trip totals</string>
+    <string name="period_7d">7 days</string>
+    <string name="period_30d">30 days</string>
+    <string name="period_6m">6 months</string>
+    <string name="period_1y">12 months</string>
+    <string name="statistics_range_hint">Trip totals use completed reservations whose end time falls in the range. Top users count reservations that started in the range.</string>
+    <string name="statistics_active">Active reservations (all)</string>
+    <string name="statistics_km_period">Trip km (completed, selected period)</string>
+    <string name="statistics_fuel_period">Est. fuel/electricity (completed, period)</string>
+    <string name="statistics_co2_period">CO₂ (completed trips, period)</string>
+    <string name="statistics_co2_chart_title">Carbon footprint (period)</string>
+    <string name="statistics_car_usage_title">Car usage (km driven)</string>
+    <string name="statistics_car_usage_hint">Scroll horizontally when there are many cars. Tap a bar for details.</string>
+    <string name="statistics_leaderboard_title">Efficiency by estimated cost</string>
+    <string name="statistics_leaderboard_sub">Completed trips in the selected period — higher cost = less efficient.</string>
+    <string name="statistics_top_users_title">Top users</string>
+    <string name="statistics_top_users_sub">Reservations that started in the selected period.</string>
+    <string name="statistics_car_tooltip">%1$s\n%2$s\n%3$s · %4$d km in period · %5$d reservations started</string>
+    <string name="statistics_co2_tooltip">%1$s: %2$.1f kg CO₂</string>
+    <string name="statistics_share_chooser">Share report</string>
+    <string name="statistics_pdf_error">Could not create PDF</string>
+    <string name="statistics_load_failed">Failed to load data</string>
+
+    <!-- Navigation (drawer) -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_company">Company</string>
+    <string name="nav_cars">Manage Cars</string>
+    <string name="nav_users">Manage Users</string>
+    <string name="nav_invites">Invites</string>
+    <string name="nav_history">History</string>
+    <string name="nav_company_settings">Company Settings</string>
+    <string name="nav_statistics">Statistics</string>
+    <string name="nav_audit_logs">Audit Logs</string>
+    <string name="nav_fleet_calendar">Fleet calendar</string>
+    <string name="nav_available_cars">Available Cars</string>
+    <string name="nav_my_reservations">My Reservations</string>
+    <string name="nav_booking_calendar">Booking calendar</string>
+    <string name="nav_driving_licence">Profile / Driving licence</string>
+
+    <!-- Brand / auth -->
+    <string name="brand_initial">F</string>
+    <string name="brand_name">FleetAdmin</string>
+    <string name="brand_tagline">Car sharing platform</string>
+    <string name="welcome_back">Welcome back</string>
+    <string name="sign_in_subtitle">Sign in to your account to continue</string>
+    <string name="keep_me_logged_in">Keep me logged in</string>
+    <string name="use_fingerprint">Use fingerprint to log in</string>
+    <string name="create_your_account">Create your account</string>
+    <string name="default_api_url_hint">http://10.0.2.2:3000/</string>
+    <string name="use_password">Use password</string>
+    <string name="welcome_user_fmt">%1$s – Welcome, %2$s</string>
+    <string name="account_created_login">Account created. Please log in.</string>
+
+    <!-- Common actions -->
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="remove">Remove</string>
+    <string name="approve">Approve</string>
+    <string name="reject">Reject</string>
+    <string name="edit">Edit</string>
+    <string name="invite">Invite</string>
+    <string name="reserve">Reserve</string>
+    <string name="release">Release</string>
+    <string name="ok">OK</string>
+    <string name="log_out">Log out</string>
+    <string name="em_dash">—</string>
+    <string name="km_unit">km</string>
+    <string name="km_suffix_fmt">%1$d km</string>
+    <string name="unknown_user_placeholder">User name</string>
+    <string name="avatar_initial_user">U</string>
+
+    <!-- Fuel types (display; API still sends Benzine/Diesel/…) -->
+    <string name="fuel_type_benzine">Petrol</string>
+    <string name="fuel_type_diesel">Diesel</string>
+    <string name="fuel_type_electric">Electric</string>
+    <string name="fuel_type_hybrid">Hybrid</string>
+
+    <!-- Car status -->
+    <string name="car_status_available">Available</string>
+    <string name="car_status_reserved">Reserved</string>
+    <string name="car_status_maintenance">In maintenance</string>
+
+    <!-- Reservation status -->
+    <string name="reservation_status_active">Active</string>
+    <string name="reservation_status_completed">Completed</string>
+    <string name="reservation_status_cancelled">Cancelled</string>
+    <string name="reservation_status_pending">Pending</string>
+
+    <!-- Company -->
+    <string name="join_code_label">Join code</string>
+    <string name="share_join_code">Share join code</string>
+    <string name="default_km_per_reservation_admin">Default km per reservation (admin)</string>
+    <string name="price_per_liter_admin">Price per liter (admin)</string>
+    <string name="default_consumption_admin">Default consumption L/100km (admin)</string>
+    <string name="save_settings">Save settings</string>
+    <string name="pending_km_approvals">Pending km-exceeded approvals</string>
+    <string name="company_settings_subtitle">Default km and fuel prices (admin)</string>
+    <string name="could_not_save_settings">Could not save settings</string>
+    <string name="could_not_open_share">Could not open share</string>
+
+    <!-- Company settings fragment -->
+    <string name="enter_km_range">Enter a value between 1 and 10000</string>
+    <string name="enter_valid_number">Enter a valid number</string>
+    <string name="saved">Saved</string>
+    <string name="failed_to_save">Failed to save</string>
+    <string name="error_generic">Error</string>
+
+    <!-- No company -->
+    <string name="no_company_welcome">Welcome to FleetAdmin</string>
+    <string name="no_company_subtitle">Create a company to manage your fleet, or join an existing one with an invite code.</string>
+    <string name="create_company">Create company</string>
+    <string name="join_company_header">Join a company</string>
+    <string name="join_company_button">Join company</string>
+    <string name="invite_code_hint">Invite code</string>
+    <string name="company_created">Company created</string>
+    <string name="joined_company">Joined company</string>
+    <string name="company_name_required">Enter company name</string>
+    <string name="failed_create_company">Failed to create company</string>
+    <string name="join_code_required">Enter join code</string>
+    <string name="invalid_join_or_member">Invalid join code or already a member</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_overview">Overview</string>
+    <string name="dashboard_subtitle">Your fleet at a glance</string>
+    <string name="total_fleet">Total fleet</string>
+    <string name="active_rentals">Active rentals</string>
+    <string name="team_members">Team members</string>
+    <string name="available">Available</string>
+
+    <!-- Available cars -->
+    <string name="available_cars_title">Available cars</string>
+    <string name="available_cars_subtitle">Tap a car to reserve now or pick start and end time</string>
+    <string name="available_cars_empty">No cars available right now.</string>
+    <string name="could_not_load_cars_http">Could not load cars (HTTP %1$d)</string>
+    <string name="network_error_fmt">Network error: %1$s</string>
+    <string name="failed_load_available_cars">Failed to load available cars</string>
+    <string name="driving_licence_required">Driving licence must be approved to reserve</string>
+    <string name="check_connection">check connection</string>
+
+    <!-- Create reservation dialog -->
+    <string name="dialog_car_label">Car</string>
+    <string name="dialog_schedule_title">Start and end (optional)</string>
+    <string name="dialog_schedule_hint">Leave empty for Reserve now, or choose both for a scheduled booking.</string>
+    <string name="hint_start_datetime_optional">Start date and time (optional)</string>
+    <string name="hint_end_datetime_optional">End date and time (optional)</string>
+    <string name="hint_purpose_optional">Purpose (optional)</string>
+
+    <!-- Reservation schedule / API errors -->
+    <string name="no_available_cars">No available cars</string>
+    <string name="failed_load_cars">Failed to load cars</string>
+    <string name="select_a_car">Select a car</string>
+    <string name="end_after_start">End must be after start</string>
+
+    <!-- My reservations -->
+    <string name="my_reservations_empty">No reservations yet. Tap the + button below to make a reservation from your phone.</string>
+    <string name="last_known_odometer_fmt">Last known odometer: %1$d km (must be ≥ this)</string>
+    <string name="enter_valid_odometer">Enter a valid odometer number</string>
+    <string name="odometer_must_be_ge_fmt">Odometer must be greater than or equal to %1$d km</string>
+    <string name="car_released">Car released</string>
+    <string name="codes_updated">Codes updated</string>
+    <string name="cancel_reservation_title">Cancel reservation</string>
+    <string name="cancel_reservation_message">Cancel this reservation?</string>
+    <string name="cancel_reservation_confirm">Cancel reservation</string>
+    <string name="keep_reservation">Keep</string>
+    <string name="reservation_cancelled">Reservation cancelled</string>
+    <string name="failed_to_cancel">Failed to cancel</string>
+
+    <!-- History -->
+    <string name="history_screen_title">History</string>
+    <string name="reservation_history_heading">Reservation history</string>
+    <string name="history_fallback_car">Car</string>
+    <string name="history_load_error_fmt">Could not load history: %1$s</string>
+    <string name="network_error_short">network error</string>
+    <string name="network_error">Network error</string>
+
+    <!-- Invites -->
+    <string name="invites_load_error_fmt">Could not load invites: %1$s</string>
+
+    <!-- Item reservation -->
+    <string name="rental_codes">Rental codes</string>
+    <string name="rental_codes_hint">Use these codes to start and release the rental. Code is valid for 30 min from reservation start.</string>
+    <string name="start_rental_prefix">Start rental: </string>
+    <string name="release_rental_prefix">Release rental: </string>
+    <string name="get_codes">Get codes</string>
+
+    <!-- Audit logs -->
+    <string name="audit_icon">🛡</string>
+    <string name="audit_title">Audit Logs</string>
+    <string name="audit_subtitle">Immutable record — cannot be edited or deleted</string>
+    <string name="audit_empty">No audit log entries yet.\nActions like editing a car, cancelling a reservation,\nor changing prices will appear here.</string>
+    <string name="audit_prev">‹ Prev</string>
+    <string name="audit_next">Next ›</string>
+    <string name="audit_page_fmt">Page %1$d / %2$d</string>
+    <string name="audit_page_placeholder">Page 1</string>
+    <string name="audit_load_failed_http">Failed to load audit logs (HTTP %1$d)</string>
+    <string name="audit_actor_fmt">By: %1$s &lt;%2$s&gt;</string>
+    <string name="audit_actor_system">By: System</string>
+
+    <!-- Cars -->
+    <string name="add_car_title">Add car</string>
+    <string name="edit_car_title">Edit car</string>
+    <string name="hint_brand">Brand</string>
+    <string name="hint_registration">Registration number</string>
+    <string name="hint_fuel_type">Fuel type</string>
+    <string name="hint_current_km">Current km</string>
+    <string name="hint_consumption_optional">Consumption L/100km (optional)</string>
+    <string name="hint_status">Status</string>
+    <string name="brand_required">Brand is required</string>
+    <string name="registration_required">Registration number is required</string>
+    <string name="invalid_data">Invalid data</string>
+    <string name="failed_add_car">Failed to add car</string>
+    <string name="car_added">Car added</string>
+    <string name="car_updated">Car updated</string>
+    <string name="failed_update">Failed to update</string>
+    <string name="delete_car_title">Delete car</string>
+    <string name="delete_car_message_fmt">Delete %1$s %2$s?</string>
+    <string name="car_deleted">Car deleted</string>
+    <string name="failed_delete">Failed to delete</string>
+
+    <!-- Users -->
+    <string name="invite_user_title">Invite user</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_name_optional">Name (optional)</string>
+    <string name="role_label">Role</string>
+    <string name="email_required">Email is required</string>
+    <string name="invite_created_hint">Invite created. Share the token with the user.</string>
+    <string name="cannot_change_own_role">Cannot change your own role</string>
+    <string name="change_role_title">Change role</string>
+    <string name="role_updated">Role updated</string>
+    <string name="cannot_change_role">Cannot change role</string>
+    <string name="failed_generic">Failed</string>
+    <string name="remove_user_title">Remove user</string>
+    <string name="remove_user_message_fmt">Remove %1$s from the company?</string>
+    <string name="user_removed">User removed</string>
+    <string name="cannot_remove_self">Cannot remove yourself</string>
+    <string name="cannot_remove_yourself_error">Cannot remove yourself</string>
+    <string name="approve_dl">Approve DL</string>
+    <string name="reject_dl">Reject DL</string>
+    <string name="dl_status_fmt">Driving licence %1$s</string>
+    <string name="menu_promote_admin">Promote to Admin</string>
+    <string name="menu_demote_user">Demote to User</string>
+    <string name="dl_short_label">DL</string>
+    <string name="user_dl_status_fmt">%1$s · %2$s: %3$s</string>
+
+    <!-- Driving licence -->
+    <string name="driving_licence_screen_title">Driving licence</string>
+    <string name="dl_fragment_title">Driving licence</string>
+    <string name="dl_status_label">Status</string>
+    <string name="dl_upload_hint">Upload or update your driving licence</string>
+    <string name="choose_from_gallery">Choose from gallery</string>
+    <string name="take_photo">Take photo</string>
+    <string name="camera_not_available">Camera not available</string>
+    <string name="could_not_read_image">Could not read image</string>
+    <string name="no_image">No image</string>
+    <string name="uploading">Uploading…</string>
+    <string name="upload_success_pending">Uploaded successfully. Waiting for admin review.</string>
+    <string name="upload_failed">Upload failed</string>
+
+    <!-- Release reservation dialog -->
+    <string name="release_car_title">Release car</string>
+    <string name="hint_km_used">Km used</string>
+
+    <!-- Statistics charts (legend, optional) -->
+    <string name="chart_label_co2">CO₂</string>
+    <string name="chart_label_km">km</string>
+
+    <!-- PDF export lines -->
+    <string name="pdf_report_header_fmt">FleetAdmin — %1$s</string>
+    <string name="pdf_active_reservations">Active reservations: %1$d</string>
+    <string name="pdf_trip_km">Trip km (completed, period): %1$,d km</string>
+    <string name="pdf_est_fuel">Est. fuel/electricity (period): %1$s</string>
+    <string name="pdf_co2_line">CO₂ (period): %1$s</string>
+    <string name="pdf_cost_leaderboard_header">Cost leaderboard (period, top 15)</string>
+    <string name="pdf_top_users_header">Top users (started in period)</string>
+    <string name="pdf_not_available">—</string>
+
+    <!-- Code validity (reservations list) -->
+    <string name="code_valid_in_fmt">Code valid in %1$d min (30 min from reservation start)</string>
+    <string name="code_valid_now_fmt">Code valid now, expires in %1$d min</string>
+    <string name="code_window_expired">Code window expired</string>
+
+    <!-- Biometric -->
+    <string name="biometric_title_fmt">%1$s – Log in</string>
+
+    <!-- Company settings form hints -->
+    <string name="hint_default_km_reservation">Default KM per reservation</string>
+    <string name="hint_benzine_price">Petrol (price per liter)</string>
+    <string name="hint_diesel_price">Diesel (price per liter)</string>
+    <string name="hint_hybrid_price">Hybrid ICE (price per liter, optional)</string>
+    <string name="hint_electricity_price">Electricity (price per kWh)</string>
+    <string name="hint_new_odometer">New odometer km</string>
+    <string name="hint_exceeded_km_reason">Exceeded km reason (if you used more than company default)</string>
+
+    <!-- Register validation -->
+    <string name="register_name_required">Please enter your name</string>
+    <string name="register_email_required">Please enter your email</string>
+    <string name="register_password_required">Please enter a password</string>
+    <string name="register_password_min">Password must be at least 8 characters</string>
+    <string name="register_passwords_mismatch">Passwords do not match</string>
+    <string name="registration_failed">Registration failed</string>
+
+    <!-- Biometric prompt -->
+    <string name="biometric_subtitle">Use your fingerprint to sign in</string>
+
+    <!-- Main drawer / roles -->
+    <string name="role_display_admin">Admin</string>
+    <string name="role_display_member">Member</string>
+
+    <!-- Company screen -->
+    <string name="could_not_load_company_screen">Could not load company screen.</string>
+    <string name="join_share_body_fmt">Join our company car sharing. Use code: %1$s</string>
+    <string name="join_share_subject">Car sharing join code</string>
+    <string name="pending_user_placeholder">User</string>
+    <string name="km_action_approved">Approved</string>
+    <string name="km_action_rejected">Rejected</string>
+    <string name="could_not_show_pending_approvals">Could not show pending approvals</string>
+    <string name="failed_load_approvals">Failed to load approvals</string>
+    <string name="invalid_reservation_id">Invalid reservation id</string>
+
+    <!-- My reservations / release -->
+    <string name="invalid_km_or_reason">Invalid km or reason required</string>
+    <string name="failed_to_release">Failed to release</string>
+    <string name="could_not_get_codes">Could not get codes</string>
+
+    <!-- Users invite -->
+    <string name="invalid_email_or_invited">Invalid email or already invited</string>
+    <string name="failed_to_invite">Failed to invite</string>
+
+    <!-- Driving licence status display -->
+    <string name="dl_status_not_set">Not set</string>
+    <string name="dl_status_pending_label">Pending</string>
+    <string name="driving_licence_status_approved">Approved</string>
+    <string name="driving_licence_status_rejected">Rejected</string>
+    <string name="dl_toast_approved">Driving licence approved</string>
+    <string name="dl_toast_rejected">Driving licence rejected</string>
+
+    <!-- Audit log -->
+    <string name="audit_entries_fmt">%1$d entries</string>
+    <string name="audit_action_car_added">Car added</string>
+    <string name="audit_action_car_updated">Car updated</string>
+    <string name="audit_action_car_status_changed">Car status changed</string>
+    <string name="audit_action_car_deleted">Car deleted</string>
+    <string name="audit_action_reservation_created">Reservation created</string>
+    <string name="audit_action_reservation_cancelled">Reservation cancelled</string>
+    <string name="audit_action_reservation_completed">Reservation completed</string>
+    <string name="audit_action_reservation_extended">Reservation extended</string>
+    <string name="audit_action_km_exceeded_approved">Km exceeded – approved</string>
+    <string name="audit_action_km_exceeded_rejected">Km exceeded – rejected</string>
+    <string name="audit_action_pricing_changed">Pricing changed</string>
+    <string name="audit_action_company_settings_changed">Settings changed</string>
+    <string name="audit_action_user_invited">User invited</string>
+    <string name="audit_action_user_role_changed">Role changed</string>
+    <string name="audit_action_user_removed">User removed</string>
+    <string name="audit_action_dl_status_changed">Licence status changed</string>
+    <string name="audit_entity_type_car">Car</string>
+    <string name="audit_entity_type_reservation">Reservation</string>
+    <string name="audit_entity_type_company">Company</string>
+    <string name="audit_entity_type_user">User</string>
 </resources>

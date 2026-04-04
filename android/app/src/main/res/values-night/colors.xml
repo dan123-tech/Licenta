@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark theme: follows system night mode (phone theme) -->
+    <color name="brand_primary">#3B82F6</color>
+    <color name="brand_primary_dark">#2563EB</color>
+    <color name="brand_icon_fg">#1E293B</color>
+
+    <color name="sidebar_bg">#0B1220</color>
+    <color name="sidebar_border">#1E293B</color>
+
+    <color name="toolbar_bg">#111827</color>
+
+    <color name="join_badge_bg">#1E3A5F</color>
+    <color name="join_badge_text">#93C5FD</color>
+    <color name="join_badge_border">#2563EB</color>
+
+    <color name="primary">#3B82F6</color>
+    <color name="primary_variant">#2563EB</color>
+    <color name="accent">#3B82F6</color>
+    <color name="accent_variant">#2563EB</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_accent">#FFFFFF</color>
+
+    <color name="surface">#0F172A</color>
+    <color name="surface_variant">#1E293B</color>
+    <color name="card_bg">#1E293B</color>
+    <color name="card_border">#334155</color>
+
+    <color name="on_surface">#F1F5F9</color>
+    <color name="on_surface_variant">#94A3B8</color>
+    <color name="text_subtle">#64748B</color>
+
+    <color name="outline">#475569</color>
+    <color name="divider">#334155</color>
+    <color name="error">#F87171</color>
+    <color name="on_error">#1E293B</color>
+
+    <color name="status_available">#34D399</color>
+    <color name="status_reserved">#FBBF24</color>
+    <color name="status_maintenance">#F87171</color>
+
+    <color name="role_admin">#60A5FA</color>
+    <color name="role_user">#94A3B8</color>
+
+    <color name="fuel_benzine_bg">#422006</color>
+    <color name="fuel_benzine_text">#FCD34D</color>
+    <color name="fuel_benzine_border">#B45309</color>
+    <color name="fuel_diesel_bg">#1E293B</color>
+    <color name="fuel_diesel_text">#E2E8F0</color>
+    <color name="fuel_diesel_border">#64748B</color>
+    <color name="fuel_electric_bg">#064E3B</color>
+    <color name="fuel_electric_text">#6EE7B7</color>
+    <color name="fuel_electric_border">#059669</color>
+    <color name="fuel_hybrid_bg">#134E4A</color>
+    <color name="fuel_hybrid_text">#5EEAD4</color>
+    <color name="fuel_hybrid_border">#0D9488</color>
+</resources>

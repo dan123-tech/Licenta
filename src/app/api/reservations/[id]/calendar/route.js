@@ -48,12 +48,14 @@ export async function GET(_request, context) {
   });
 
   const filename = `reservation-${reservation.id.slice(0, 8)}.ics`;
+  const filenameStar = encodeURIComponent(filename);
   return new Response(ics, {
     status: 200,
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${filenameStar}`,
       "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

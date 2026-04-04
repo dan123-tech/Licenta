@@ -40,16 +40,20 @@ export async function getCarById(carId, companyId) {
 /**
  * Create a new car for the company (admin only).
  * @param {string} companyId
- * @param {Object} data - { brand, model?, registrationNumber, km?, status?, fuelType?, averageConsumptionL100km?, averageConsumptionKwh100km?, batteryLevel?, batteryCapacityKwh?, lastServiceMileage? }
+ * @param {Object} data - { brand, model?, registrationNumber, km?, status?, fuelType?, averageConsumptionL100km?, averageConsumptionKwh100km?, batteryLevel?, batteryCapacityKwh?, lastServiceMileage?, lastServiceYearMonth? }
  * @returns {Promise<Object>}
  */
 export async function createCar(companyId, data) {
+  const lastYm =
+    data.lastServiceYearMonth != null && String(data.lastServiceYearMonth).trim() !== ""
+      ? String(data.lastServiceYearMonth).trim()
+      : null;
   return prisma.car.create({
     data: {
       companyId,
       brand: data.brand.trim(),
       model: data.model?.trim() || null,
-      registrationNumber: data.registrationNumber.trim(),
+      registrationNumber: data.registrationNumber.trim().toUpperCase(),
       km: data.km ?? 0,
       status: data.status ?? "AVAILABLE",
       fuelType: data.fuelType ?? "Benzine",
@@ -58,6 +62,7 @@ export async function createCar(companyId, data) {
       batteryLevel: data.batteryLevel != null ? Math.min(100, Math.max(0, Number(data.batteryLevel))) : null,
       batteryCapacityKwh: data.batteryCapacityKwh != null ? Number(data.batteryCapacityKwh) : null,
       lastServiceMileage: data.lastServiceMileage != null ? Number(data.lastServiceMileage) : null,
+      ...(lastYm != null ? { lastServiceYearMonth: lastYm } : {}),
     },
   });
 }
@@ -73,7 +78,7 @@ export async function updateCar(carId, companyId, data) {
   const update = {
     ...(data.brand !== undefined && { brand: data.brand.trim() }),
     ...(data.model !== undefined && { model: data.model?.trim() || null }),
-    ...(data.registrationNumber !== undefined && { registrationNumber: data.registrationNumber.trim() }),
+    ...(data.registrationNumber !== undefined && { registrationNumber: data.registrationNumber.trim().toUpperCase() }),
     ...(data.km !== undefined && { km: data.km }),
     ...(data.status !== undefined && { status: data.status }),
     ...(data.fuelType !== undefined && { fuelType: data.fuelType }),
@@ -91,6 +96,12 @@ export async function updateCar(carId, companyId, data) {
     }),
     ...(data.lastServiceMileage !== undefined && {
       lastServiceMileage: data.lastServiceMileage == null ? null : Number(data.lastServiceMileage),
+    }),
+    ...(data.lastServiceYearMonth !== undefined && {
+      lastServiceYearMonth:
+        data.lastServiceYearMonth == null || String(data.lastServiceYearMonth).trim() === ""
+          ? null
+          : String(data.lastServiceYearMonth).trim(),
     }),
   };
   return prisma.car.updateMany({

@@ -4,6 +4,7 @@
  */
 
 import { getSession } from "@/lib/auth";
+import { normalizeClientType } from "@/lib/auth/session-tokens";
 import { getCompanyById } from "@/lib/companies";
 import { getUserById } from "@/lib/users";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
@@ -28,8 +29,10 @@ export async function GET() {
     drivingLicenceStatus: userRow?.drivingLicenceStatus ?? null,
     drivingLicenceUrl: userRow?.drivingLicenceUrl ?? null,
   };
+  const webExtra =
+    normalizeClientType(session.client) === "web" && session.sid ? { webSessionId: session.sid } : {};
   if (!session.companyId) {
-    return noStore(jsonResponse({ user: baseUser, company: null }));
+    return noStore(jsonResponse({ user: baseUser, company: null, ...webExtra }));
   }
   const company = await getCompanyById(session.companyId);
   return noStore(jsonResponse({
@@ -44,7 +47,9 @@ export async function GET() {
       defaultConsumptionL100km: company.defaultConsumptionL100km ?? 7.5,
       priceBenzinePerLiter: company.priceBenzinePerLiter ?? null,
       priceDieselPerLiter: company.priceDieselPerLiter ?? null,
+      priceHybridPerLiter: company.priceHybridPerLiter ?? null,
       priceElectricityPerKwh: company.priceElectricityPerKwh ?? null,
     } : null,
+    ...webExtra,
   }));
 }

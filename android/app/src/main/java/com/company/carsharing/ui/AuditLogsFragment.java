@@ -41,32 +41,35 @@ public class AuditLogsFragment extends Fragment {
     private int totalPages = 1;
     private static final int LIMIT = 25;
     private String activeEntityType = null; // null = all
+    /** Parallel to {@link R.array#audit_filter_labels}; index 0 = all types. */
+    private static final String[] AUDIT_FILTER_API = { null, "CAR", "RESERVATION", "COMPANY", "USER" };
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentAuditLogsBinding.inflate(inflater, container, false);
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setToolbarTitle("Audit Logs");
+            ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.audit_title));
         }
 
         adapter = new AuditLogAdapter(requireContext());
         binding.auditList.setAdapter(adapter);
 
-        // Filter chips
-        String[] filters = {"All", "CAR", "RESERVATION", "COMPANY", "USER"};
+        String[] filterLabels = getResources().getStringArray(R.array.audit_filter_labels);
         int colorActive   = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.join_badge_text);
         int colorInactive = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.on_surface_variant);
-        for (String f : filters) {
+        for (int fi = 0; fi < filterLabels.length && fi < AUDIT_FILTER_API.length; fi++) {
+            final int idx = fi;
+            String label = filterLabels[fi];
             View chip = LayoutInflater.from(requireContext())
                     .inflate(R.layout.item_filter_chip, binding.filterChips, false);
             if (chip instanceof TextView) {
                 TextView chipTv = (TextView) chip;
-                chipTv.setText(f);
-                boolean initiallySelected = "All".equals(f);
+                chipTv.setText(label);
+                boolean initiallySelected = idx == 0;
                 chip.setSelected(initiallySelected);
                 chipTv.setTextColor(initiallySelected ? colorActive : colorInactive);
                 chip.setOnClickListener(v -> {
-                    activeEntityType = "All".equals(f) ? null : f;
+                    activeEntityType = AUDIT_FILTER_API[idx];
                     currentPage = 1;
                     for (int i = 0; i < binding.filterChips.getChildCount(); i++) {
                         View c = binding.filterChips.getChildAt(i);
@@ -111,9 +114,9 @@ public class AuditLogsFragment extends Fragment {
                             double total = body.containsKey("total")
                                     ? ((Number) body.get("total")).doubleValue() : 0;
                             totalPages = (int) Math.max(1, Math.ceil(total / LIMIT));
-                            binding.auditTotal.setText((int) total + " entries");
+                            binding.auditTotal.setText(getString(R.string.audit_entries_fmt, (int) total));
                             binding.paginationRow.setVisibility(totalPages > 1 ? View.VISIBLE : View.GONE);
-                            binding.pageLabel.setText("Page " + currentPage + " / " + totalPages);
+                            binding.pageLabel.setText(getString(R.string.audit_page_fmt, currentPage, totalPages));
                             binding.btnPrevPage.setEnabled(currentPage > 1);
                             binding.btnNextPage.setEnabled(currentPage < totalPages);
 
@@ -128,7 +131,7 @@ public class AuditLogsFragment extends Fragment {
                                 binding.auditList.setVisibility(View.VISIBLE);
                             }
                         } else {
-                            binding.auditError.setText("Failed to load audit logs (HTTP " + response.code() + ")");
+                            binding.auditError.setText(getString(R.string.audit_load_failed_http, response.code()));
                             binding.auditError.setVisibility(View.VISIBLE);
                         }
                     }
@@ -137,7 +140,8 @@ public class AuditLogsFragment extends Fragment {
                     public void onFailure(@NonNull Call<Map<String, Object>> call, @NonNull Throwable t) {
                         if (binding == null) return;
                         binding.auditProgress.setVisibility(View.GONE);
-                        binding.auditError.setText("Network error: " + t.getMessage());
+                        binding.auditError.setText(getString(R.string.network_error_fmt,
+                                t.getMessage() != null ? t.getMessage() : getString(R.string.network_error_short)));
                         binding.auditError.setVisibility(View.VISIBLE);
                     }
                 });
@@ -183,7 +187,7 @@ public class AuditLogsFragment extends Fragment {
             TextView metaView = convertView.findViewById(R.id.audit_meta);
 
             String action = safeStr(log, "action");
-            actionView.setText(actionLabel(action));
+            actionView.setText(actionLabel(getContext(), action));
 
             String createdAt = safeStr(log, "createdAt");
             if (!createdAt.isEmpty()) {
@@ -199,7 +203,7 @@ public class AuditLogsFragment extends Fragment {
                 timestampView.setText("");
             }
 
-            entityTypeView.setText(safeStr(log, "entityType"));
+            entityTypeView.setText(entityTypeLabel(getContext(), safeStr(log, "entityType")));
 
             String eid = safeStr(log, "entityId");
             if (eid.length() > 8) eid = eid.substring(0, 8) + "…";
@@ -208,9 +212,10 @@ public class AuditLogsFragment extends Fragment {
             @SuppressWarnings("unchecked")
             Map<String, Object> actor = (Map<String, Object>) log.get("actor");
             if (actor != null) {
-                actorView.setText("By: " + safeStr(actor, "name") + " <" + safeStr(actor, "email") + ">");
+                actorView.setText(getContext().getString(R.string.audit_actor_fmt,
+                        safeStr(actor, "name"), safeStr(actor, "email")));
             } else {
-                actorView.setText("By: System");
+                actorView.setText(getContext().getString(R.string.audit_actor_system));
             }
 
             Object meta = log.get("meta");
@@ -240,27 +245,37 @@ public class AuditLogsFragment extends Fragment {
             return v != null ? String.valueOf(v) : "";
         }
 
-        /** Convert enum value to a human-readable label. */
-        private String actionLabel(String action) {
-            if (action == null) return "";
+        private static String actionLabel(Context c, String action) {
+            if (c == null || action == null) return "";
             switch (action) {
-                case "CAR_ADDED":             return "Car added";
-                case "CAR_UPDATED":           return "Car updated";
-                case "CAR_STATUS_CHANGED":    return "Car status changed";
-                case "CAR_DELETED":           return "Car deleted";
-                case "RESERVATION_CREATED":   return "Reservation created";
-                case "RESERVATION_CANCELLED": return "Reservation cancelled";
-                case "RESERVATION_COMPLETED": return "Reservation completed";
-                case "RESERVATION_EXTENDED":  return "Reservation extended";
-                case "KM_EXCEEDED_APPROVED":  return "Km exceeded – approved";
-                case "KM_EXCEEDED_REJECTED":  return "Km exceeded – rejected";
-                case "PRICING_CHANGED":       return "Pricing changed";
-                case "COMPANY_SETTINGS_CHANGED": return "Settings changed";
-                case "USER_INVITED":          return "User invited";
-                case "USER_ROLE_CHANGED":     return "Role changed";
-                case "USER_REMOVED":          return "User removed";
-                case "DRIVING_LICENCE_STATUS_CHANGED": return "Licence status changed";
+                case "CAR_ADDED":             return c.getString(R.string.audit_action_car_added);
+                case "CAR_UPDATED":           return c.getString(R.string.audit_action_car_updated);
+                case "CAR_STATUS_CHANGED":    return c.getString(R.string.audit_action_car_status_changed);
+                case "CAR_DELETED":           return c.getString(R.string.audit_action_car_deleted);
+                case "RESERVATION_CREATED":   return c.getString(R.string.audit_action_reservation_created);
+                case "RESERVATION_CANCELLED": return c.getString(R.string.audit_action_reservation_cancelled);
+                case "RESERVATION_COMPLETED": return c.getString(R.string.audit_action_reservation_completed);
+                case "RESERVATION_EXTENDED":  return c.getString(R.string.audit_action_reservation_extended);
+                case "KM_EXCEEDED_APPROVED":  return c.getString(R.string.audit_action_km_exceeded_approved);
+                case "KM_EXCEEDED_REJECTED":  return c.getString(R.string.audit_action_km_exceeded_rejected);
+                case "PRICING_CHANGED":       return c.getString(R.string.audit_action_pricing_changed);
+                case "COMPANY_SETTINGS_CHANGED": return c.getString(R.string.audit_action_company_settings_changed);
+                case "USER_INVITED":          return c.getString(R.string.audit_action_user_invited);
+                case "USER_ROLE_CHANGED":     return c.getString(R.string.audit_action_user_role_changed);
+                case "USER_REMOVED":          return c.getString(R.string.audit_action_user_removed);
+                case "DRIVING_LICENCE_STATUS_CHANGED": return c.getString(R.string.audit_action_dl_status_changed);
                 default:                      return action;
+            }
+        }
+
+        private static String entityTypeLabel(Context c, String raw) {
+            if (c == null || raw == null || raw.isEmpty()) return raw != null ? raw : "";
+            switch (raw) {
+                case "CAR":         return c.getString(R.string.audit_entity_type_car);
+                case "RESERVATION": return c.getString(R.string.audit_entity_type_reservation);
+                case "COMPANY":     return c.getString(R.string.audit_entity_type_company);
+                case "USER":        return c.getString(R.string.audit_entity_type_user);
+                default:            return raw;
             }
         }
     }

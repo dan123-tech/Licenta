@@ -5,7 +5,8 @@
 
 import { z } from "zod";
 import { joinCompanyByCode } from "@/lib/companies";
-import { setSession } from "@/lib/auth";
+import { extendUserSession } from "@/lib/auth";
+import { normalizeClientType } from "@/lib/auth/session-tokens";
 import { requireSession, jsonResponse, errorResponse } from "@/lib/api-helpers";
 
 const bodySchema = z.object({
@@ -23,18 +24,16 @@ export async function POST(request) {
     return errorResponse("Invalid join code or you are already a member", 400);
   }
 
-  await setSession(
+  const sid = await extendUserSession(
+    out.session,
     {
-      userId: out.session.userId,
-      email: out.session.email,
-      name: out.session.name,
       companyId: member.companyId,
       role: member.role,
     },
     request
   );
 
-  return jsonResponse({
+  const payload = {
     company: {
       id: member.company.id,
       name: member.company.name,
@@ -43,5 +42,7 @@ export async function POST(request) {
     },
     role: member.role,
     message: "You have joined the company.",
-  });
+  };
+  if (normalizeClientType(out.session.client) === "web") payload.webSessionId = sid;
+  return jsonResponse(payload);
 }

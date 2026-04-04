@@ -28,6 +28,7 @@ export async function GET() {
         defaultConsumptionL100km: company.defaultConsumptionL100km ?? 7.5,
         priceBenzinePerLiter: company.priceBenzinePerLiter ?? null,
         priceDieselPerLiter: company.priceDieselPerLiter ?? null,
+        priceHybridPerLiter: company.priceHybridPerLiter ?? null,
         priceElectricityPerKwh: company.priceElectricityPerKwh ?? null,
         _count: company._count ?? { members: 0, cars: 0 },
       },
@@ -53,6 +54,7 @@ const patchSchema = z.object({
   defaultConsumptionL100km: z.union([z.number().min(0).max(30), z.null()]).optional(),
   priceBenzinePerLiter: optionalNum,
   priceDieselPerLiter: optionalNum,
+  priceHybridPerLiter: optionalNum,
   priceElectricityPerKwh: optionalNum,
 });
 
@@ -94,12 +96,16 @@ export async function PATCH(request) {
     const v = parsed.data.priceDieselPerLiter;
     data.priceDieselPerLiter = v === null || (typeof v === "number" && !Number.isNaN(v)) ? v : null;
   }
+  if (parsed.data.priceHybridPerLiter !== undefined) {
+    const v = parsed.data.priceHybridPerLiter;
+    data.priceHybridPerLiter = v === null || (typeof v === "number" && !Number.isNaN(v)) ? v : null;
+  }
   if (parsed.data.priceElectricityPerKwh !== undefined) {
     const v = parsed.data.priceElectricityPerKwh;
     data.priceElectricityPerKwh = v === null || (typeof v === "number" && !Number.isNaN(v)) ? v : null;
   }
   // Determine if this is a pricing change or a general settings change
-  const PRICE_FIELDS = ["averageFuelPricePerLiter", "priceBenzinePerLiter", "priceDieselPerLiter", "priceElectricityPerKwh"];
+  const PRICE_FIELDS = ["averageFuelPricePerLiter", "priceBenzinePerLiter", "priceDieselPerLiter", "priceHybridPerLiter", "priceElectricityPerKwh"];
   const changedFields = Object.keys(data);
   const isPricingChange = changedFields.some((f) => PRICE_FIELDS.includes(f));
 
@@ -136,6 +142,7 @@ export async function PATCH(request) {
       defaultConsumptionL100km: company.defaultConsumptionL100km ?? 7.5,
       priceBenzinePerLiter: company.priceBenzinePerLiter ?? null,
       priceDieselPerLiter: company.priceDieselPerLiter ?? null,
+      priceHybridPerLiter: company.priceHybridPerLiter ?? null,
       priceElectricityPerKwh: company.priceElectricityPerKwh ?? null,
     });
   } catch (err) {

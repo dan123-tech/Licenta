@@ -167,7 +167,7 @@ export async function createSqlServerCar(companyId, data) {
         .input("companyId", sql.NVarChar(50), companyId)
         .input("brand", sql.NVarChar(100), (data.brand || "").trim())
         .input("model", sql.NVarChar(100), (data.model || "").trim() || null)
-        .input("registrationNumber", sql.NVarChar(50), (data.registrationNumber || "").trim())
+        .input("registrationNumber", sql.NVarChar(50), (data.registrationNumber || "").trim().toUpperCase())
         .input("km", sql.Int, data.km ?? 0)
         .input("status", sql.NVarChar(30), data.status ?? "AVAILABLE")
         .input("fuelType", sql.NVarChar(20), data.fuelType ?? "Benzine")
@@ -187,7 +187,7 @@ export async function createSqlServerCar(companyId, data) {
         .input("CompanyId", sql.NVarChar(50), companyId)
         .input("Brand", sql.NVarChar(100), (data.brand || "").trim())
         .input("Model", sql.NVarChar(100), (data.model || "").trim() || null)
-        .input("RegistrationNumber", sql.NVarChar(50), (data.registrationNumber || "").trim())
+        .input("RegistrationNumber", sql.NVarChar(50), (data.registrationNumber || "").trim().toUpperCase())
         .input("Km", sql.Int, data.km ?? 0)
         .input("Status", sql.NVarChar(30), data.status ?? "AVAILABLE")
         .input("FuelType", sql.NVarChar(20), data.fuelType ?? "Benzine")
@@ -237,7 +237,7 @@ export async function updateSqlServerCar(companyId, carId, data) {
     const fields = [
       ["brand", "Brand", data.brand?.trim(), sql.NVarChar(100)],
       ["model", "Model", data.model?.trim() || null, sql.NVarChar(100)],
-      ["registrationNumber", "RegistrationNumber", data.registrationNumber?.trim(), sql.NVarChar(50)],
+      ["registrationNumber", "RegistrationNumber", data.registrationNumber?.trim().toUpperCase(), sql.NVarChar(50)],
       ["km", "Km", data.km, sql.Int],
       ["status", "Status", data.status, sql.NVarChar(30)],
       ["fuelType", "FuelType", data.fuelType, sql.NVarChar(20)],

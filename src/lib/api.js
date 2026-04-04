@@ -1,10 +1,58 @@
 /**
  * Client-side API helpers. All requests use credentials: 'include' for session cookie.
+ * Web: per-tab session id in sessionStorage + X-Web-Session-Id so a second browser tab login
+ * does not keep the first tab authenticated (shared cookie alone cannot distinguish tabs).
  */
+
+export const WEB_TAB_SESSION_STORAGE_KEY = "car_sharing_web_tab_sid";
+
+function getWebTabSidHeaders() {
+  if (typeof window === "undefined") return {};
+  try {
+    const tabSid = sessionStorage.getItem(WEB_TAB_SESSION_STORAGE_KEY);
+    if (tabSid) return { "X-Web-Session-Id": tabSid };
+  } catch (_) {}
+  return {};
+}
+
+export function persistWebTabSessionId(sid) {
+  if (typeof window === "undefined" || typeof sid !== "string" || !sid) return;
+  try {
+    sessionStorage.setItem(WEB_TAB_SESSION_STORAGE_KEY, sid);
+  } catch (_) {}
+}
+
+export function clearWebTabSessionId() {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(WEB_TAB_SESSION_STORAGE_KEY);
+  } catch (_) {}
+}
+
+export const WEB_AUTH_BROADCAST = "car_sharing_web_auth";
+/** Dispatched on 401 (except login/register) so the dashboard can redirect without a manual refresh. */
+export const WEB_SESSION_LOST_EVENT = "car-sharing:session-lost";
+
+/** Tell other tabs their web tab session is no longer valid (same browser logged in again). */
+export function notifyOtherWebTabsNewSession(sid) {
+  if (typeof window === "undefined" || typeof sid !== "string" || !sid) return;
+  try {
+    const bc = new BroadcastChannel(WEB_AUTH_BROADCAST);
+    bc.postMessage({ type: "web_session_replaced", sid });
+    bc.close();
+  } catch (_) {}
+}
+
+function persistWebSessionFromResponse(data, { broadcastReplacement = false } = {}) {
+  if (data && typeof data.webSessionId === "string" && data.webSessionId) {
+    persistWebTabSessionId(data.webSessionId);
+    if (broadcastReplacement) notifyOtherWebTabsNewSession(data.webSessionId);
+  }
+}
 
 const getOpts = (method = "GET", body) => {
   // Avoid stale HTTP cache (especially for /api/auth/session) causing false 401 after login.
-  const opts = { method, credentials: "include", cache: "no-store", headers: {} };
+  const opts = { method, credentials: "include", cache: "no-store", headers: { ...getWebTabSidHeaders() } };
   if (body) {
     opts.headers["Content-Type"] = "application/json";
     opts.body = JSON.stringify(body);
@@ -66,14 +114,19 @@ export async function apiDataSourceTestFirebase(body) {
 }
 
 export async function apiLogin(email, password) {
-  const res = await fetch("/api/auth/login", getOpts("POST", { email, password }));
+  const res = await fetch("/api/auth/login", getOpts("POST", { email, password, clientType: "web" }));
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Login failed");
+  persistWebSessionFromResponse(data);
   return data;
 }
 
 export async function apiLogout() {
-  await fetch("/api/auth/logout", getOpts("POST"));
+  try {
+    await fetch("/api/auth/logout", getOpts("POST"));
+  } finally {
+    clearWebTabSessionId();
+  }
 }
 
 export async function apiRegister(email, password, name) {
@@ -85,9 +138,13 @@ export async function apiRegister(email, password, name) {
 
 export async function apiSession() {
   const res = await fetch("/api/auth/session", getOpts("GET"));
-  if (res.status === 401) return null;
+  if (res.status === 401) {
+    clearWebTabSessionId();
+    return null;
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Session failed");
+  persistWebSessionFromResponse(data);
   return data;
 }
 
@@ -95,6 +152,7 @@ export async function apiCreateCompany(name, domain) {
   const res = await fetch("/api/companies", getOpts("POST", { name, domain: domain || null }));
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Create company failed");
+  persistWebSessionFromResponse(data, { broadcastReplacement: true });
   return data;
 }
 
@@ -102,6 +160,7 @@ export async function apiJoinCompany(joinCode) {
   const res = await fetch("/api/companies/join", getOpts("POST", { joinCode }));
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Join failed");
+  persistWebSessionFromResponse(data, { broadcastReplacement: true });
   return data;
 }
 
@@ -206,6 +265,8 @@ export async function apiUploadDrivingLicence(file) {
   const res = await fetch("/api/users/me/driving-licence", {
     method: "POST",
     credentials: "include",
+    cache: "no-store",
+    headers: { ...getWebTabSidHeaders() },
     body: form,
   });
   const data = await res.json().catch(() => ({}));
@@ -218,6 +279,8 @@ export async function apiDeleteDrivingLicence() {
   const res = await fetch("/api/users/me/driving-licence", {
     method: "DELETE",
     credentials: "include",
+    cache: "no-store",
+    headers: { ...getWebTabSidHeaders() },
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Delete failed");
@@ -351,3 +414,34 @@ export async function apiAuditLogs({ page = 1, limit = 50, action, entityType } 
   if (!res.ok) throw new Error(data.error || "Failed to load audit logs");
   return data;
 }
+
+/**
+ * Any 401 from /api (except login/register) clears the tab session and notifies the UI — no full page refresh needed.
+ */
+function installFetch401Interceptor() {
+  if (typeof window === "undefined" || window.__carSharingFetch401) return;
+  window.__carSharingFetch401 = true;
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const res = await nativeFetch(input, init);
+    if (res.status !== 401) return res;
+    let path = "";
+    try {
+      if (typeof input === "string") path = input.split("?")[0] || input;
+      else if (input && typeof input.url === "string") {
+        path = new URL(input.url, window.location.origin).pathname;
+      }
+    } catch (_) {}
+    if (
+      path.startsWith("/api") &&
+      !path.includes("/api/auth/login") &&
+      !path.includes("/api/auth/register")
+    ) {
+      clearWebTabSessionId();
+      window.dispatchEvent(new CustomEvent(WEB_SESSION_LOST_EVENT));
+    }
+    return res;
+  };
+}
+
+installFetch401Interceptor();

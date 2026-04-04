@@ -52,4 +52,18 @@
     <!-- Role labels -->
     <color name="role_admin">#1D4ED8</color>
     <color name="role_user">#64748B</color>
+
+    <!-- Fuel types (match web src/lib/fuelTheme.js) -->
+    <color name="fuel_benzine_bg">#FEF3C7</color>
+    <color name="fuel_benzine_text">#78350F</color>
+    <color name="fuel_benzine_border">#FCD34D</color>
+    <color name="fuel_diesel_bg">#E2E8F0</color>
+    <color name="fuel_diesel_text">#1E293B</color>
+    <color name="fuel_diesel_border">#94A3B8</color>
+    <color name="fuel_electric_bg">#D1FAE5</color>
+    <color name="fuel_electric_text">#064E3B</color>
+    <color name="fuel_electric_border">#6EE7B7</color>
+    <color name="fuel_hybrid_bg">#CCFBF1</color>
+    <color name="fuel_hybrid_text">#134E4A</color>
+    <color name="fuel_hybrid_border">#5EEAD4</color>
 </resources>

@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
     android:padding="16dp">
 
     <LinearLayout
@@ -10,36 +11,36 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
         <TextView android:id="@+id/joinCodeLabel" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Join code" android:textSize="12sp" android:textColor="@color/on_surface_variant" />
+            android:text="@string/join_code_label" android:textSize="12sp" android:textColor="@color/on_surface_variant" />
         <TextView android:id="@+id/joinCode" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:textSize="20sp" android:textStyle="bold" android:textColor="@color/accent"
             android:layout_marginTop="4dp" />
         <com.google.android.material.button.MaterialButton android:id="@+id/btnShareJoinCode"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_marginTop="8dp" android:layout_marginBottom="24dp"
-            android:text="Share join code"
+            android:text="@string/share_join_code"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
         <TextView android:id="@+id/labelDefaultKm" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Default km per reservation (admin)" android:textSize="14sp" android:textColor="?attr/colorOnSurface" />
+            android:text="@string/default_km_per_reservation_admin" android:textSize="14sp" android:textColor="@color/on_surface" />
         <EditText android:id="@+id/defaultKm" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:inputType="number" android:hint="100" android:layout_marginTop="4dp" android:padding="12dp" />
         <TextView android:id="@+id/labelFuelPrice" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Price per liter (admin)" android:textSize="14sp" android:layout_marginTop="16dp" />
+            android:text="@string/price_per_liter_admin" android:textSize="14sp" android:layout_marginTop="16dp" />
         <EditText android:id="@+id/fuelPrice" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:inputType="numberDecimal" android:hint="0" android:layout_marginTop="4dp" android:padding="12dp" />
         <TextView android:id="@+id/labelDefaultConsumption" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Default consumption L/100km (admin)" android:textSize="14sp" android:layout_marginTop="16dp" />
+            android:text="@string/default_consumption_admin" android:textSize="14sp" android:layout_marginTop="16dp" />
         <EditText android:id="@+id/defaultConsumption" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:inputType="numberDecimal" android:hint="7.5" android:layout_marginTop="4dp" android:padding="12dp" />
         <com.google.android.material.button.MaterialButton android:id="@+id/btnSave"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="24dp" android:text="Save settings"
+            android:layout_marginTop="24dp" android:text="@string/save_settings"
             app:backgroundTint="@color/accent" />
         <TextView android:id="@+id/companyError" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textColor="@color/error" android:visibility="gone" android:layout_marginTop="8dp" />
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             style="@style/SectionTitle"
-            android:text="Pending km-exceeded approvals"
+            android:text="@string/pending_km_approvals"
             android:visibility="gone"
             android:id="@+id/pendingApprovalsTitle" />
         <LinearLayout android:id="@+id/pendingApprovalsList"

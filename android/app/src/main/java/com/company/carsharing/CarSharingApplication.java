@@ -3,6 +3,7 @@ package com.company.carsharing;
 import android.app.Application;
 
 import com.company.carsharing.network.RetrofitClient;
+import com.google.android.material.color.DynamicColors;
 
 /**
  * Holds API base URL for Retrofit (emulator vs real device on same Wi‑Fi as your PC).
@@ -21,6 +22,8 @@ public class CarSharingApplication extends Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
+        // Tint primary/secondary from wallpaper on Android 12+ (Material You), still respects light/dark.
+        DynamicColors.applyToActivitiesIfAvailable(this);
     }
 
     public static String getApiBaseUrl() {

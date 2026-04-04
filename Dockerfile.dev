@@ -1,0 +1,8 @@
+# Dev image: Node only. Source comes from a bind mount; node_modules live in a named volume.
+# Use with docker-compose.dev.yml so every file change on the host is visible in the container.
+FROM node:20-alpine
+WORKDIR /app
+RUN apk add --no-cache libc6-compat openssl
+EXPOSE 3000 3001
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=development

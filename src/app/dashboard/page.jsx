@@ -6,8 +6,12 @@ import { apiSession } from "@/lib/api";
 import NoCompanyView from "@/components/dashboard/NoCompanyView";
 import UserDashboard from "@/components/dashboard/UserDashboard";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
+import InAppNotificationPoller from "@/components/dashboard/InAppNotificationPoller";
+import WebSessionLiveGuard from "@/components/dashboard/WebSessionLiveGuard";
+import { useI18n } from "@/i18n/I18nProvider";
 
 export default function DashboardPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [session, setSession] = useState(null);
   const [company, setCompany] = useState(null);
@@ -33,37 +37,53 @@ export default function DashboardPage() {
     loadSession();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--main-bg)" }}>
-        <p className="text-slate-500">Loading…</p>
-      </div>
-    );
-  }
+  return (
+    <>
+      <WebSessionLiveGuard />
+      {loading ? (
+        <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--main-bg)" }}>
+          <p className="text-slate-500">{t("common.loading")}</p>
+        </div>
+      ) : !session ? null : (
+        <DashboardContent session={session} company={company} loadSession={loadSession} />
+      )}
+    </>
+  );
+}
 
-  if (!session) {
-    return null;
-  }
+function DashboardContent({ session, company, loadSession }) {
+  const notificationShell = (
+    <InAppNotificationPoller userId={session.id} initialLicenceStatus={session.drivingLicenceStatus} />
+  );
 
   if (!company) {
     return (
-      <div className="min-h-screen" style={{ background: "var(--main-bg)" }}>
-        <NoCompanyView onJoined={loadSession} />
-      </div>
+      <>
+        {notificationShell}
+        <div className="min-h-screen" style={{ background: "var(--main-bg)" }}>
+          <NoCompanyView onJoined={loadSession} />
+        </div>
+      </>
     );
   }
 
   if (session.role === "ADMIN") {
     return (
-      <AdminDashboardOrUserToggle
-        session={session}
-        company={company}
-        loadSession={loadSession}
-      />
+      <>
+        {notificationShell}
+        <AdminDashboardOrUserToggle session={session} company={company} loadSession={loadSession} />
+      </>
     );
   }
 
-  return <UserDashboard user={session} company={company} onUserUpdated={loadSession} />;
+  return (
+    <>
+      {notificationShell}
+      <div className="h-screen w-full flex overflow-hidden" style={{ background: "var(--main-bg)" }}>
+        <UserDashboard user={session} company={company} onUserUpdated={loadSession} />
+      </div>
+    </>
+  );
 }
 
 function AdminDashboardOrUserToggle({ session, company, loadSession }) {

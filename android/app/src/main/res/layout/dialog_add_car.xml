@@ -9,14 +9,14 @@
         android:orientation="vertical"
         android:padding="24dp">
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Add car" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/on_surface" />
+            android:text="@string/add_car_title" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/on_surface" />
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/dialog_brand"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:hint="Brand"
+            android:hint="@string/hint_brand"
             app:boxStrokeColor="@color/accent">
             <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_brand_et"
                 android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="text" />
@@ -27,13 +27,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="Registration number"
+            android:hint="@string/hint_registration"
             app:boxStrokeColor="@color/accent">
             <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_reg_et"
                 android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="text" />
         </com.google.android.material.textfield.TextInputLayout>
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Fuel type" android:textSize="14sp" android:textColor="@color/on_surface_variant" android:layout_marginTop="8dp" />
+            android:text="@string/hint_fuel_type" android:textSize="14sp" android:textColor="@color/on_surface_variant" android:layout_marginTop="8dp" />
         <Spinner android:id="@+id/dialog_fuel_type"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:minHeight="48dp" android:layout_marginTop="4dp" />
@@ -43,7 +43,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="Current km"
+            android:hint="@string/hint_current_km"
             app:boxStrokeColor="@color/accent">
             <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_km_et"
                 android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="number" />
@@ -54,7 +54,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="Consumption L/100km (optional)"
+            android:hint="@string/hint_consumption_optional"
             app:boxStrokeColor="@color/accent">
             <com.google.android.material.textfield.TextInputEditText android:id="@+id/dialog_consumption_et"
                 android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal" />
@@ -64,10 +64,10 @@
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:orientation="horizontal">
             <com.google.android.material.button.MaterialButton android:id="@+id/dialog_car_cancel"
                 android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginEnd="8dp"
-                android:text="Cancel" app:backgroundTint="@color/on_surface_variant" />
+                android:text="@string/cancel" app:backgroundTint="@color/on_surface_variant" />
             <com.google.android.material.button.MaterialButton android:id="@+id/dialog_car_save"
                 android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                android:text="Save" app:backgroundTint="@color/accent" />
+                android:text="@string/save" app:backgroundTint="@color/accent" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

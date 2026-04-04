@@ -36,7 +36,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Welcome to FleetAdmin"
+                    android:text="@string/no_company_welcome"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="@color/on_surface" />
@@ -46,7 +46,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="20dp"
-                    android:text="Create a company to manage your fleet, or join an existing one with an invite code."
+                    android:text="@string/no_company_subtitle"
                     android:textSize="13sp"
                     android:textColor="@color/on_surface_variant" />
 
@@ -69,7 +69,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="14dp"
-                    android:text="Create company" />
+                    android:text="@string/create_company" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -92,7 +92,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Join a company"
+                    android:text="@string/join_company_header"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:textColor="@color/on_surface"
@@ -103,7 +103,7 @@
                     style="@style/AppInputLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Invite code">
+                    android:hint="@string/invite_code_hint">
                     <com.google.android.material.textfield.TextInputEditText
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -116,7 +116,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="14dp"
-                    android:text="Join company" />
+                    android:text="@string/join_company_button" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

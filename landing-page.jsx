@@ -153,7 +153,7 @@ export default function Home() {
           style={{ borderColor: "rgba(255,255,255,0.07)" }}
         >
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
-            <span>© {new Date().getFullYear()} FleetAdmin</span>
+            <span>© 2026 FleetAdmin · powered by Daniel Cocu</span>
             <span>·</span>
             <Link href="/api-docs" className="hover:underline" style={{ color: "rgba(29,78,216,0.7)" }}>
               API Docs

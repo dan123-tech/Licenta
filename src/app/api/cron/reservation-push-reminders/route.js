@@ -1,7 +1,7 @@
 /**
  * POST /api/cron/reservation-push-reminders
- * Send FCM notifications at booking start/end (catch-up window). Protected by CRON_SECRET.
- * Schedule every 5 minutes (e.g. Vercel Cron, GitHub Actions, or system cron).
+ * Send FCM: ~15 min before start, at start (with pickup code), at end. Catch-up window for start/end.
+ * Protected by CRON_SECRET. Schedule every 5 minutes (e.g. Vercel Cron, GitHub Actions, or system cron).
  *
  * Header: Authorization: Bearer <CRON_SECRET>
  */
@@ -11,6 +11,7 @@ import { sendFcmToToken, isLikelySyntheticLongBooking } from "@/lib/push-notific
 import { isFirebaseConfigured } from "@/lib/connectors/firebase-users";
 
 const WINDOW_MS = 30 * 60 * 1000;
+const FIFTEEN_MIN_MS = 15 * 60 * 1000;
 
 function unauthorized() {
   return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -37,12 +38,17 @@ export async function POST(request) {
 
   const now = new Date();
   const windowStart = new Date(now.getTime() - WINDOW_MS);
+  const startWithin15Min = new Date(now.getTime() + FIFTEEN_MIN_MS);
 
   const candidates = await prisma.reservation.findMany({
     where: {
       status: "ACTIVE",
       user: { fcmToken: { not: null } },
       OR: [
+        {
+          pushReminderBeforeStartSentAt: null,
+          startDate: { gt: now, lte: startWithin15Min },
+        },
         {
           pushReminderStartSentAt: null,
           startDate: { lte: now, gte: windowStart },
@@ -59,6 +65,7 @@ export async function POST(request) {
     },
   });
 
+  let beforeStartSent = 0;
   let startSent = 0;
   let endSent = 0;
 
@@ -67,12 +74,49 @@ export async function POST(request) {
     if (!tokenFcm) continue;
 
     const carLabel = [r.car?.brand, r.car?.model, r.car?.registrationNumber].filter(Boolean).join(" ");
+    const pickup = r.pickup_code?.trim();
 
-    if (!r.pushReminderStartSentAt && r.startDate <= now && r.startDate >= windowStart) {
+    if (
+      !r.pushReminderBeforeStartSentAt &&
+      r.startDate > now &&
+      r.startDate <= startWithin15Min
+    ) {
+      const mins = Math.max(1, Math.round((r.startDate.getTime() - now.getTime()) / 60000));
       const ok = await sendFcmToToken(
         tokenFcm,
-        { title: "Booking started", body: carLabel ? `Your booking for ${carLabel} has started.` : "Your car booking has started." },
-        { type: "reservation_start", reservationId: r.id }
+        {
+          title: "Booking soon",
+          body: carLabel
+            ? `“${carLabel}” starts in about ${mins} minute${mins === 1 ? "" : "s"}.`
+            : `Your booking starts in about ${mins} minute${mins === 1 ? "" : "s"}.`,
+        },
+        { type: "reservation_before_start", reservationId: r.id },
+      );
+      if (ok) {
+        await prisma.reservation.update({
+          where: { id: r.id },
+          data: { pushReminderBeforeStartSentAt: now },
+        });
+        beforeStartSent += 1;
+      }
+    }
+
+    if (!r.pushReminderStartSentAt && r.startDate <= now && r.startDate >= windowStart) {
+      const startBody = pickup
+        ? carLabel
+          ? `Your booking for ${carLabel} has started. Pickup code: ${pickup}`
+          : `Your booking has started. Pickup code: ${pickup}`
+        : carLabel
+          ? `Your booking for ${carLabel} has started.`
+          : "Your car booking has started.";
+      const ok = await sendFcmToToken(
+        tokenFcm,
+        { title: "Booking started", body: startBody },
+        {
+          type: "reservation_start",
+          reservationId: r.id,
+          pickup_code: pickup || "",
+        },
       );
       if (ok) {
         await prisma.reservation.update({
@@ -104,5 +148,11 @@ export async function POST(request) {
     }
   }
 
-  return Response.json({ ok: true, processed: candidates.length, startSent, endSent });
+  return Response.json({
+    ok: true,
+    processed: candidates.length,
+    beforeStartSent,
+    startSent,
+    endSent,
+  });
 }

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, Fragment } from "react";
-import { LayoutGrid, IdCard, Car, Wrench, Calendar, History } from "lucide-react";
+import { useState, useEffect, Fragment, useMemo } from "react";
+import { LayoutGrid, IdCard, Car, Wrench, Calendar, History, CalendarDays } from "lucide-react";
 import { Sidebar, NavItem, NavSection, NavLabel } from "./Sidebar";
+import FleetBookingCalendar from "./FleetBookingCalendar";
+import AccessCodeQRButton, { ACCESS_CODE_SLOT_CLASS } from "./AccessCodeQRButton";
 import {
   apiCars,
   apiGetCar,
@@ -15,40 +17,19 @@ import {
   apiUploadDrivingLicence,
   apiDeleteDrivingLicence,
 } from "@/lib/api";
+import { useI18n } from "@/i18n/I18nProvider";
+import LanguageCurrencySwitcher from "@/components/LanguageCurrencySwitcher";
 
 const UICON = { s: "w-4 h-4 shrink-0 stroke-[1.5]" };
 
-const USER_NAV_GROUPS = [
-  {
-    label: "Overview",
-    items: [
-      { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className={UICON.s} aria-hidden /> },
-      { id: "drivingLicence", label: "Driving licence", icon: <IdCard className={UICON.s} aria-hidden /> },
-    ],
-  },
-  {
-    label: "Fleet",
-    items: [
-      { id: "availableCars", label: "Available cars", icon: <Car className={UICON.s} aria-hidden /> },
-      { id: "unavailableCars", label: "Unavailable cars", icon: <Wrench className={UICON.s} aria-hidden /> },
-    ],
-  },
-  {
-    label: "My activity",
-    items: [
-      { id: "myReservations", label: "My reservations", icon: <Calendar className={UICON.s} aria-hidden /> },
-      { id: "history", label: "History", icon: <History className={UICON.s} aria-hidden /> },
-    ],
-  },
-];
-
-const USER_PAGE_META = {
-  dashboard: { title: "Dashboard", sub: "Your fleet activity at a glance" },
-  drivingLicence: { title: "Driving licence", sub: "Upload and validation status" },
-  myReservations: { title: "My reservations", sub: "Active and upcoming bookings" },
-  availableCars: { title: "Available cars", sub: "Reserve a vehicle" },
-  unavailableCars: { title: "Unavailable cars", sub: "Reserved or in maintenance" },
-  history: { title: "History", sub: "Past reservations" },
+const USER_PAGE_META_KEYS = {
+  dashboard: "userDashboard",
+  drivingLicence: "userDrivingLicence",
+  myReservations: "userMyReservations",
+  bookingCalendar: "userBookingCalendar",
+  availableCars: "userAvailableCars",
+  unavailableCars: "userUnavailableCars",
+  history: "userHistory",
 };
 
 function formatDate(d) {
@@ -74,7 +55,7 @@ function getPickupCodeStatus(reservation, now = new Date()) {
     status = "active";
     const ms = windowEnd - now;
     const mins = Math.ceil(ms / 60000);
-    countdownText = `Valid for ${mins} more min`;
+    countdownText = `Valid for ${mins} min`;
   } else {
     status = "expired";
     countdownText = "Window closed";
@@ -93,6 +74,7 @@ function statusClass(s) {
 }
 
 export default function UserDashboard({ user, company, onUserUpdated, viewAs, setViewAs }) {
+  const { t, formatNumber } = useI18n();
   const [section, setSection] = useState("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cars, setCars] = useState([]);
@@ -116,6 +98,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
   const [scheduleEnd, setScheduleEnd] = useState("");
   const [schedulePurpose, setSchedulePurpose] = useState("");
   const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
+  const [icsDownloadingId, setIcsDownloadingId] = useState(null);
   const dlStatus = user?.drivingLicenceStatus ?? null;
   const canReserve = dlStatus === "APPROVED";
 
@@ -196,6 +179,39 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
       setError(err.message || "Failed to book");
     } finally {
       setScheduleSubmitting(false);
+    }
+  }
+
+  async function downloadReservationIcs(reservationId) {
+    setIcsDownloadingId(reservationId);
+    setError("");
+    try {
+      const res = await fetch(`/api/reservations/${reservationId}/calendar`, { credentials: "include" });
+      if (!res.ok) {
+        let msg = "Could not download calendar";
+        try {
+          const j = await res.json();
+          if (j?.error) msg = j.error;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(msg);
+      }
+      const blob = await res.blob();
+      const filename = `reservation-${reservationId.slice(0, 8)}.ics`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e.message || "Could not download calendar file");
+    } finally {
+      setIcsDownloadingId(null);
     }
   }
 
@@ -321,13 +337,45 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
     }
   }
 
-  const pageMeta = USER_PAGE_META[section] || { title: "Car sharing", sub: "" };
+  const userNavGroups = useMemo(
+    () => [
+      {
+        label: t("nav.sections.overview"),
+        items: [
+          { id: "dashboard", label: t("nav.items.dashboard"), icon: <LayoutGrid className={UICON.s} aria-hidden /> },
+          { id: "drivingLicence", label: t("nav.items.drivingLicence"), icon: <IdCard className={UICON.s} aria-hidden /> },
+        ],
+      },
+      {
+        label: t("nav.sections.fleet"),
+        items: [
+          { id: "availableCars", label: t("nav.items.availableCars"), icon: <Car className={UICON.s} aria-hidden /> },
+          { id: "unavailableCars", label: t("nav.items.unavailableCars"), icon: <Wrench className={UICON.s} aria-hidden /> },
+        ],
+      },
+      {
+        label: t("nav.sections.myActivity"),
+        items: [
+          { id: "myReservations", label: t("nav.items.myReservations"), icon: <Calendar className={UICON.s} aria-hidden /> },
+          { id: "bookingCalendar", label: t("nav.items.bookingCalendar"), icon: <CalendarDays className={UICON.s} aria-hidden /> },
+          { id: "history", label: t("nav.items.history"), icon: <History className={UICON.s} aria-hidden /> },
+        ],
+      },
+    ],
+    [t]
+  );
+
+  const userMetaKey = USER_PAGE_META_KEYS[section];
+  const pageMeta =
+    userMetaKey != null
+      ? { title: t(`pageMeta.${userMetaKey}.title`), sub: t(`pageMeta.${userMetaKey}.sub`) }
+      : { title: t("nav.items.dashboard"), sub: "" };
 
   return (
     <div className="flex h-full w-full min-h-0" style={{ background: "var(--main-bg)" }}>
       <Sidebar user={user} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} viewAs={viewAs} setViewAs={setViewAs}>
-        {USER_NAV_GROUPS.map((group) => (
-          <NavSection key={group.label}>
+        {userNavGroups.map((group, gi) => (
+          <NavSection key={gi}>
             <NavLabel>{group.label}</NavLabel>
             {group.items.map((s) => (
               <NavItem
@@ -345,13 +393,13 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
         ))}
       </Sidebar>
       <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
-        <header className="fleet-topbar shrink-0 z-10 flex flex-wrap items-center justify-between gap-3 py-3.5 px-4 sm:px-6 md:px-8">
+        <header className="fleet-topbar w-full min-w-0 shrink-0 z-10 flex flex-wrap items-center justify-between gap-3 py-3.5 px-4 sm:px-6 md:px-8">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
               className="md:hidden p-2 rounded-lg bg-slate-100 text-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center border border-slate-200/80 hover:bg-slate-200 transition-colors"
-              aria-label="Open menu"
+              aria-label={t("common.openMenu")}
             >
               ☰
             </button>
@@ -360,16 +408,19 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
               <p className="text-xs text-slate-500 mt-0.5 truncate">{pageMeta.sub}</p>
             </div>
           </div>
-          {company?.joinCode && (
-            <span className="join-badge-pill font-medium hidden sm:inline shrink-0">
-              Join code: <span className="font-mono">{company.joinCode}</span>
-            </span>
-          )}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <LanguageCurrencySwitcher variant="light" />
+            {company?.joinCode && (
+              <span className="join-badge-pill font-medium hidden sm:inline shrink-0">
+                {t("nav.joinCode")} <span className="font-mono">{company.joinCode}</span>
+              </span>
+            )}
+          </div>
         </header>
         <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-5 sm:p-6 md:px-8 md:pb-8 md:pt-6 flex flex-col">
         {company?.joinCode && (
           <p className="mb-4 text-xs text-slate-500 sm:hidden shrink-0">
-            Join code: <code className="font-mono text-slate-800 font-semibold">{company.joinCode}</code>
+            {t("nav.joinCode")} <code className="font-mono text-slate-800 font-semibold">{company.joinCode}</code>
           </p>
         )}
         {error && (
@@ -519,6 +570,28 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
           </section>
         )}
 
+        {section === "bookingCalendar" && (
+          <section className="w-full min-w-0 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Booking calendar</h2>
+              <p className="text-sm text-slate-600 mb-4 max-w-2xl">
+                Your reservations only. For fleet-wide availability (all cars), an admin can open <strong>Fleet calendar</strong> in the admin area.
+              </p>
+            </div>
+            {loading ? (
+              <p className="text-slate-500 shrink-0">Loading…</p>
+            ) : (
+              <FleetBookingCalendar
+                reservations={reservations}
+                cars={cars}
+                variant="personal"
+                currentUserId={user?.id}
+                className="flex-1 min-h-0"
+              />
+            )}
+          </section>
+        )}
+
         {section === "myReservations" && (
           <section className="w-full min-w-0">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 sm:mb-6">My Reservations</h2>
@@ -544,12 +617,14 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                           </span>
                         </td>
                         <td className="py-4 px-4 flex flex-wrap gap-2 items-center">
-                          <a
-                            href={`/api/reservations/${r.id}/calendar`}
-                            className="inline-flex px-3 py-2 min-h-[44px] sm:min-h-0 items-center bg-slate-100 text-slate-800 text-sm font-semibold rounded-xl hover:bg-slate-200 border border-slate-200/80 transition-colors"
+                          <button
+                            type="button"
+                            onClick={() => downloadReservationIcs(r.id)}
+                            disabled={icsDownloadingId === r.id}
+                            className="inline-flex px-3 py-2 min-h-[44px] sm:min-h-0 items-center bg-slate-100 text-slate-800 text-sm font-semibold rounded-xl hover:bg-slate-200 border border-slate-200/80 transition-colors disabled:opacity-60 disabled:pointer-events-none"
                           >
-                            Calendar (.ics)
-                          </a>
+                            {icsDownloadingId === r.id ? "Downloading…" : "Calendar (.ics)"}
+                          </button>
                           {(r.status || "").toLowerCase() === "active" && (
                             <>
                               <button
@@ -570,17 +645,27 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                           )}
                         </td>
                       </tr>
-                      {((r.status || "").toLowerCase() === "active" && (r.pickup_code != null || r.release_code != null)) || ((r.status || "").toLowerCase() === "completed" && r.release_code != null) ? (
+                      {((r.status || "").toLowerCase() === "active") ||
+                      (r.pickup_code != null || r.release_code != null) ? (
                         <tr key={`${r.id}-codes`} className="border-t-0 bg-slate-50/60">
                           <td colSpan={4} className="py-4 px-4">
                             <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
                               <h3 className="text-sm font-semibold text-slate-700 mb-3">Access Codes</h3>
                               <div className="flex flex-wrap gap-4 items-start">
-                                {r.pickup_code != null && (
-                                  <div className="min-w-[140px] rounded-xl border-2 border-[#1E293B]/20 bg-[#1E293B]/5 px-4 py-3 text-center shadow-sm">
+                                {((r.status || "").toLowerCase() === "active" || r.pickup_code != null) && (
+                                  <div className="min-w-[160px] rounded-xl border-2 border-[#1E293B]/20 bg-[#1E293B]/5 px-4 py-3 text-center shadow-sm">
                                     <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-1">Start Rental Code</p>
-                                    <p className="text-2xl font-bold tabular-nums tracking-widest text-[#1E293B]">{r.pickup_code}</p>
-                                    {(r.status || "").toLowerCase() === "active" && (() => {
+                                    <p className="text-2xl font-bold tabular-nums tracking-widest text-[#1E293B] min-h-[2.5rem] flex items-center justify-center">
+                                      {r.pickup_code != null ? (
+                                        r.pickup_code
+                                      ) : (
+                                        <span className={`${ACCESS_CODE_SLOT_CLASS} border-dashed text-slate-400`}>—</span>
+                                      )}
+                                    </p>
+                                    {r.pickup_code != null && (
+                                      <AccessCodeQRButton code={r.pickup_code} label="QR for pickup" className="mt-2" />
+                                    )}
+                                    {(r.status || "").toLowerCase() === "active" && r.pickup_code != null && (() => {
                                       const pickupStatus = getPickupCodeStatus(r, now);
                                       if (!pickupStatus) return null;
                                       const badgeClass = pickupStatus.status === "pending" ? "bg-slate-100 text-slate-700" : pickupStatus.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800";
@@ -595,10 +680,19 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                                     })()}
                                   </div>
                                 )}
-                                {r.release_code != null && (
-                                  <div className="min-w-[140px] rounded-xl border-2 border-[#1E293B]/20 bg-[#1E293B]/5 px-4 py-3 text-center shadow-sm">
+                                {((r.status || "").toLowerCase() === "active" || r.release_code != null) && (
+                                  <div className="min-w-[160px] rounded-xl border-2 border-[#1E293B]/20 bg-[#1E293B]/5 px-4 py-3 text-center shadow-sm">
                                     <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-1">End Rental Code</p>
-                                    <p className="text-2xl font-bold tabular-nums tracking-widest text-[#1E293B]">{r.release_code}</p>
+                                    <p className="text-2xl font-bold tabular-nums tracking-widest text-[#1E293B] min-h-[2.5rem] flex items-center justify-center">
+                                      {r.release_code != null ? (
+                                        r.release_code
+                                      ) : (
+                                        <span className={`${ACCESS_CODE_SLOT_CLASS} border-dashed text-slate-400`}>—</span>
+                                      )}
+                                    </p>
+                                    {r.release_code != null && (
+                                      <AccessCodeQRButton code={r.release_code} label="QR for return" className="mt-2" />
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -641,7 +735,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                     <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
                       <td className="py-4 px-4">{c.brand}</td>
                       <td className="py-4 px-4">{c.registrationNumber}</td>
-                      <td className="py-4 px-4">{c.km ?? 0} km</td>
+                      <td className="py-4 px-4">{formatNumber(c.km ?? 0, { maximumFractionDigits: 0 })} km</td>
                       <td className="py-4 px-4 hidden sm:table-cell">
                         <span className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800">Available</span>
                       </td>
@@ -692,7 +786,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                     <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
                       <td className="py-4 px-4">{c.brand}</td>
                       <td className="py-4 px-4">{c.registrationNumber}</td>
-                      <td className="py-4 px-4">{c.km ?? 0} km</td>
+                      <td className="py-4 px-4">{formatNumber(c.km ?? 0, { maximumFractionDigits: 0 })} km</td>
                       <td className="py-4 px-4">
                         <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${statusClass(c.status)}`}>
                           {c.status}
@@ -728,7 +822,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                     <div key={year} className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] p-4 border border-slate-100/80">
                       <div className="text-sm font-semibold text-slate-500">{year}</div>
                       <div className="mt-1 text-xl font-bold text-slate-800">{byYear[year].count} reservation{byYear[year].count !== 1 ? "s" : ""}</div>
-                      <div className="text-sm text-[var(--primary)] font-medium">{byYear[year].km.toLocaleString()} km total</div>
+                      <div className="text-sm text-[var(--primary)] font-medium">{formatNumber(byYear[year].km, { maximumFractionDigits: 0 })} km total</div>
                     </div>
                   ))}
                 </div>
@@ -742,6 +836,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                     <th className="py-4 px-4 font-semibold text-slate-700">Car</th>
                     <th className="py-4 px-4 font-semibold text-slate-700">Purpose</th>
                     <th className="py-4 px-4 font-semibold text-slate-700">Status</th>
+                    <th className="py-4 px-4 font-semibold text-slate-700 min-w-[10rem]">Start / end code</th>
                     <th className="py-4 px-4 font-semibold text-slate-700">Admin note</th>
                   </tr>
                 </thead>
@@ -759,6 +854,17 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                           <span className="block text-xs text-slate-500 mt-1">{r.releasedKmUsed} km</span>
                         )}
                       </td>
+                      <td className="py-4 px-4">
+                        <span className="inline-flex flex-wrap items-center gap-1.5">
+                          <span className={ACCESS_CODE_SLOT_CLASS} title="Start (pickup) code">
+                            {r.pickup_code != null ? r.pickup_code : <span className="text-slate-400">—</span>}
+                          </span>
+                          <span className="text-slate-300">/</span>
+                          <span className={ACCESS_CODE_SLOT_CLASS} title="End (return) code">
+                            {r.release_code != null ? r.release_code : <span className="text-slate-400">—</span>}
+                          </span>
+                        </span>
+                      </td>
                       <td className="py-4 px-4 text-sm">
                         {r.releasedExceededAdminComment ? (
                           <span className="text-slate-800">{r.releasedExceededAdminComment}</span>
@@ -769,7 +875,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                     </tr>
                   ))}
                   {history.length === 0 && !loading && (
-                    <tr><td colSpan={5} className="py-10 px-4 text-center text-slate-500">No history</td></tr>
+                    <tr><td colSpan={6} className="py-10 px-4 text-center text-slate-500">No history</td></tr>
                   )}
                 </tbody>
               </table>

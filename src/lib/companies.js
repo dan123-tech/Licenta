@@ -54,14 +54,14 @@ export async function isCompanyAdmin(userId, companyId) {
 }
 
 /**
- * Update company (admin only). Fields: name?, domain?, joinCode?, defaultKmUsage?, averageFuelPricePerLiter?, defaultConsumptionL100km?, priceBenzinePerLiter?, priceDieselPerLiter?, priceElectricityPerKwh?
+ * Update company (admin only). Fields: name?, domain?, joinCode?, defaultKmUsage?, averageFuelPricePerLiter?, defaultConsumptionL100km?, priceBenzinePerLiter?, priceDieselPerLiter?, priceHybridPerLiter?, priceElectricityPerKwh?
  * @param {string} companyId - Company id
  * @param {Object} data
  */
 export async function updateCompany(companyId, data) {
   const allowed = [
     "name", "domain", "joinCode", "defaultKmUsage", "averageFuelPricePerLiter",
-    "defaultConsumptionL100km", "priceBenzinePerLiter", "priceDieselPerLiter", "priceElectricityPerKwh",
+    "defaultConsumptionL100km", "priceBenzinePerLiter", "priceDieselPerLiter", "priceHybridPerLiter", "priceElectricityPerKwh",
     "dataSourceConfig",
   ];
   const update = {};
