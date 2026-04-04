@@ -23,8 +23,8 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/proxy-3001.js ./proxy-3001.js
-EXPOSE 3000 3001
-ENV PORT=3000
+EXPOSE 3000
+# Cloud hosts (Render, Fly, etc.) set PORT; next start reads PORT when -p is omitted (see package.json start:docker).
+# Local docker-compose overrides CMD to use npm run start (Next + LAN proxy on 3000/3001).
 ENV HOSTNAME="0.0.0.0"
-# Run migrations then start the server
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:docker"]

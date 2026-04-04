@@ -31,6 +31,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    # Default image CMD is Next only (for cloud). Compose keeps Next + proxy for LAN phones on :3001.
+    command: ["sh", "-c", "npx prisma migrate deploy && npm run start"]
     container_name: company-car-sharing-app
     restart: unless-stopped
     depends_on:

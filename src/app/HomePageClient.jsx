@@ -179,15 +179,24 @@ export default function HomePageClient() {
           className="pb-8 text-center border-t pt-6"
           style={{ borderColor: "rgba(255,255,255,0.07)" }}
         >
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+          <div
+            className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs"
+            style={{ color: "rgba(255,255,255,0.25)" }}
+          >
             <span>{t("common.copyright")}</span>
-            <span>·</span>
-            <Link href="/api-docs" className="hover:underline text-[#185fa5] hover:text-[#1d4ed8] transition-colors">
-              {t("landing.footer.apiDocs")}
+            <span aria-hidden>·</span>
+            <Link
+              href="/privacy"
+              className="hover:underline text-[#185fa5] hover:text-[#1d4ed8] transition-colors"
+            >
+              {t("landing.footer.privacy")}
             </Link>
-            <span>·</span>
-            <Link href="/dashboard" className="hover:underline">
-              {t("landing.footer.dashboard")}
+            <span aria-hidden>·</span>
+            <Link
+              href="/terms"
+              className="hover:underline text-[#185fa5] hover:text-[#1d4ed8] transition-colors"
+            >
+              {t("landing.footer.terms")}
             </Link>
           </div>
         </div>

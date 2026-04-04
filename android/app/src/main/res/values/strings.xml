@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Car Sharing</string>
+    <string name="app_name">FleetShare</string>
     <string name="login">Login</string>
     <string name="email">Email</string>
     <string name="password">Password</string>
@@ -90,9 +90,10 @@
     <string name="nav_driving_licence">Profile / Driving licence</string>
 
     <!-- Brand / auth -->
-    <string name="brand_initial">F</string>
-    <string name="brand_name">FleetAdmin</string>
-    <string name="brand_tagline">Car sharing platform</string>
+    <string name="brand_name">FleetShare</string>
+    <string name="brand_word_fleet">Fleet</string>
+    <string name="brand_word_share">Share</string>
+    <string name="brand_tagline">Company car sharing</string>
     <string name="welcome_back">Welcome back</string>
     <string name="sign_in_subtitle">Sign in to your account to continue</string>
     <string name="keep_me_logged_in">Keep me logged in</string>
@@ -159,7 +160,7 @@
     <string name="error_generic">Error</string>
 
     <!-- No company -->
-    <string name="no_company_welcome">Welcome to FleetAdmin</string>
+    <string name="no_company_welcome">Welcome to FleetShare</string>
     <string name="no_company_subtitle">Create a company to manage your fleet, or join an existing one with an invite code.</string>
     <string name="create_company">Create company</string>
     <string name="join_company_header">Join a company</string>
@@ -318,7 +319,7 @@
     <string name="chart_label_km">km</string>
 
     <!-- PDF export lines -->
-    <string name="pdf_report_header_fmt">FleetAdmin — %1$s</string>
+    <string name="pdf_report_header_fmt">FleetShare — %1$s</string>
     <string name="pdf_active_reservations">Active reservations: %1$d</string>
     <string name="pdf_trip_km">Trip km (completed, period): %1$,d km</string>
     <string name="pdf_est_fuel">Est. fuel/electricity (period): %1$s</string>

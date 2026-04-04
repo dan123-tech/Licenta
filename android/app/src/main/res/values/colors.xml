@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- FleetAdmin design system (matches web globals.css) -->
+    <!-- FleetShare design system (matches web globals.css) -->
 
     <!-- Brand / primary blue -->
     <color name="brand_primary">#1D4ED8</color>
     <color name="brand_primary_dark">#1E40AF</color>
     <color name="brand_icon_fg">#BFDBFE</color>
+    <color name="brand_share_accent">#38BDF8</color>
 
     <!-- Sidebar (-sidebar-bg) -->
     <color name="sidebar_bg">#0C1220</color>

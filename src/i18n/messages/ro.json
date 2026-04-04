@@ -8,7 +8,7 @@
     "perLiter": "/L",
     "perKwh": "/kWh",
     "openMenu": "Deschide meniul",
-    "copyright": "© 2026 FleetAdmin · Daniel Cocu",
+    "copyright": "© 2026 FleetShare · Daniel Cocu",
     "hideForm": "Ascunde formularul",
     "addCar": "Adaugă mașină",
     "inviteUser": "Invită utilizator",
@@ -42,8 +42,8 @@
       "costDesc": "Urmărește consumul, emisiile CO₂ și costurile cu rapoarte PDF detaliate."
     },
     "footer": {
-      "apiDocs": "Documentație API",
-      "dashboard": "Panou"
+      "privacy": "Politica de confidențialitate",
+      "terms": "Termeni și condiții"
     },
     "preferencesPanelHint": "Alege limba și moneda",
     "branding": {
@@ -69,7 +69,7 @@
   },
   "register": {
     "title": "Creează cont",
-    "subtitle": "Alătură-te FleetAdmin și gestionează mașinile companiei.",
+    "subtitle": "Alătură-te FleetShare și gestionează mașinile companiei.",
     "name": "Nume complet",
     "email": "Adresă e-mail",
     "password": "Parolă",
@@ -84,7 +84,7 @@
     "heroLine1Accent": "gestionezi",
     "heroLine2": "flota astăzi.",
     "heroSub": "Creează contul și configurează echipa în câteva minute.",
-    "cardTitle": "De ce FleetAdmin?",
+    "cardTitle": "De ce FleetShare?",
     "cardBody": "Rezervări sigure, verificări permis și analize flotă într-un singur loc.",
     "quickSetupAccent": "Configurare",
     "quickSetupTitleRest": " rapidă",
@@ -316,5 +316,49 @@
     "statusOffline": "Offline",
     "statusConnecting": "Se conectează…",
     "toggleAria": "Asistență AI"
+  },
+  "legal": {
+    "backHome": "Înapoi la pagina principală",
+    "disclaimer": "Acest document are rol informativ general și nu constituie consultanță juridică. Operatorii FleetShare ar trebui să aibă politicile verificate de un avocat pentru jurisdicția aplicabilă.",
+    "privacy": {
+      "pageTitle": "Politica de confidențialitate",
+      "updated": "Ultima actualizare: 3 aprilie 2026",
+      "s1Title": "Introducere",
+      "s1Body": "FleetShare („noi”) oferă o platformă de car sharing în companie. Această politică explică modul în care prelucrăm datele cu caracter personal când folosiți site-ul, API-urile și serviciile aferente.",
+      "s2Title": "Datele pe care le prelucrăm",
+      "s2Body": "Putem prelucra: date de cont (nume, e-mail, rol), date despre companie și flotă introduse de dvs., informații despre rezervări și utilizare vehicule, date despre permis transmise pentru verificare, jurnale tehnice (adresă IP, tip browser, marcaje de timp) și mesaje către suport. Detaliile depind de modul în care organizația configurează serviciul.",
+      "s3Title": "Scopurile prelucrării",
+      "s3Body": "Folosim datele pentru a furniza și îmbunătăți serviciul: autentificare, rezervări, notificări, raportare, securitate, prevenirea abuzurilor și respectarea legii. Datele legate de permis pot fi prelucrate prin verificări automate sau asistate de AI dacă organizația activează aceste funcții.",
+      "s4Title": "Temeiuri legale și destinatari",
+      "s4Body": "Prelucrarea se bazează de obicei pe executarea contractului cu organizația dvs., pe interes legitim (securitate, îmbunătățire) sau pe consimțământ unde este necesar. Putem apela la subîmputerniciți (găzduire, e-mail, analitice) în baza unor acorduri corespunzătoare. Nu vindem datele dvs. personale.",
+      "s5Title": "Păstrare și securitate",
+      "s5Body": "Păstrăm informațiile atât timp cât este necesar pentru funcționarea serviciului și îndeplinirea obligațiilor legale. Aplicăm măsuri tehnice și organizatorice de protecție; niciun sistem nu este perfect sigur.",
+      "s6Title": "Drepturile dvs.",
+      "s6Body": "În funcție de legislația aplicabilă, puteți avea drepturi de acces, rectificare, ștergere, restricționare sau opoziție, precum și dreptul de a depune plângere la o autoritate de supraveghere. Contactați administratorul organizației sau operatorul desemnat al instanței FleetShare pe care o folosiți.",
+      "s7Title": "Transferuri internaționale",
+      "s7Body": "Dacă serverele sau subîmputerniciții se află în afara țării dvs., ne bazăm pe garanții adecvate prevăzute de lege (de ex. clauze contractuale standard).",
+      "s8Title": "Modificări",
+      "s8Body": "Putem actualiza această politică. Versiunea revizuită va fi publicată cu o nouă dată de actualizare. Utilizarea continuă după modificări poate însemna acceptarea lor acolo unde legea permite."
+    },
+    "terms": {
+      "pageTitle": "Termeni și condiții",
+      "updated": "Ultima actualizare: 3 aprilie 2026",
+      "s1Title": "Acordul",
+      "s1Body": "Prin accesarea sau utilizarea FleetShare acceptați acești termeni. Dacă folosiți serviciul în numele unei companii, declarați că aveți dreptul de a o obliga. Dacă nu sunteți de acord, nu utilizați serviciul.",
+      "s2Title": "Serviciul",
+      "s2Body": "FleetShare este o platformă software pentru gestionarea vehiculelor partajate în companie, rezervărilor, utilizatorilor și fluxurilor aferente. Funcționalitățile pot evolua; putem modifica, suspenda sau înceta părți ale serviciului cu un preaviz rezonabil unde este posibil.",
+      "s3Title": "Conturi și securitate",
+      "s3Body": "Trebuie să furnizați informații corecte la înregistrare și să păstrați confidențiale credențialele. Sunteți responsabil pentru activitatea din contul dvs. Notificați imediat administratorul sau operatorul despre orice utilizare neautorizată.",
+      "s4Title": "Utilizare acceptabilă",
+      "s4Body": "Nu aveți voie să abuzați de serviciu: fără activități ilegale, fără încercări de a compromite securitatea, fără interferență cu alți utilizatori, fără extragere masivă de date sau acces automat excesiv decât dacă este permis în scris. Organizația este responsabilă pentru respectarea acestor reguli de către utilizatorii săi.",
+      "s5Title": "Conținut și date",
+      "s5Body": "Păstrați drepturile asupra datelor pe care le introduceți. Ne acordați o licență de a găzdui, prelucra și afișa aceste date doar pentru furnizarea serviciului. Putem genera statistici agregate sau anonimizate care nu identifică persoane.",
+      "s6Title": "Exonerare",
+      "s6Body": "Serviciul este furnizat „ca atare” în limitele legii. Nu garantăm funcționare neîntreruptă sau fără erori. Disponibilitatea vehiculelor, valabilitatea permisului și conformitatea în trafic rămân responsabilitatea organizației.",
+      "s7Title": "Limitarea răspunderii",
+      "s7Body": "În măsura permisă de lege, nu suntem răspunzători pentru daune indirecte, incidentale, speciale, consecutive sau punitive, sau pentru pierderea profiturilor, datelor sau fondului comercial. Răspunderea noastră cumulativă este limitată la sumele plătite de dvs. în cele douăsprezece luni anterioare reclamației (sau, dacă nu există, la o sumă simbolică).",
+      "s8Title": "Legea aplicabilă",
+      "s8Body": "Acești termeni sunt guvernați de legea aplicabilă entității care operează instanța FleetShare pe care o utilizați, dacă nu prevede altfel un acord separat scris. Instanțele din acea jurisdicție pot avea competență exclusivă acolo unde legea permite."
+    }
   }
 }

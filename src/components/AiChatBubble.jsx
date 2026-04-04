@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useI18n } from "@/i18n/I18nProvider";
 
 /**
@@ -12,6 +13,9 @@ import { useI18n } from "@/i18n/I18nProvider";
  */
 export default function AiChatBubble() {
   const { t } = useI18n();
+  const pathname = usePathname();
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -23,11 +27,33 @@ export default function AiChatBubble() {
   const inputRef = useRef(null);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/session", { credentials: "include" });
+        if (!cancelled) setAuthenticated(res.ok);
+      } catch {
+        if (!cancelled) setAuthenticated(false);
+      } finally {
+        if (!cancelled) setAuthChecked(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!authenticated) setOpen(false);
+  }, [authenticated]);
+
+  useEffect(() => {
+    if (!authenticated) return;
     setMessages((prev) => {
       if (prev.length > 0) return prev;
       return [{ role: "ai", text: t("aiChat.welcome") }];
     });
-  }, [t]);
+  }, [t, authenticated]);
 
   useEffect(() => {
     if (open && bottomRef.current) {
@@ -249,6 +275,8 @@ export default function AiChatBubble() {
       : botStatus === "offline"
         ? t("aiChat.statusOffline")
         : t("aiChat.statusConnecting");
+
+  if (!authChecked || !authenticated) return null;
 
   return (
     <>

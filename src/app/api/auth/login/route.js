@@ -43,10 +43,17 @@ export async function POST(request) {
     const ok = await verifyPassword(password, user.password);
     if (!ok) return errorResponse("Invalid credentials", 401);
 
-    const member = await prisma.companyMember.findFirst({
+    // If a user belongs to more than one company, prefer the oldest membership (first joined/created).
+    // Use findMany + sort in JS instead of findFirst+orderBy — Turbopack dev bundles have triggered
+    // "Invalid findFirst() invocation" for some setups; this query shape is equivalent and stable.
+    const enrolled = await prisma.companyMember.findMany({
       where: { userId: user.id, status: "ENROLLED" },
       include: { company: true },
     });
+    const member =
+      enrolled.length === 0
+        ? null
+        : [...enrolled].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
 
     if (member) {
       const sid = await createUserSession(
@@ -90,13 +97,19 @@ export async function POST(request) {
     console.error("[auth/login]", e);
     const msg = String(e?.message ?? e);
     const code = e?.code;
+    if (msg.includes("AUTH_SECRET")) {
+      return errorResponse(
+        "Server configuration: set AUTH_SECRET in your .env file (at least 32 characters). Example: openssl rand -base64 32 — then restart the dev server.",
+        503
+      );
+    }
     if (
       code === "P1001" ||
       msg.includes("Can't reach database server") ||
       msg.includes("ECONNREFUSED")
     ) {
       return errorResponse(
-        "Database is not running or DATABASE_URL is wrong. Start PostgreSQL (e.g. open Docker Desktop, then run: docker compose up -d db) and ensure .env has DATABASE_URL=postgresql://postgres:postgres@localhost:5432/company_car_sharing?schema=public",
+        "Database is not running or DATABASE_URL is wrong. On your PC (not inside Docker), use localhost in DATABASE_URL. Start Postgres (e.g. docker compose up -d db) and use: postgresql://postgres:postgres@localhost:5432/company_car_sharing?schema=public",
         503
       );
     }
@@ -109,6 +122,10 @@ export async function POST(request) {
         503
       );
     }
-    return errorResponse("Login failed", 500);
+    // In development, surface the real error in JSON so the browser / Network tab shows the cause
+    // (AUTH_SECRET, DB, Prisma, etc.). Production stays generic.
+    const isDev = process.env.NODE_ENV !== "production";
+    const suffix = isDev && msg ? ` — ${msg.slice(0, 400)}` : "";
+    return errorResponse(`Login failed${suffix}`, 500);
   }
 }

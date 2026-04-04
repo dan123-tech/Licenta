@@ -1,0 +1,29 @@
+# Render Blueprint — connect your Cloudflare domain after the service is live.
+# New → Blueprint → paste repo URL, or: render blueprint apply
+#
+# After deploy: copy the onrender.com URL, then in Cloudflare DNS add the CNAME
+# Render shows for your custom domain (see deploy steps in project README or Render dashboard).
+
+databases:
+  - name: fleetshare-postgres
+    databaseName: company_car_sharing
+    user: fleetshare
+    plan: free # change in dashboard if you need a paid tier
+
+services:
+  - type: web
+    name: fleetshare-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter # free tier may use "free" where available
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fleetshare-postgres
+          property: connectionString
+      - key: AUTH_SECRET
+        sync: false # set in Render dashboard: 32+ chars (openssl rand -base64 32)
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false # https://your-domain.com (no trailing slash)

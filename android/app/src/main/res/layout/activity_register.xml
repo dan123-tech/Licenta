@@ -22,30 +22,38 @@
         android:paddingStart="32dp"
         android:paddingEnd="32dp">
 
-        <LinearLayout
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:background="@color/brand_primary"
-            android:gravity="center"
-            android:orientation="vertical">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/brand_initial"
-                android:textColor="@color/brand_icon_fg"
-                android:textSize="22sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+        <ImageView
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:contentDescription="@string/brand_name"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_brand_mark" />
 
-        <TextView
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/brand_name"
-            android:textColor="#FFFFFF"
-            android:textSize="26sp"
-            android:textStyle="bold"
-            android:letterSpacing="-0.02" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/brand_word_fleet"
+                android:textColor="#FFFFFF"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:letterSpacing="-0.02" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/brand_word_share"
+                android:textColor="@color/brand_share_accent"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:letterSpacing="-0.02" />
+        </LinearLayout>
 
         <TextView
             android:layout_width="wrap_content"

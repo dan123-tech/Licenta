@@ -10,8 +10,8 @@ export function jsonResponse(data, status = 200) {
   return NextResponse.json(data, { status });
 }
 
-export function errorResponse(message, status = 400) {
-  return NextResponse.json({ error: message }, { status });
+export function errorResponse(message, status = 400, extra = {}) {
+  return NextResponse.json({ error: message, ...extra }, { status });
 }
 
 /** 503 when layer uses external provider (not yet connected). Client can show "Data Source Not Configured". */

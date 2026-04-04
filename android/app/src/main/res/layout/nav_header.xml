@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Sidebar header: matches the web Sidebar brand block + user footer pattern.
-  Top block: FleetAdmin logo + wordmark.
+  Top block: FleetShare mark + wordmark.
   Bottom block: user avatar initial + name + role (populated by MainActivity).
 -->
 <LinearLayout
@@ -22,22 +22,13 @@
         android:paddingTop="20dp"
         android:paddingBottom="16dp">
 
-        <!-- Car icon square -->
-        <LinearLayout
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:background="@color/brand_primary"
-            android:gravity="center"
-            android:orientation="vertical">
-                <!-- Simple 'F' as a stand-in icon until a vector is added -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/brand_initial"
-                android:textColor="@color/brand_icon_fg"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+        <ImageView
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:contentDescription="@string/brand_name"
+            android:importantForAccessibility="yes"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_brand_mark" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -46,14 +37,30 @@
             android:orientation="vertical"
             android:paddingStart="10dp">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/brand_name"
-                android:textColor="#FFFFFF"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:letterSpacing="-0.02" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/brand_word_fleet"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="-0.02" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/brand_word_share"
+                    android:textColor="@color/brand_share_accent"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="-0.02" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"

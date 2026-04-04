@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Car Sharing</string>
+    <string name="app_name">FleetShare</string>
     <string name="login">Autentificare</string>
     <string name="email">E-mail</string>
     <string name="password">Parolă</string>
@@ -88,9 +88,10 @@
     <string name="nav_booking_calendar">Calendar rezervări</string>
     <string name="nav_driving_licence">Profil / permis</string>
 
-    <string name="brand_initial">F</string>
-    <string name="brand_name">FleetAdmin</string>
-    <string name="brand_tagline">Platformă car sharing</string>
+    <string name="brand_name">FleetShare</string>
+    <string name="brand_word_fleet">Fleet</string>
+    <string name="brand_word_share">Share</string>
+    <string name="brand_tagline">Car sharing pentru firmă</string>
     <string name="welcome_back">Bine ai revenit</string>
     <string name="sign_in_subtitle">Autentifică-te pentru a continua</string>
     <string name="keep_me_logged_in">Păstrează-mă autentificat</string>
@@ -150,7 +151,7 @@
     <string name="failed_to_save">Salvare eșuată</string>
     <string name="error_generic">Eroare</string>
 
-    <string name="no_company_welcome">Bine ai venit la FleetAdmin</string>
+    <string name="no_company_welcome">Bine ai venit la FleetShare</string>
     <string name="no_company_subtitle">Creează o firmă pentru flota ta sau alătură-te uneia cu un cod de invitație.</string>
     <string name="create_company">Creează firmă</string>
     <string name="join_company_header">Alătură-te unei firme</string>
@@ -294,7 +295,7 @@
     <string name="chart_label_co2">CO₂</string>
     <string name="chart_label_km">km</string>
 
-    <string name="pdf_report_header_fmt">FleetAdmin — %1$s</string>
+    <string name="pdf_report_header_fmt">FleetShare — %1$s</string>
     <string name="pdf_active_reservations">Rezervări active: %1$d</string>
     <string name="pdf_trip_km">Km călătorii (finalizate, perioadă): %1$,d km</string>
     <string name="pdf_est_fuel">Cost estimat combustibil/electricitate (perioadă): %1$s</string>

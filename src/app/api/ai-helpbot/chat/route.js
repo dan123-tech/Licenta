@@ -11,9 +11,15 @@
  * explanations only (no code). When true, includes code snippets.
  */
 
+import { getSession } from "@/lib/auth";
+import { errorResponse } from "@/lib/api-helpers";
+
 const HELPBOT_URL = process.env.HELPBOT_URL || "http://localhost:8501";
 
 export async function POST(request) {
+  const session = await getSession();
+  if (!session) return errorResponse("Unauthorized", 401);
+
   try {
     const body = await request.json();
     const { message, session_id, dev_mode } = body;
@@ -93,9 +99,12 @@ export async function POST(request) {
 }
 
 /**
- * Health check - verify the Help-Bot is reachable
+ * Health check - verify the Help-Bot is reachable (logged-in users only)
  */
 export async function GET() {
+  const session = await getSession();
+  if (!session) return errorResponse("Unauthorized", 401);
+
   try {
     const response = await fetch(`${HELPBOT_URL}/health`, {
       signal: AbortSignal.timeout(5000),

@@ -8,7 +8,7 @@
     "perLiter": "/L",
     "perKwh": "/kWh",
     "openMenu": "Open menu",
-    "copyright": "© 2026 FleetAdmin · powered by Daniel Cocu",
+    "copyright": "© 2026 FleetShare · powered by Daniel Cocu",
     "hideForm": "Hide form",
     "addCar": "Add car",
     "inviteUser": "Invite user",
@@ -42,8 +42,8 @@
       "costDesc": "Track fuel consumption, CO₂ emissions and costs with detailed PDF reports."
     },
     "footer": {
-      "apiDocs": "API Docs",
-      "dashboard": "Dashboard"
+      "privacy": "Privacy Policy",
+      "terms": "Terms and Conditions"
     },
     "preferencesPanelHint": "Choose your language and currency",
     "branding": {
@@ -69,7 +69,7 @@
   },
   "register": {
     "title": "Create your account",
-    "subtitle": "Join FleetAdmin and manage your company cars.",
+    "subtitle": "Join FleetShare and manage your company cars.",
     "name": "Full name",
     "email": "Email address",
     "password": "Password",
@@ -84,7 +84,7 @@
     "heroLine1Accent": "managing",
     "heroLine2": "your fleet today.",
     "heroSub": "Create your account and get your team set up in minutes.",
-    "cardTitle": "Why FleetAdmin?",
+    "cardTitle": "Why FleetShare?",
     "cardBody": "Secure reservations, licence checks, and fleet analytics in one place.",
     "quickSetupAccent": "Quick",
     "quickSetupTitleRest": " configuration",
@@ -316,5 +316,49 @@
     "statusOffline": "Offline",
     "statusConnecting": "Connecting…",
     "toggleAria": "AI help"
+  },
+  "legal": {
+    "backHome": "Back to home",
+    "disclaimer": "This document is provided as general information only and does not constitute legal advice. FleetShare operators should have policies reviewed by qualified counsel for their jurisdiction.",
+    "privacy": {
+      "pageTitle": "Privacy Policy",
+      "updated": "Last updated: 3 April 2026",
+      "s1Title": "Introduction",
+      "s1Body": "FleetShare (“we”, “us”, “our”) provides a company car sharing platform. This Privacy Policy explains how we collect, use, store, and protect personal information when you use our website, APIs, and related services.",
+      "s2Title": "Information we collect",
+      "s2Body": "We may process: account details (such as name, email, and role), company and fleet data you enter, reservation and vehicle usage information, driving licence data you or your organisation submit for verification, technical logs (IP address, browser type, timestamps), and communications you send to support. Exact categories depend on how your organisation configures the service.",
+      "s3Title": "How we use information",
+      "s3Body": "We use data to provide and improve the service: authentication, reservations, notifications, reporting, security, fraud prevention, and compliance with applicable law. Licence-related data may be processed by automated or AI-assisted checks where your organisation enables those features.",
+      "s4Title": "Legal bases and sharing",
+      "s4Body": "Processing is typically based on contract (providing the service to your organisation), legitimate interests (security and product improvement), or consent where required. We may use subprocessors (e.g. hosting, email, analytics) under appropriate agreements. We do not sell your personal information.",
+      "s5Title": "Retention and security",
+      "s5Body": "We retain information for as long as needed to operate the service and meet legal obligations. We apply technical and organisational measures designed to protect data; no method of transmission or storage is completely secure.",
+      "s6Title": "Your rights",
+      "s6Body": "Depending on your location, you may have rights to access, correct, delete, restrict, or object to certain processing, and to lodge a complaint with a supervisory authority. Contact your organisation’s administrator or us using the details your deployment provides.",
+      "s7Title": "International transfers",
+      "s7Body": "If servers or subprocessors are located outside your country, we rely on appropriate safeguards where required by law (such as standard contractual clauses).",
+      "s8Title": "Changes",
+      "s8Body": "We may update this policy from time to time. We will post the revised version with a new “Last updated” date. Continued use after changes constitutes acceptance where permitted by law."
+    },
+    "terms": {
+      "pageTitle": "Terms and Conditions",
+      "updated": "Last updated: 3 April 2026",
+      "s1Title": "Agreement",
+      "s1Body": "By accessing or using FleetShare, you agree to these Terms. If you use the service on behalf of a company, you represent that you have authority to bind that organisation. If you do not agree, do not use the service.",
+      "s2Title": "The service",
+      "s2Body": "FleetShare is a software platform for managing shared company vehicles, reservations, users, and related workflows. Features may change; we may modify, suspend, or discontinue parts of the service with reasonable notice where practicable.",
+      "s3Title": "Accounts and security",
+      "s3Body": "You must provide accurate registration information and keep credentials confidential. You are responsible for activity under your account. Notify your administrator or us promptly of any unauthorised use.",
+      "s4Title": "Acceptable use",
+      "s4Body": "You must not misuse the service: no unlawful activity, no attempt to breach security, no interference with other users, and no scraping or excessive automated access except as permitted in writing. Organisations are responsible for their users’ compliance.",
+      "s5Title": "Content and data",
+      "s5Body": "You retain rights to data you submit. You grant us a licence to host, process, and display that data solely to provide the service. We may generate aggregated or anonymised analytics that do not identify individuals.",
+      "s6Title": "Disclaimer",
+      "s6Body": "The service is provided “as is” to the maximum extent permitted by law. We do not guarantee uninterrupted or error-free operation. Vehicle availability, licence validity, and on-road compliance remain your organisation’s responsibility.",
+      "s7Title": "Limitation of liability",
+      "s7Body": "To the extent permitted by law, we are not liable for indirect, incidental, special, consequential, or punitive damages, or loss of profits, data, or goodwill. Our aggregate liability for claims relating to the service is limited to the amounts you paid us in the twelve months before the claim (or, if none, a nominal amount).",
+      "s8Title": "Governing law",
+      "s8Body": "These Terms are governed by the laws applicable to the contracting entity operating your FleetShare deployment, unless a separate written agreement states otherwise. Courts in that jurisdiction have exclusive venue where permitted."
+    }
   }
 }

@@ -14,10 +14,12 @@
     "build": "next build",
     "start": "concurrently --kill-others-on-fail \"next start -H 0.0.0.0 -p 3000\" \"node proxy-3001.js\"",
     "start:3000": "next start -H 0.0.0.0 -p 3000",
+    "start:docker": "next start -H 0.0.0.0",
     "start:3001": "next start -H 0.0.0.0 -p 3001",
     "lint": "eslint",
     "populatedb": "node scripts/populate-db.js",
     "seed": "node scripts/seed-users-and-cars.js",
+    "reset-password": "node scripts/reset-user-password.js",
     "seed-sqlserver": "node scripts/seed-sqlserver.js",
     "docker:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
     "docker:prod": "docker compose up -d --build"
