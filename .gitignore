@@ -22,6 +22,11 @@ public/uploads
 /out/
 /build
 
+# OpenNext / Cloudflare Workers (build output; do not commit)
+.open-next/
+.wrangler/
+.dev.vars
+
 # Testing / coverage
 /coverage
 *.lcov
