@@ -9,5 +9,5 @@ if (process.env.WORKERS_CI === "1") {
   console.log("[build] WORKERS_CI=1 → opennextjs-cloudflare build");
   execSync("npx opennextjs-cloudflare build", { stdio: "inherit" });
 } else {
-  execSync("npx next build", { stdio: "inherit" });
+  execSync("npx next build --webpack", { stdio: "inherit" });
 }

@@ -58,7 +58,7 @@ export default function HomePageClient() {
             <FleetShareBrandBlock tone="dark" size="nav" priority showSubtitle={false} className="max-w-[min(300px,82vw)]" />
           </Link>
           <div className="flex flex-wrap items-end justify-end gap-3 sm:gap-4 w-full sm:w-auto">
-            <LanguageCurrencySwitcher variant="landing" />
+            <LanguageCurrencySwitcher variant="landing" showCurrency={false} />
             <div
               className="hidden sm:block w-px h-9 shrink-0 bg-white/15 mb-0.5"
               aria-hidden

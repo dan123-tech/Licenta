@@ -1,15 +1,17 @@
-# Company Car Sharing – Next.js app
-FROM node:20-alpine AS base
+# Company Car Sharing – Next.js app (Node 22 aligns with current Next.js / CI)
+FROM node:22-alpine AS base
 
 # Install dependencies and build
 FROM base AS builder
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm install --legacy-peer-deps
+COPY package.json package-lock.json .npmrc ./
 COPY prisma ./prisma
-RUN npx prisma generate
+RUN npm ci --legacy-peer-deps
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Baked into the client bundle; override at build time: docker compose build --build-arg NEXT_PUBLIC_APP_URL=https://your-domain.com
+ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 RUN npm run build
 
 # Production runner

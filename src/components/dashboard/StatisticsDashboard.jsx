@@ -23,6 +23,7 @@ import FuelTypeBadge from "@/components/FuelTypeBadge";
 import { fuelChartColor } from "@/lib/fuelTheme";
 import { computeStatsForPeriod } from "@/lib/statistics-period";
 import { useI18n } from "@/i18n/I18nProvider";
+import LanguageCurrencySwitcher from "@/components/LanguageCurrencySwitcher";
 
 const CO2_KG_PER_L_BENZINE = 2.31;
 const CO2_KG_PER_L_DIESEL = 2.68;
@@ -325,6 +326,9 @@ export default function StatisticsDashboard({ reservations = [], company, users 
             ))}
           </div>
           <p className="text-xs text-slate-500 mt-2 max-w-3xl">{t("stats.rangeHint")}</p>
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <LanguageCurrencySwitcher variant="light" showLanguage={false} showCurrency />
+          </div>
         </div>
       </div>
 

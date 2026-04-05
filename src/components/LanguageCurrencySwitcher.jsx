@@ -10,85 +10,98 @@ const CURRENCY_LABELS = {
   GBP: "GBP",
 };
 
-/** Native <select> dropdowns follow OS theme; color-scheme: light keeps options readable on Windows. */
-const LIGHT_SELECT =
-  "text-[13px] rounded-lg px-2.5 py-2 bg-white text-slate-900 border border-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/35 min-w-[7.5rem]";
-
-/** Marketing header: matches dashboard-style white fields + custom chevron */
-const LANDING_SELECT =
-  "text-[13px] font-medium rounded-lg pl-2.5 pr-8 py-2 bg-white text-slate-800 border border-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.06)] focus:outline-none focus:ring-2 focus:ring-[#185fa5]/35 focus:border-[#185fa5]/40 min-w-[7.25rem] appearance-none bg-[length:14px] bg-[right_0.5rem_center] bg-no-repeat";
-
 const CHEVRON_BG =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E\")";
 
+/** Currency only (statistics); compact light style */
+const CURRENCY_SELECT_LIGHT =
+  "text-[13px] rounded-lg px-2.5 py-2 bg-white text-slate-900 border border-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/35 min-w-[7.5rem]";
+
+/** Language — light surfaces: chevron, hover, primary focus */
+const LANGUAGE_SELECT_LIGHT =
+  "text-[13px] font-medium rounded-xl pl-3.5 pr-10 py-2.5 bg-white text-slate-800 border border-slate-200/95 shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:border-slate-300 hover:shadow-[0_2px_6px_rgba(15,23,42,0.06)] transition-[border-color,box-shadow] duration-150 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 focus:border-[var(--primary)] min-w-[10rem] appearance-none bg-[length:15px] bg-[right_0.65rem_center] bg-no-repeat cursor-pointer";
+
 /**
- * Compact language + currency selectors.
- * - `light`: dashboard topbar, forms (slate labels).
- * - `dark`: dark bars — light labels + white selects.
- * - `landing`: dark intro header — uppercase muted labels + polished white selects (near Log in / CTA).
+ * @param {"light"|"dark"|"landing"} variant
+ * @param {boolean} [showLanguage=true]
+ * @param {boolean} [showCurrency=false] — e.g. only on admin Statistics (in-page)
  */
-export default function LanguageCurrencySwitcher({ variant = "light" }) {
+export default function LanguageCurrencySwitcher({
+  variant = "light",
+  showCurrency = false,
+  showLanguage = true,
+}) {
   const { locale, setLocale, currency, setCurrency, t, currencies, locales } = useI18n();
 
   const isDark = variant === "dark";
   const isLanding = variant === "landing";
-  const selectClass = isLanding ? LANDING_SELECT : LIGHT_SELECT;
+  const currencyVisible = showCurrency === true;
+  const languageVisible = showLanguage !== false;
+
+  if (!languageVisible && !currencyVisible) return null;
 
   let labelClass;
   if (isLanding) {
-    labelClass = "text-[10px] font-bold uppercase tracking-[0.14em] text-white/55";
+    labelClass = "landing-locale-label";
   } else if (isDark) {
     labelClass = "text-[10px] font-semibold uppercase tracking-wide text-white/75";
   } else {
-    labelClass = "text-[10px] uppercase tracking-wide text-slate-500";
+    labelClass = "text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500";
   }
 
-  const selectStyle = isLanding
-    ? { colorScheme: "light", backgroundImage: CHEVRON_BG }
-    : { colorScheme: "light" };
+  const languageSelectClass = isLanding ? "landing-locale-select" : LANGUAGE_SELECT_LIGHT;
+  const currencySelectClass = CURRENCY_SELECT_LIGHT;
+
+  const languageSelectStyle = isLanding ? { colorScheme: "light" } : { colorScheme: "light", backgroundImage: CHEVRON_BG };
+
+  const currencySelectStyle = { colorScheme: "light" };
 
   return (
     <div
-      className={`flex flex-wrap items-end ${isLanding ? "gap-3 sm:gap-4" : "gap-3"}`}
+      className={`flex flex-wrap items-end ${isLanding ? "gap-3 sm:gap-4" : currencyVisible ? "gap-4" : "gap-2"}`}
       role="group"
       aria-label={t("i18n.preferences")}
     >
-      <div className={`flex flex-col ${isLanding ? "gap-1" : "gap-0.5"}`}>
-        <label htmlFor="app-locale" className={labelClass}>
-          {t("i18n.language")}
-        </label>
-        <select
-          id="app-locale"
-          value={locale}
-          onChange={(e) => setLocale(e.target.value)}
-          className={selectClass}
-          style={selectStyle}
-        >
-          {locales.map((code) => (
-            <option key={code} value={code}>
-              {LOCALE_LABELS[code] || code}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className={`flex flex-col ${isLanding ? "gap-1" : "gap-0.5"}`}>
-        <label htmlFor="app-currency" className={labelClass}>
-          {t("i18n.currency")}
-        </label>
-        <select
-          id="app-currency"
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-          className={selectClass}
-          style={selectStyle}
-        >
-          {currencies.map((code) => (
-            <option key={code} value={code}>
-              {CURRENCY_LABELS[code] || code}
-            </option>
-          ))}
-        </select>
-      </div>
+      {languageVisible && (
+        <div className={`flex flex-col ${isLanding ? "gap-0" : "gap-1"}`}>
+          <label htmlFor="app-locale" className={labelClass}>
+            {t("i18n.language")}
+          </label>
+          <select
+            id="app-locale"
+            value={locale}
+            onChange={(e) => setLocale(e.target.value)}
+            className={languageSelectClass}
+            style={languageSelectStyle}
+          >
+            {locales.map((code) => (
+              <option key={code} value={code}>
+                {LOCALE_LABELS[code] || code}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {currencyVisible && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="app-currency" className={labelClass}>
+            {t("i18n.currency")}
+          </label>
+          <select
+            id="app-currency"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className={currencySelectClass}
+            style={currencySelectStyle}
+          >
+            {currencies.map((code) => (
+              <option key={code} value={code}>
+                {CURRENCY_LABELS[code] || code}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
     </div>
   );
 }

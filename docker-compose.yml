@@ -2,11 +2,17 @@
 # Run:  docker compose up -d
 # Stop: docker compose down
 #
+# Rebuild the app image after dependency or UI/i18n changes:
+#   docker compose build --no-cache app && docker compose up -d
+# Optional in .env: NEXT_PUBLIC_APP_URL=https://your-domain.com (also pass as build-arg if not using .env for compose)
+#
 # Live code sync (host edits apply without rebuilding the app image):
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 #   or: npm run docker:dev
 # App:  http://localhost:3000  |  https://localhost:8443 (see deploy/Caddyfile if you use 443)
 # DB:   postgresql://postgres:postgres@localhost:5432/company_car_sharing
+# Postgres stays on 16 here so existing named volumes (postgres_data) keep working.
+# To move to PG 17+, dump/restore or follow https://hub.docker.com/_/postgres upgrade notes.
 
 services:
   db:
@@ -31,6 +37,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     # Default image CMD is Next only (for cloud). Compose keeps Next + proxy for LAN phones on :3001.
     command: ["sh", "-c", "npx prisma migrate deploy && npm run start"]
     container_name: company-car-sharing-app
@@ -42,9 +50,12 @@ services:
     # Linux: host-gateway makes host.docker.internal work; Windows/Mac Docker Desktop also support it.
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Set AUTH_SECRET (and optionally NEXTAUTH_URL) in a root `.env` file for compose substitution.
     environment:
       DATABASE_URL: "postgresql://postgres:postgres@db:5432/company_car_sharing?schema=public"
-      AUTH_SECRET: "${AUTH_SECRET:-dev-secret-at-least-32-chars-long-change-me}"
+      AUTH_SECRET: "${AUTH_SECRET}"
+      NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
+      NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
       AI_VERIFICATION_URL: "http://host.docker.internal:8080"
       AI_VERIFY_PATH: "/validate"
       HELPBOT_URL: "http://host.docker.internal:8501"
@@ -56,7 +67,7 @@ services:
 
   # Terminates TLS; forwards to Next.js on app:3000 (same content as direct :3000).
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.9-alpine
     container_name: company-car-sharing-caddy
     restart: unless-stopped
     # Host port 80 is often reserved on Windows; use 8443→443. Change to "443:443" if free.
