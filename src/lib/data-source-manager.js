@@ -12,6 +12,13 @@ export const PROVIDERS = { LOCAL: "LOCAL", ENTRA: "ENTRA", SQL_SERVER: "SQL_SERV
 
 const DEFAULT_CONFIG = { [LAYERS.USERS]: PROVIDERS.LOCAL, [LAYERS.CARS]: PROVIDERS.LOCAL, [LAYERS.RESERVATIONS]: PROVIDERS.LOCAL };
 
+const DEFAULT_CONFIG_FULL = {
+  ...DEFAULT_CONFIG,
+  usersTable: null,
+  carsTable: null,
+  reservationsTable: null,
+};
+
 const TABLE_KEYS = { [LAYERS.USERS]: "usersTable", [LAYERS.CARS]: "carsTable", [LAYERS.RESERVATIONS]: "reservationsTable" };
 
 function credKey(layer, provider) {
@@ -19,14 +26,14 @@ function credKey(layer, provider) {
 }
 
 export async function getDataSourceConfig(companyId) {
-  if (!companyId) return { ...DEFAULT_CONFIG, usersTable: null, carsTable: null, reservationsTable: null };
+  if (!companyId) return { ...DEFAULT_CONFIG_FULL };
   try {
     const company = await prisma.company.findUnique({
       where: { id: companyId },
       select: { dataSourceConfig: true },
     });
     const raw = company?.dataSourceConfig;
-    if (!raw || typeof raw !== "object") return { ...DEFAULT_CONFIG, usersTable: null, carsTable: null, reservationsTable: null };
+    if (!raw || typeof raw !== "object") return { ...DEFAULT_CONFIG_FULL };
     return {
       [LAYERS.USERS]: [PROVIDERS.LOCAL, PROVIDERS.ENTRA, PROVIDERS.SQL_SERVER, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT].includes(raw.users) ? raw.users : PROVIDERS.LOCAL,
       [LAYERS.CARS]: [PROVIDERS.LOCAL, PROVIDERS.SQL_SERVER, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT].includes(raw.cars) ? raw.cars : PROVIDERS.LOCAL,
@@ -37,7 +44,7 @@ export async function getDataSourceConfig(companyId) {
     };
   } catch (e) {
     console.warn("[DataSourceManager] getDataSourceConfig error:", e);
-    return { ...DEFAULT_CONFIG, usersTable: null, carsTable: null, reservationsTable: null };
+    return { ...DEFAULT_CONFIG_FULL };
   }
 }
 

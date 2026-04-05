@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { getDataSourceConfig, saveDataSourceConfig, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
+import { getDataSourceConfig, saveDataSourceConfig } from "@/lib/data-source-manager";
 import { requireCompany, requireAdmin, jsonResponse, errorResponse } from "@/lib/api-helpers";
 
 const patchSchema = z.object({

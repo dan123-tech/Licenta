@@ -210,6 +210,12 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
   const [dataSourceConfig, setDataSourceConfig] = useState(null);
   const [dataSourceNotConfigured, setDataSourceNotConfigured] = useState({ users: false, cars: false, reservations: false });
 
+  useEffect(() => {
+    if (POSTGRES_WEB_SHOW && section === "databaseSettings") {
+      setSection("company");
+    }
+  }, [section]);
+
   async function load() {
     setLoading(true);
     setError("");
