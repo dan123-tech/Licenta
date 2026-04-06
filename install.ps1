@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  FleetShare — Docker Compose installer for Windows.
+  FleetShare - Docker Compose installer for Windows.
 
 .DESCRIPTION
   Requires Docker Desktop (Docker + Compose V2). Run from the project root
@@ -53,9 +53,9 @@ function Write-Warn { param($Msg) Write-Host $Msg -ForegroundColor Yellow }
 function Write-Err { param($Msg) Write-Host $Msg -ForegroundColor Red }
 
 Write-Host ""
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-Write-Host "  FleetShare — Docker installer (Windows)" -ForegroundColor Cyan
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
+Write-Host "  FleetShare - Docker installer (Windows)" -ForegroundColor Cyan
+Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
 Write-Host ""
 
 if (-not (Test-Path (Join-Path $Root "docker-compose.yml"))) {
@@ -84,7 +84,7 @@ Write-Host "Using: docker compose" -ForegroundColor DarkGray
 Write-Host ""
 
 if ($Down) {
-  Write-Step "Stopping stack (docker compose down)…"
+  Write-Step "Stopping stack (docker compose down)..."
   docker compose down
   Write-Ok "Stopped. Volumes kept (database data preserved)."
   exit 0
@@ -93,7 +93,7 @@ if ($Down) {
 if (-not (Test-Path ".env")) {
   if (Test-Path ".env.example") {
     Copy-Item ".env.example" ".env"
-    Write-Warn "Created .env from .env.example — set AUTH_SECRET (32+ chars), URLs, email."
+    Write-Warn "Created .env from .env.example - set AUTH_SECRET (32+ chars), URLs, email."
   } else {
     Write-Err "No .env or .env.example. Create .env manually."
     exit 1
@@ -110,55 +110,55 @@ if ($secretLine) {
     Write-Host "  Generate (Git Bash): openssl rand -base64 32" -ForegroundColor DarkGray
   }
 } else {
-  Write-Warn "No AUTH_SECRET= line in .env — set it before using the app."
+  Write-Warn "No AUTH_SECRET= line in .env - set it before using the app."
 }
 
 Write-Host "docker-compose.yml uses DATABASE_URL=@db:5432 inside the app container." -ForegroundColor DarkGray
 Write-Host ""
 
 if ($Pull) {
-  Write-Step "Pulling base images…"
+  Write-Step "Pulling base images..."
   docker compose pull --ignore-buildable 2>$null
 }
 
 if (-not $NoBuild) {
-  Write-Step "Building application image (may take several minutes)…"
+  Write-Step "Building application image (may take several minutes)..."
   docker compose build --no-cache app
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-Write-Step "Starting db, app, caddy…"
+Write-Step "Starting db, app, caddy..."
 docker compose up -d
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host ""
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
+Write-Host "------------------------------------------------------------" -ForegroundColor Green
 Write-Host "  Stack is up" -ForegroundColor Green
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
+Write-Host "------------------------------------------------------------" -ForegroundColor Green
 Write-Host "  App:   http://localhost:3000  (or http://THIS_PC_IP:3000)"
 Write-Host "  HTTPS: https://localhost:8443  if Caddy + deploy/certs are set"
 Write-Host ""
 Write-Host "Next:" -ForegroundColor DarkGray
-Write-Host "  • Edit .env: NEXT_PUBLIC_APP_URL, NEXTAUTH_URL, SMTP/RESEND, EMAIL_FROM"
-Write-Host "  • After URL change: docker compose build --no-cache app; docker compose up -d app"
-Write-Host "  • Logs: docker compose logs -f app"
-Write-Host "  • Stop: .\install.ps1 -Down"
-Write-Host "  • Driving licence AI: https://github.com/dan123-tech/AI_driving-licence — use -AiValidator"
+Write-Host "  - Edit .env: NEXT_PUBLIC_APP_URL, NEXTAUTH_URL, SMTP/RESEND, EMAIL_FROM"
+Write-Host "  - After URL change: docker compose build --no-cache app; docker compose up -d app"
+Write-Host "  - Logs: docker compose logs -f app"
+Write-Host "  - Stop: .\install.ps1 -Down"
+Write-Host "  - Driving licence AI: https://github.com/dan123-tech/AI_driving-licence - use -AiValidator"
 Write-Host ""
 
 if ($AiValidator) {
   $AiValidatorRepo = "https://github.com/dan123-tech/AI_driving-licence.git"
   $Parent = Split-Path -Parent $Root
   $AiDir = Join-Path $Parent "AI_driving-licence"
-  Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+  Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
   Write-Host "  AI driving-licence validator (Gemini)" -ForegroundColor Cyan
-  Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+  Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
   if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     Write-Err "git not found. Install Git for Windows, then: git clone $AiValidatorRepo `"$AiDir`""
     exit 1
   }
   if (-not (Test-Path (Join-Path $AiDir "docker-compose.yml"))) {
-    Write-Step "Cloning validator into $AiDir …"
+    Write-Step "Cloning validator into $AiDir ..."
     git clone --depth 1 $AiValidatorRepo $AiDir
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   } else {
@@ -168,12 +168,12 @@ if ($AiValidator) {
     $ex = Join-Path $AiDir ".env.example"
     if (Test-Path $ex) {
       Copy-Item $ex (Join-Path $AiDir ".env")
-      Write-Warn "Created $AiDir\.env from .env.example — set GEMINI_API_KEY for validation to work."
+      Write-Warn "Created $AiDir\.env from .env.example - set GEMINI_API_KEY for validation to work."
     } else {
       Write-Warn "Create $AiDir\.env with GEMINI_API_KEY (see repo README)."
     }
   }
-  Write-Step "Building & starting validator (port 8080)…"
+  Write-Step 'Building and starting validator (port 8080)...'
   Push-Location $AiDir
   try {
     docker compose up -d --build
