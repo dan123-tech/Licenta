@@ -6,6 +6,7 @@
 
 import { requireAdmin, jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { listSqlServerTables } from "@/lib/connectors/sql-server-tables";
+import { listPostgresTables } from "@/lib/connectors/postgres-tables";
 import { PROVIDERS } from "@/lib/data-source-manager";
 
 function errMsg(e) {
@@ -25,32 +26,51 @@ export async function POST(request) {
       return errorResponse("Invalid JSON", 400);
     }
     const provider = body?.provider;
-    if (provider !== PROVIDERS.SQL_SERVER) {
-      return errorResponse("Table listing only supported for SQL Server", 400);
-    }
     if (!body || typeof body !== "object") return errorResponse("Body must be an object", 400);
     const host = body.host != null ? String(body.host).trim() : "";
     const username = body.username != null ? String(body.username).trim() : "";
     const password = body.password != null ? body.password : "";
     if (!host || !username) {
-      return errorResponse("Missing connection params: host, username, password", 422);
+      return errorResponse("Missing connection params: host, username", 422);
     }
     let tables;
-    try {
-      tables = await listSqlServerTables({
-        host,
-        port: body.port,
-        databaseName: body.databaseName,
-        username,
-        password,
-      });
-    } catch (connErr) {
-      console.error("POST /api/admin/data-source/tables (SQL Server) error:", connErr);
-      const msg = errMsg(connErr);
-      return errorResponse(
-        msg.includes("ECONNREFUSED") ? "Could not connect to SQL Server. Check host, port, and that the server is running." : msg,
-        500
-      );
+    if (provider === PROVIDERS.SQL_SERVER) {
+      try {
+        tables = await listSqlServerTables({
+          host,
+          port: body.port,
+          databaseName: body.databaseName,
+          username,
+          password,
+        });
+      } catch (connErr) {
+        console.error("POST /api/admin/data-source/tables (SQL Server) error:", connErr);
+        const msg = errMsg(connErr);
+        return errorResponse(
+          msg.includes("ECONNREFUSED") ? "Could not connect to SQL Server. Check host, port, and that the server is running." : msg,
+          500
+        );
+      }
+    } else if (provider === PROVIDERS.POSTGRES) {
+      try {
+        tables = await listPostgresTables({
+          host,
+          port: body.port,
+          databaseName: body.databaseName,
+          username,
+          password,
+          ssl: body.ssl,
+        });
+      } catch (connErr) {
+        console.error("POST /api/admin/data-source/tables (PostgreSQL) error:", connErr);
+        const msg = errMsg(connErr);
+        return errorResponse(
+          msg.includes("ECONNREFUSED") ? "Could not connect to PostgreSQL. Check host, port, and that the server is running." : msg,
+          500
+        );
+      }
+    } else {
+      return errorResponse("Table listing only supported for SQL Server or PostgreSQL", 400);
     }
     return jsonResponse({ tables: Array.isArray(tables) ? tables : [] });
   } catch (err) {

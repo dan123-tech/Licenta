@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Fragment, useMemo } from "react";
-import { LayoutGrid, IdCard, Car, Wrench, Calendar, History, CalendarDays } from "lucide-react";
+import { LayoutGrid, IdCard, Car, Wrench, Calendar, History, CalendarDays, Shield } from "lucide-react";
 import { Sidebar, NavItem, NavSection, NavLabel } from "./Sidebar";
 import FleetBookingCalendar from "./FleetBookingCalendar";
 import AccessCodeQRButton, { ACCESS_CODE_SLOT_CLASS } from "./AccessCodeQRButton";
@@ -16,6 +16,7 @@ import {
   apiExtendReservation,
   apiUploadDrivingLicence,
   apiDeleteDrivingLicence,
+  apiUserMfaUpdate,
 } from "@/lib/api";
 import { useI18n } from "@/i18n/I18nProvider";
 import LanguageCurrencySwitcher from "@/components/LanguageCurrencySwitcher";
@@ -25,6 +26,7 @@ const UICON = { s: "w-4 h-4 shrink-0 stroke-[1.5]" };
 const USER_PAGE_META_KEYS = {
   dashboard: "userDashboard",
   drivingLicence: "userDrivingLicence",
+  security: "userSecurity",
   myReservations: "userMyReservations",
   bookingCalendar: "userBookingCalendar",
   availableCars: "userAvailableCars",
@@ -99,6 +101,9 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
   const [schedulePurpose, setSchedulePurpose] = useState("");
   const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
   const [icsDownloadingId, setIcsDownloadingId] = useState(null);
+  const [mfaPassword, setMfaPassword] = useState("");
+  const [mfaSaving, setMfaSaving] = useState(false);
+  const [mfaNotice, setMfaNotice] = useState(null);
   const dlStatus = user?.drivingLicenceStatus ?? null;
   const canReserve = dlStatus === "APPROVED";
 
@@ -288,6 +293,29 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
     }
   }
 
+  async function handleMfaToggle(enable) {
+    if (!mfaPassword.trim()) {
+      setError(t("userSecurityForm.passwordRequired"));
+      return;
+    }
+    setMfaSaving(true);
+    setError("");
+    setMfaNotice(null);
+    try {
+      await apiUserMfaUpdate(enable, mfaPassword);
+      setMfaPassword("");
+      setMfaNotice({
+        type: "success",
+        text: enable ? t("userSecurityForm.enabledOk") : t("userSecurityForm.disabledOk"),
+      });
+      onUserUpdated?.();
+    } catch (err) {
+      setError(err.message || "Failed");
+    } finally {
+      setMfaSaving(false);
+    }
+  }
+
   const defaultKm = company?.defaultKmUsage ?? 100;
 
   function openReleaseModal(r) {
@@ -344,6 +372,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
         items: [
           { id: "dashboard", label: t("nav.items.dashboard"), icon: <LayoutGrid className={UICON.s} aria-hidden /> },
           { id: "drivingLicence", label: t("nav.items.drivingLicence"), icon: <IdCard className={UICON.s} aria-hidden /> },
+          { id: "security", label: t("nav.items.security"), icon: <Shield className={UICON.s} aria-hidden /> },
         ],
       },
       {
@@ -565,6 +594,58 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
               )}
               {dlStatus === "REJECTED" && (
                 <p className="text-sm text-red-700 mt-3">Your licence was rejected. You can upload a new photo for review.</p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {section === "security" && (
+          <section className="w-full min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 sm:mb-6">{t("pageMeta.userSecurity.title")}</h2>
+            <p className="text-sm text-slate-500 mb-4 max-w-xl">{t("userSecurityForm.intro")}</p>
+            <div className="bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] border border-slate-100/80 p-4 sm:p-6 max-w-lg">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-slate-700">{t("userSecurityForm.statusLabel")}</span>
+                <span
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                    user?.mfaEnabled ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  {user?.mfaEnabled ? t("userSecurityForm.on") : t("userSecurityForm.off")}
+                </span>
+              </div>
+              <label className="block text-sm font-medium text-slate-600 mb-1.5">{t("userSecurityForm.passwordLabel")}</label>
+              <input
+                type="password"
+                value={mfaPassword}
+                onChange={(e) => setMfaPassword(e.target.value)}
+                autoComplete="current-password"
+                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 mb-4"
+                disabled={mfaSaving}
+              />
+              <div className="flex flex-wrap gap-3">
+                {!user?.mfaEnabled ? (
+                  <button
+                    type="button"
+                    onClick={() => handleMfaToggle(true)}
+                    disabled={mfaSaving}
+                    className="px-5 py-2.5 rounded-xl font-semibold text-white bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-40 transition-colors shadow-sm"
+                  >
+                    {mfaSaving ? t("userSecurityForm.saving") : t("userSecurityForm.enableBtn")}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleMfaToggle(false)}
+                    disabled={mfaSaving}
+                    className="px-5 py-2.5 rounded-xl font-semibold text-white bg-slate-700 hover:bg-slate-800 disabled:opacity-40 transition-colors shadow-sm"
+                  >
+                    {mfaSaving ? t("userSecurityForm.saving") : t("userSecurityForm.disableBtn")}
+                  </button>
+                )}
+              </div>
+              {mfaNotice?.type === "success" && (
+                <p className="mt-4 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">{mfaNotice.text}</p>
               )}
             </div>
           </section>

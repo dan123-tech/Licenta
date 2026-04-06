@@ -3,30 +3,70 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, AlertCircle } from "lucide-react";
-import { apiLogin } from "@/lib/api";
+import { apiLogin, apiVerifyMfaLogin } from "@/lib/api";
 import { useI18n } from "@/i18n/I18nProvider";
 import LanguageCurrencySwitcher from "@/components/LanguageCurrencySwitcher";
 import FleetShareBrandBlock from "@/components/FleetShareBrandBlock";
+
+function maskEmail(em) {
+  const s = String(em || "").trim();
+  const at = s.indexOf("@");
+  if (at < 1) return s;
+  const local = s.slice(0, at);
+  const domain = s.slice(at + 1);
+  const show = local.slice(0, 2);
+  return `${show}•••@${domain}`;
+}
 
 export default function LoginPage() {
   const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaStep, setMfaStep] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e) {
+  async function handlePasswordSubmit(e) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      await apiLogin(email, password);
+      const result = await apiLogin(email, password);
+      if (result?.mfaRequired) {
+        setMfaStep(true);
+        setPendingEmail(result.email || email);
+        setMfaCode("");
+        return;
+      }
       window.location.assign("/dashboard");
     } catch (err) {
       setError(err.message || t("login.errorFallback"));
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleMfaSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await apiVerifyMfaLogin(pendingEmail, mfaCode.trim());
+      window.location.assign("/dashboard");
+    } catch (err) {
+      setError(err.message || t("login.errorFallback"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleMfaBack() {
+    setMfaStep(false);
+    setMfaCode("");
+    setPendingEmail("");
+    setError("");
   }
 
   return (
@@ -97,10 +137,12 @@ export default function LoginPage() {
             className="text-2xl font-bold mb-1"
             style={{ color: "var(--text)", letterSpacing: "-0.03em" }}
           >
-            {t("login.title")}
+            {mfaStep ? t("login.mfaTitle") : t("login.title")}
           </h1>
           <p className="text-sm mb-8" style={{ color: "var(--text-muted)" }}>
-            {t("login.subtitle")}
+            {mfaStep
+              ? t("login.mfaSubtitle", { email: maskEmail(pendingEmail) })
+              : t("login.subtitle")}
           </p>
 
           {error && (
@@ -110,117 +152,175 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label
-                className="block text-[13px] font-semibold mb-1.5"
-                style={{ color: "var(--text)" }}
-              >
-                {t("login.email")}
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all duration-150"
-                style={{
-                  border: "1px solid rgba(15,23,42,0.14)",
-                  color: "var(--text)",
-                  background: "#fff",
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "var(--primary)";
-                  e.currentTarget.style.boxShadow = "0 0 0 3px var(--primary-ring)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(15,23,42,0.14)";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-                placeholder="you@company.com"
-                required
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
+          {!mfaStep ? (
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <div>
                 <label
-                  className="block text-[13px] font-semibold"
+                  className="block text-[13px] font-semibold mb-1.5"
                   style={{ color: "var(--text)" }}
                 >
-                  {t("login.password")}
+                  {t("login.email")}
                 </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all duration-150"
+                  style={{
+                    border: "1px solid rgba(15,23,42,0.14)",
+                    color: "var(--text)",
+                    background: "#fff",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "var(--primary)";
+                    e.currentTarget.style.boxShadow = "0 0 0 3px var(--primary-ring)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(15,23,42,0.14)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                  placeholder="you@company.com"
+                  required
+                />
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all duration-150"
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label
+                    className="block text-[13px] font-semibold"
+                    style={{ color: "var(--text)" }}
+                  >
+                    {t("login.password")}
+                  </label>
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all duration-150"
+                  style={{
+                    border: "1px solid rgba(15,23,42,0.14)",
+                    color: "var(--text)",
+                    background: "#fff",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "var(--primary)";
+                    e.currentTarget.style.boxShadow = "0 0 0 3px var(--primary-ring)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(15,23,42,0.14)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3 text-sm text-white font-semibold rounded-xl transition-all duration-150 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
-                  border: "1px solid rgba(15,23,42,0.14)",
-                  color: "var(--text)",
-                  background: "#fff",
+                  background: "var(--primary)",
+                  boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.08)",
                 }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "var(--primary)";
-                  e.currentTarget.style.boxShadow = "0 0 0 3px var(--primary-ring)";
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.background = "var(--primary-hover)";
+                    e.currentTarget.style.transform = "translateY(-0.5px)";
+                    e.currentTarget.style.boxShadow = "0 4px 12px -2px rgb(29 78 216 / 0.3)";
+                  }
                 }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(15,23,42,0.14)";
-                  e.currentTarget.style.boxShadow = "none";
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "var(--primary)";
+                  e.currentTarget.style.transform = "none";
+                  e.currentTarget.style.boxShadow = "0 1px 2px 0 rgb(0 0 0 / 0.08)";
                 }}
-                placeholder="••••••••"
-                required
-              />
-            </div>
+              >
+                {loading ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    {t("login.submitting")}
+                  </>
+                ) : (
+                  <>
+                    {t("login.submit")}
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleMfaSubmit} className="space-y-4">
+              <div>
+                <label
+                  className="block text-[13px] font-semibold mb-1.5"
+                  style={{ color: "var(--text)" }}
+                >
+                  {t("login.mfaCode")}
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all duration-150 tracking-widest font-mono text-lg"
+                  style={{
+                    border: "1px solid rgba(15,23,42,0.14)",
+                    color: "var(--text)",
+                    background: "#fff",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "var(--primary)";
+                    e.currentTarget.style.boxShadow = "0 0 0 3px var(--primary-ring)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(15,23,42,0.14)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                  placeholder="000000"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading || mfaCode.length !== 6}
+                className="w-full flex items-center justify-center gap-2 py-3 text-sm text-white font-semibold rounded-xl transition-all duration-150 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  background: "var(--primary)",
+                  boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.08)",
+                }}
+              >
+                {loading ? t("login.mfaVerifying") : t("login.mfaVerify")}
+              </button>
+              <button
+                type="button"
+                onClick={handleMfaBack}
+                className="w-full py-2.5 text-sm font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                {t("login.mfaBack")}
+              </button>
+            </form>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 text-sm text-white font-semibold rounded-xl transition-all duration-150 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: "var(--primary)",
-                boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.08)",
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.background = "var(--primary-hover)";
-                  e.currentTarget.style.transform = "translateY(-0.5px)";
-                  e.currentTarget.style.boxShadow = "0 4px 12px -2px rgb(29 78 216 / 0.3)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "var(--primary)";
-                e.currentTarget.style.transform = "none";
-                e.currentTarget.style.boxShadow = "0 1px 2px 0 rgb(0 0 0 / 0.08)";
-              }}
-            >
-              {loading ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  {t("login.submitting")}
-                </>
-              ) : (
-                <>
-                  {t("login.submit")}
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-[13px]" style={{ color: "var(--text-muted)" }}>
-            {t("login.noAccount")}{" "}
-            <Link
-              href="/register"
-              className="font-semibold hover:underline"
-              style={{ color: "var(--primary)" }}
-            >
-              {t("login.createOne")}
-            </Link>
-          </p>
+          {!mfaStep && (
+            <p className="mt-6 text-center text-[13px]" style={{ color: "var(--text-muted)" }}>
+              {t("login.noAccount")}{" "}
+              <Link
+                href="/register"
+                className="font-semibold hover:underline"
+                style={{ color: "var(--primary)" }}
+              >
+                {t("login.createOne")}
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </div>

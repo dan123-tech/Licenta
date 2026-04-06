@@ -9,6 +9,7 @@ import { getProvider, getLayerTable, getStoredCredentials, LAYERS, PROVIDERS } f
 import { requireCompany, requireAdmin, jsonResponse, errorResponse, dataSourceNotConfiguredResponse } from "@/lib/api-helpers";
 import { listFirebaseUsers, isFirebaseConfigured } from "@/lib/connectors/firebase-users";
 import { listSqlServerUsers, createSqlServerUser } from "@/lib/connectors/sql-server-users";
+import { listPostgresUsers } from "@/lib/connectors/postgres-users";
 
 const postSchema = z.object({
   email: z.string().email().min(1).max(255),
@@ -40,6 +41,24 @@ export async function GET(request) {
       } catch (err) {
         console.error("GET /api/users (SQL Server) error:", err);
         const msg = err?.message || String(err) || "Failed to load users from SQL Server";
+        return dataSourceNotConfiguredResponse(LAYERS.USERS, msg);
+      }
+    }
+
+    if (provider === PROVIDERS.POSTGRES) {
+      const tableName = await getLayerTable(out.session.companyId, LAYERS.USERS);
+      try {
+        const users = await listPostgresUsers(out.session.companyId, tableName || undefined);
+        if (users == null) {
+          return dataSourceNotConfiguredResponse(
+            LAYERS.USERS,
+            "PostgreSQL credentials or table not configured. Finish Database setup."
+          );
+        }
+        return jsonResponse(users);
+      } catch (err) {
+        console.error("GET /api/users (PostgreSQL) error:", err);
+        const msg = err?.message || String(err) || "Failed to load users from PostgreSQL";
         return dataSourceNotConfiguredResponse(LAYERS.USERS, msg);
       }
     }
@@ -107,6 +126,12 @@ export async function POST(request) {
 
   try {
     const provider = await getProvider(out.session.companyId, LAYERS.USERS);
+    if (provider === PROVIDERS.POSTGRES) {
+      return errorResponse(
+        "Creating users in external PostgreSQL from FleetShare is not supported. Use built-in PostgreSQL or SQL Server for user creation.",
+        501
+      );
+    }
     if (provider === PROVIDERS.SQL_SERVER) {
       const tableName = await getLayerTable(out.session.companyId, LAYERS.USERS);
       if (!tableName) return dataSourceNotConfiguredResponse(LAYERS.USERS, "Select a data table in Database Settings for the Users layer.");

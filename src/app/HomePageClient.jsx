@@ -198,6 +198,13 @@ export default function HomePageClient() {
             >
               {t("landing.footer.terms")}
             </Link>
+            <span aria-hidden>·</span>
+            <Link
+              href="/download"
+              className="hover:underline text-[#185fa5] hover:text-[#1d4ed8] transition-colors"
+            >
+              {t("landing.footer.selfHost")}
+            </Link>
           </div>
         </div>
       </main>

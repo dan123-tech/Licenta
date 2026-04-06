@@ -6,7 +6,10 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { requireSession, jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { setUserDrivingLicenceUrl, setUserDrivingLicenceStatus, clearUserDrivingLicence } from "@/lib/users";
-import { verifyDrivingLicenceWithAI } from "@/lib/ai-verification";
+import { verifyDrivingLicenceWithAI, verifyDrivingLicenceWithGemini } from "@/lib/ai-verification";
+import { getCompanyGeminiApiKey } from "@/lib/company-ai-credentials";
+
+export const runtime = "nodejs";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -36,10 +39,17 @@ export async function POST(request) {
   const url = `/uploads/driving-licences/${filename}`;
   await setUserDrivingLicenceUrl(out.session.userId, { drivingLicenceUrl: url });
 
-  // Send image to AI Docker for automatic verification
+  // Prefer company Gemini API key; else external AI service (Docker / FastAPI)
   try {
-    console.info("[driving-licence] Sending image to AI verification for user", out.session.userId);
-    const result = await verifyDrivingLicenceWithAI(buffer, typ, filename);
+    const geminiKey = out.session.companyId ? await getCompanyGeminiApiKey(out.session.companyId) : null;
+    console.info(
+      "[driving-licence] AI verification for user",
+      out.session.userId,
+      geminiKey ? "(Gemini)" : "(external service)"
+    );
+    const result = geminiKey
+      ? await verifyDrivingLicenceWithGemini(buffer, typ, geminiKey, filename)
+      : await verifyDrivingLicenceWithAI(buffer, typ, filename);
     console.info("[driving-licence] AI result:", JSON.stringify(result));
     const status = result.hasTwoPlusYearsExperience ? "APPROVED" : "REJECTED";
     await setUserDrivingLicenceStatus(out.session.userId, status, { verifiedBy: "AI" });

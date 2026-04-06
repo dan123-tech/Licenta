@@ -74,6 +74,11 @@ model User {
   activeWebSessionToken     String?
   /** Random id for mobile cookie session; independent from web */
   activeMobileSessionToken  String?
+  /** Email MFA: after password, user must enter 6-digit code sent to email */
+  mfaEnabled           Boolean              @default(false)
+  mfaOtpHash           String?
+  mfaOtpExpiresAt      DateTime?
+  mfaOtpAttempts       Int                  @default(0)
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
@@ -92,6 +97,10 @@ model Company {
   id                        String   @id @default(cuid())
   name                      String
   domain                    String?  // e.g. "company.com" for display
+  /** Full public URL for invite links & emails (https://fleet.company.com), overrides NEXT_PUBLIC_APP_URL when set */
+  publicAppUrl              String?
+  /** Encrypted JSON: { geminiApiKey } — admin-configured Google Gemini for driving licence AI check */
+  aiCredentials             Json?
   joinCode                  String?  @unique // shareable code for users to join (e.g. "ABC12XYZ")
   defaultKmUsage            Int      @default(100) // default allowed km per reservation; admin can change
   averageFuelPricePerLiter  Float?   // legacy: price per liter (used if per-fuel prices not set)
@@ -102,6 +111,8 @@ model Company {
   priceElectricityPerKwh    Float?   // global pricing: Electricity (currency/kWh)
   dataSourceConfig          Json?    // { users, cars, reservations, usersTable?, carsTable?, reservationsTable? }
   dataSourceCredentials     Json?    // encrypted { "users:SQL_SERVER": { tableName, ...credentials } } per layer:provider
+  /** When null, company admin must finish Database setup (external PostgreSQL per layer or built-in). */
+  dataSourceSetupCompletedAt DateTime?
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 

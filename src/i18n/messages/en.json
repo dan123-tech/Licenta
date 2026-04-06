@@ -43,7 +43,8 @@
     },
     "footer": {
       "privacy": "Privacy Policy",
-      "terms": "Terms and Conditions"
+      "terms": "Terms and Conditions",
+      "selfHost": "Self-host (Docker)"
     },
     "preferencesPanelHint": "Choose your language and currency",
     "branding": {
@@ -65,7 +66,13 @@
     "submitting": "Signing in…",
     "noAccount": "Don't have an account?",
     "createOne": "Create one",
-    "errorFallback": "Invalid credentials. Please try again."
+    "errorFallback": "Invalid credentials. Please try again.",
+    "mfaTitle": "Check your email",
+    "mfaSubtitle": "We sent a 6-digit code to {email}.",
+    "mfaCode": "6-digit code",
+    "mfaVerify": "Verify and sign in",
+    "mfaVerifying": "Verifying…",
+    "mfaBack": "Use a different account"
   },
   "register": {
     "title": "Create your account",
@@ -123,12 +130,22 @@
       "auditLogs": "Audit logs",
       "dashboard": "Dashboard",
       "drivingLicence": "Driving licence",
+      "security": "Security",
       "availableCars": "Available cars",
       "unavailableCars": "Unavailable cars",
       "myReservations": "My reservations",
       "bookingCalendar": "Booking calendar"
     },
     "joinCode": "Join code:"
+  },
+  "adminCompany": {
+    "publicAppUrl": {
+      "label": "Public app URL",
+      "intro": "This is the web address your team opens in the browser to use FleetShare — the same link you would bookmark or paste in an email (always include https://).",
+      "where": "Ask whoever runs your deployment: IT, your hosting provider, or check where production was published (for example your company subdomain or cloud app URL).",
+      "invites": "Invitation emails use this address in their links so colleagues land on the right site when they set their password or accept an invite.",
+      "empty": "Leave empty if your server already has a default public URL configured, or while testing on your own machine."
+    }
   },
   "pageMeta": {
     "company": { "title": "Company", "sub": "Settings, pricing & fleet defaults" },
@@ -145,6 +162,7 @@
     "auditLogs": { "title": "Audit logs", "sub": "Immutable record of all important actions" },
     "userDashboard": { "title": "Dashboard", "sub": "Your fleet activity at a glance" },
     "userDrivingLicence": { "title": "Driving licence", "sub": "Upload and validation status" },
+    "userSecurity": { "title": "Security", "sub": "Email sign-in code after password" },
     "userMyReservations": { "title": "My reservations", "sub": "Active and upcoming bookings" },
     "userBookingCalendar": { "title": "Booking calendar", "sub": "Plan trips on a visual timeline" },
     "userAvailableCars": { "title": "Available cars", "sub": "Reserve a vehicle" },
@@ -360,5 +378,18 @@
       "s8Title": "Governing law",
       "s8Body": "These Terms are governed by the laws applicable to the contracting entity operating your FleetShare deployment, unless a separate written agreement states otherwise. Courts in that jurisdiction have exclusive venue where permitted."
     }
+  },
+  "userSecurityForm": {
+    "intro": "When enabled, signing in sends a 6-digit code to your email after you enter the correct password.",
+    "statusLabel": "Email sign-in code",
+    "on": "On",
+    "off": "Off",
+    "passwordLabel": "Current password",
+    "enableBtn": "Turn on",
+    "disableBtn": "Turn off",
+    "saving": "Saving…",
+    "enabledOk": "Email sign-in code is now on.",
+    "disabledOk": "Email sign-in code is now off.",
+    "passwordRequired": "Enter your current password."
   }
 }

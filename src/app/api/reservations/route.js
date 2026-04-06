@@ -8,6 +8,7 @@ import { listReservations, createReservation, createInstantReservation, ensureRe
 import { updateCar } from "@/lib/cars";
 import { getProvider, getLayerTable, getStoredCredentials, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
 import { listSqlServerReservations } from "@/lib/connectors/sql-server-reservations";
+import { listPostgresReservations } from "@/lib/connectors/postgres-reservations";
 import { requireCompany, jsonResponse, errorResponse, dataSourceNotConfiguredResponse } from "@/lib/api-helpers";
 import { writeAuditLog } from "@/lib/audit";
 
@@ -80,6 +81,54 @@ export async function GET(request) {
       console.error("GET /api/reservations (SQL Server) error:", err);
       const msg = err?.message || String(err) || "Failed to load reservations from SQL Server";
       return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS, msg);
+    }
+  }
+
+  if (provider === PROVIDERS.POSTGRES) {
+    const tableName = await getLayerTable(out.session.companyId, LAYERS.RESERVATIONS);
+    if (!tableName) {
+      return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS, "Select a data table in Database Settings for the Reservations layer.");
+    }
+    const creds = await getStoredCredentials(out.session.companyId, LAYERS.RESERVATIONS, PROVIDERS.POSTGRES);
+    if (!creds?.host || !creds?.username) {
+      return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS, "PostgreSQL credentials not saved. Finish Database setup.");
+    }
+    try {
+      const options = { status, carId };
+      if (!isAdmin) options.userId = out.session.userId;
+      const list = await listPostgresReservations(out.session.companyId, options);
+      if (list == null) {
+        return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS, "Could not load reservations from PostgreSQL.");
+      }
+      return jsonResponse(
+        list.map((r) => {
+          const isOwner = r.userId === out.session.userId;
+          const showCodes = isOwner || isAdmin;
+          return {
+            id: r.id,
+            carId: r.carId,
+            car: r.car,
+            userId: r.userId,
+            user: r.user,
+            startDate: r.startDate,
+            endDate: r.endDate,
+            purpose: r.purpose,
+            status: r.status,
+            pickup_code: showCodes ? r.pickup_code : undefined,
+            code_valid_from: showCodes ? r.code_valid_from : undefined,
+            release_code: showCodes ? r.release_code : undefined,
+            releasedKmUsed: r.releasedKmUsed,
+            releasedExceededReason: r.releasedExceededReason,
+            releasedExceededStatus: r.releasedExceededStatus,
+            releasedExceededAdminComment: r.releasedExceededAdminComment,
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt,
+          };
+        })
+      );
+    } catch (err) {
+      console.error("GET /api/reservations (PostgreSQL) error:", err);
+      return dataSourceNotConfiguredResponse(LAYERS.RESERVATIONS, err?.message || String(err));
     }
   }
 

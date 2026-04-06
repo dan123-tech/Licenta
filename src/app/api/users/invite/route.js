@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { createInvite } from "@/lib/users";
+import { getCompanyById } from "@/lib/companies";
 import { requireAdmin, jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { sendInviteEmail } from "@/lib/email";
 
@@ -28,10 +29,13 @@ export async function POST(request) {
 
   let emailSent = false;
   try {
+    const co = await getCompanyById(out.session.companyId);
+    const appBaseUrl = co?.publicAppUrl?.trim() || undefined;
     const mail = await sendInviteEmail({
       to: invite.email,
       token: invite.token,
       inviteeName: parsed.data.name,
+      appBaseUrl,
     });
     emailSent = mail.ok === true;
     if (!mail.ok && mail.error !== "not_configured") {
@@ -50,7 +54,7 @@ export async function POST(request) {
       emailSent,
       message: emailSent
         ? "Invite created and an email was sent."
-        : "Invite created. Configure RESEND_API_KEY + EMAIL_FROM to send mail, or share the token manually.",
+        : "Invite created. Configure SMTP or RESEND_API_KEY + EMAIL_FROM to send mail, or share the token manually.",
     },
     201
   );

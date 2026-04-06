@@ -7,6 +7,7 @@ import { z } from "zod";
 import { listCars, createCar } from "@/lib/cars";
 import { getProvider, getLayerTable, getStoredCredentials, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
 import { listSqlServerCars, createSqlServerCar } from "@/lib/connectors/sql-server-cars";
+import { listPostgresCars } from "@/lib/connectors/postgres-cars";
 import { requireCompany, requireAdmin, jsonResponse, errorResponse, dataSourceNotConfiguredResponse } from "@/lib/api-helpers";
 import { writeAuditLog } from "@/lib/audit";
 
@@ -82,6 +83,44 @@ export async function GET(request) {
     }
   }
 
+  if (provider === PROVIDERS.POSTGRES) {
+    const tableName = await getLayerTable(out.session.companyId, LAYERS.CARS);
+    if (!tableName) {
+      return dataSourceNotConfiguredResponse(LAYERS.CARS, "Select a data table in Database Settings for the Cars layer.");
+    }
+    const creds = await getStoredCredentials(out.session.companyId, LAYERS.CARS, PROVIDERS.POSTGRES);
+    if (!creds?.host || !creds?.username) {
+      return dataSourceNotConfiguredResponse(LAYERS.CARS, "PostgreSQL credentials not saved. Finish Database setup.");
+    }
+    try {
+      const cars = await listPostgresCars(out.session.companyId, status);
+      if (cars == null) {
+        return dataSourceNotConfiguredResponse(LAYERS.CARS, "Could not load cars from PostgreSQL.");
+      }
+      return jsonResponse(
+        cars.map((c) => ({
+          id: c.id,
+          brand: c.brand,
+          model: c.model,
+          registrationNumber: c.registrationNumber,
+          km: c.km,
+          status: c.status,
+          fuelType: c.fuelType ?? "Benzine",
+          averageConsumptionL100km: c.averageConsumptionL100km ?? null,
+          averageConsumptionKwh100km: c.averageConsumptionKwh100km ?? null,
+          batteryLevel: c.batteryLevel ?? null,
+          batteryCapacityKwh: c.batteryCapacityKwh ?? null,
+          lastServiceMileage: c.lastServiceMileage ?? null,
+          lastServiceYearMonth: c.lastServiceYearMonth ?? null,
+          _count: c._count ?? { reservations: 0 },
+        }))
+      );
+    } catch (err) {
+      console.error("GET /api/cars (PostgreSQL) error:", err);
+      return dataSourceNotConfiguredResponse(LAYERS.CARS, err?.message || String(err));
+    }
+  }
+
   if (provider !== PROVIDERS.LOCAL) {
     return dataSourceNotConfiguredResponse(LAYERS.CARS);
   }
@@ -116,6 +155,12 @@ export async function POST(request) {
 
   try {
     const provider = await getProvider(out.session.companyId, LAYERS.CARS);
+    if (provider === PROVIDERS.POSTGRES) {
+      return errorResponse(
+        "Creating cars in external PostgreSQL from FleetShare is not supported. Use built-in PostgreSQL or SQL Server.",
+        501
+      );
+    }
     if (provider === PROVIDERS.SQL_SERVER) {
       const tableName = await getLayerTable(out.session.companyId, LAYERS.CARS);
       if (!tableName) return dataSourceNotConfiguredResponse(LAYERS.CARS, "Select a data table in Database Settings for the Cars layer.");

@@ -8,7 +8,14 @@ import { prisma } from "@/lib/db";
 import { encrypt, decrypt } from "@/lib/encrypt";
 
 export const LAYERS = { USERS: "users", CARS: "cars", RESERVATIONS: "reservations" };
-export const PROVIDERS = { LOCAL: "LOCAL", ENTRA: "ENTRA", SQL_SERVER: "SQL_SERVER", FIREBASE: "FIREBASE", SHAREPOINT: "SHAREPOINT" };
+export const PROVIDERS = {
+  LOCAL: "LOCAL",
+  ENTRA: "ENTRA",
+  SQL_SERVER: "SQL_SERVER",
+  POSTGRES: "POSTGRES",
+  FIREBASE: "FIREBASE",
+  SHAREPOINT: "SHAREPOINT",
+};
 
 const DEFAULT_CONFIG = { [LAYERS.USERS]: PROVIDERS.LOCAL, [LAYERS.CARS]: PROVIDERS.LOCAL, [LAYERS.RESERVATIONS]: PROVIDERS.LOCAL };
 
@@ -34,10 +41,13 @@ export async function getDataSourceConfig(companyId) {
     });
     const raw = company?.dataSourceConfig;
     if (!raw || typeof raw !== "object") return { ...DEFAULT_CONFIG_FULL };
+    const uP = [PROVIDERS.LOCAL, PROVIDERS.ENTRA, PROVIDERS.SQL_SERVER, PROVIDERS.POSTGRES, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT];
+    const cP = [PROVIDERS.LOCAL, PROVIDERS.SQL_SERVER, PROVIDERS.POSTGRES, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT];
+    const rP = [PROVIDERS.LOCAL, PROVIDERS.SQL_SERVER, PROVIDERS.POSTGRES, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT];
     return {
-      [LAYERS.USERS]: [PROVIDERS.LOCAL, PROVIDERS.ENTRA, PROVIDERS.SQL_SERVER, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT].includes(raw.users) ? raw.users : PROVIDERS.LOCAL,
-      [LAYERS.CARS]: [PROVIDERS.LOCAL, PROVIDERS.SQL_SERVER, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT].includes(raw.cars) ? raw.cars : PROVIDERS.LOCAL,
-      [LAYERS.RESERVATIONS]: [PROVIDERS.LOCAL, PROVIDERS.SQL_SERVER, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT].includes(raw.reservations) ? raw.reservations : PROVIDERS.LOCAL,
+      [LAYERS.USERS]: uP.includes(raw.users) ? raw.users : PROVIDERS.LOCAL,
+      [LAYERS.CARS]: cP.includes(raw.cars) ? raw.cars : PROVIDERS.LOCAL,
+      [LAYERS.RESERVATIONS]: rP.includes(raw.reservations) ? raw.reservations : PROVIDERS.LOCAL,
       usersTable: typeof raw.usersTable === "string" && raw.usersTable.trim() ? raw.usersTable.trim() : null,
       carsTable: typeof raw.carsTable === "string" && raw.carsTable.trim() ? raw.carsTable.trim() : null,
       reservationsTable: typeof raw.reservationsTable === "string" && raw.reservationsTable.trim() ? raw.reservationsTable.trim() : null,

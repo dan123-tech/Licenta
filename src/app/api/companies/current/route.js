@@ -5,8 +5,40 @@
 
 import { z } from "zod";
 import { getCompanyById, updateCompany } from "@/lib/companies";
+import { companyHasGeminiApiKey, setCompanyAiCredentials } from "@/lib/company-ai-credentials";
 import { requireSession, requireAdmin, jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { writeAuditLog } from "@/lib/audit";
+
+function isValidHttpUrl(s) {
+  if (s == null || s === "") return true;
+  try {
+    const u = new URL(s);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+async function companyPayload(company) {
+  if (!company) return null;
+  const hasGeminiApiKey = await companyHasGeminiApiKey(company.id);
+  return {
+    id: company.id,
+    name: company.name,
+    domain: company.domain,
+    publicAppUrl: company.publicAppUrl ?? null,
+    hasGeminiApiKey,
+    joinCode: company.joinCode,
+    defaultKmUsage: company.defaultKmUsage ?? 100,
+    averageFuelPricePerLiter: company.averageFuelPricePerLiter ?? null,
+    defaultConsumptionL100km: company.defaultConsumptionL100km ?? 7.5,
+    priceBenzinePerLiter: company.priceBenzinePerLiter ?? null,
+    priceDieselPerLiter: company.priceDieselPerLiter ?? null,
+    priceHybridPerLiter: company.priceHybridPerLiter ?? null,
+    priceElectricityPerKwh: company.priceElectricityPerKwh ?? null,
+    _count: company._count ?? { members: 0, cars: 0 },
+  };
+}
 
 export async function GET() {
   const out = await requireSession();
@@ -17,22 +49,7 @@ export async function GET() {
   try {
     const company = await getCompanyById(out.session.companyId);
     if (!company) return jsonResponse({ company: null });
-    return jsonResponse({
-      company: {
-        id: company.id,
-        name: company.name,
-        domain: company.domain,
-        joinCode: company.joinCode,
-        defaultKmUsage: company.defaultKmUsage ?? 100,
-        averageFuelPricePerLiter: company.averageFuelPricePerLiter ?? null,
-        defaultConsumptionL100km: company.defaultConsumptionL100km ?? 7.5,
-        priceBenzinePerLiter: company.priceBenzinePerLiter ?? null,
-        priceDieselPerLiter: company.priceDieselPerLiter ?? null,
-        priceHybridPerLiter: company.priceHybridPerLiter ?? null,
-        priceElectricityPerKwh: company.priceElectricityPerKwh ?? null,
-        _count: company._count ?? { members: 0, cars: 0 },
-      },
-    });
+    return jsonResponse({ company: await companyPayload(company) });
   } catch (err) {
     console.error("GET /api/companies/current error:", err);
     return errorResponse(err?.message || "Failed to load company", 500);
@@ -49,6 +66,12 @@ const optionalNum = z.preprocess((val) => {
 const patchSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   domain: z.string().max(100).nullable().optional(),
+  /** Full public site URL for invite links (https://…); empty clears */
+  publicAppUrl: z.union([z.string().max(500), z.null()]).optional(),
+  /** Google Gemini API key for driving licence AI (stored encrypted). Omit = unchanged. */
+  geminiApiKey: z.string().min(20).max(4000).optional(),
+  /** When true, removes stored Gemini key */
+  clearGeminiApiKey: z.boolean().optional(),
   defaultKmUsage: z.number().int().min(1).max(99999).optional(),
   averageFuelPricePerLiter: optionalNum,
   defaultConsumptionL100km: z.union([z.number().min(0).max(30), z.null()]).optional(),
@@ -76,10 +99,17 @@ export async function PATCH(request) {
     } catch (_) {}
     return errorResponse(msg, 422);
   }
+  if (parsed.data.publicAppUrl != null && parsed.data.publicAppUrl !== "" && !isValidHttpUrl(parsed.data.publicAppUrl)) {
+    return errorResponse("publicAppUrl must be a valid http(s) URL", 422);
+  }
   const data = {};
   if (parsed.data.defaultKmUsage !== undefined) data.defaultKmUsage = parsed.data.defaultKmUsage;
   if (parsed.data.name !== undefined) data.name = parsed.data.name;
   if (parsed.data.domain !== undefined) data.domain = parsed.data.domain;
+  if (parsed.data.publicAppUrl !== undefined) {
+    const v = parsed.data.publicAppUrl;
+    data.publicAppUrl = v === "" || v == null ? null : v.trim() || null;
+  }
   if (parsed.data.averageFuelPricePerLiter !== undefined) {
     const v = parsed.data.averageFuelPricePerLiter;
     data.averageFuelPricePerLiter = v === null || (typeof v === "number" && !Number.isNaN(v)) ? v : null;
@@ -116,35 +146,40 @@ export async function PATCH(request) {
   } catch (_) {}
 
   try {
-    const company = await updateCompany(out.session.companyId, data);
-    const action = isPricingChange ? "PRICING_CHANGED" : "COMPANY_SETTINGS_CHANGED";
-    const before = {};
-    const after = {};
-    for (const f of changedFields) {
-      before[f] = companyBefore?.[f] ?? null;
-      after[f] = company[f] ?? null;
+    let company =
+      Object.keys(data).length > 0
+        ? await updateCompany(out.session.companyId, data)
+        : await getCompanyById(out.session.companyId);
+
+    if (parsed.data.clearGeminiApiKey === true) {
+      await setCompanyAiCredentials(out.session.companyId, { geminiApiKey: null });
+    } else if (parsed.data.geminiApiKey != null && parsed.data.geminiApiKey.trim()) {
+      await setCompanyAiCredentials(out.session.companyId, { geminiApiKey: parsed.data.geminiApiKey.trim() });
     }
-    await writeAuditLog({
-      companyId: out.session.companyId,
-      actorId: out.session.userId,
-      action,
-      entityType: "COMPANY",
-      entityId: out.session.companyId,
-      meta: { before, after },
-    });
-    return jsonResponse({
-      id: company.id,
-      name: company.name,
-      domain: company.domain,
-      joinCode: company.joinCode,
-      defaultKmUsage: company.defaultKmUsage ?? 100,
-      averageFuelPricePerLiter: company.averageFuelPricePerLiter ?? null,
-      defaultConsumptionL100km: company.defaultConsumptionL100km ?? 7.5,
-      priceBenzinePerLiter: company.priceBenzinePerLiter ?? null,
-      priceDieselPerLiter: company.priceDieselPerLiter ?? null,
-      priceHybridPerLiter: company.priceHybridPerLiter ?? null,
-      priceElectricityPerKwh: company.priceElectricityPerKwh ?? null,
-    });
+
+    const didGemini = Boolean(parsed.data.geminiApiKey?.trim() || parsed.data.clearGeminiApiKey);
+    if (changedFields.length > 0 || didGemini) {
+      const action = isPricingChange ? "PRICING_CHANGED" : "COMPANY_SETTINGS_CHANGED";
+      const before = {};
+      const after = {};
+      for (const f of changedFields) {
+        before[f] = companyBefore?.[f] ?? null;
+        after[f] = company[f] ?? null;
+      }
+      const meta = { before, after };
+      if (didGemini) meta.aiCredentialsUpdated = true;
+      await writeAuditLog({
+        companyId: out.session.companyId,
+        actorId: out.session.userId,
+        action,
+        entityType: "COMPANY",
+        entityId: out.session.companyId,
+        meta,
+      });
+    }
+
+    const fresh = await getCompanyById(out.session.companyId);
+    return jsonResponse(await companyPayload(fresh));
   } catch (err) {
     console.error("PATCH /api/companies/current error:", err);
     return errorResponse(err?.message || "Failed to update company", 500);

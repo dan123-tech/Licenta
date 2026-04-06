@@ -43,7 +43,8 @@
     },
     "footer": {
       "privacy": "Politica de confidențialitate",
-      "terms": "Termeni și condiții"
+      "terms": "Termeni și condiții",
+      "selfHost": "Găzduire proprie (Docker)"
     },
     "preferencesPanelHint": "Alege limba și moneda",
     "branding": {
@@ -65,7 +66,13 @@
     "submitting": "Se autentifică…",
     "noAccount": "Nu ai cont?",
     "createOne": "Creează unul",
-    "errorFallback": "Date incorecte. Încearcă din nou."
+    "errorFallback": "Date incorecte. Încearcă din nou.",
+    "mfaTitle": "Verifică e-mailul",
+    "mfaSubtitle": "Am trimis un cod din 6 cifre la {email}.",
+    "mfaCode": "Cod din 6 cifre",
+    "mfaVerify": "Verifică și autentifică-te",
+    "mfaVerifying": "Se verifică…",
+    "mfaBack": "Alt cont"
   },
   "register": {
     "title": "Creează cont",
@@ -123,12 +130,22 @@
       "auditLogs": "Jurnal audit",
       "dashboard": "Panou",
       "drivingLicence": "Permis de conducere",
+      "security": "Securitate",
       "availableCars": "Mașini disponibile",
       "unavailableCars": "Mașini indisponibile",
       "myReservations": "Rezervările mele",
       "bookingCalendar": "Calendar rezervări"
     },
     "joinCode": "Cod invitație:"
+  },
+  "adminCompany": {
+    "publicAppUrl": {
+      "label": "URL public al aplicației",
+      "intro": "Adresa web pe care echipa o deschide în browser pentru FleetShare — același link pe care l-ai pune la favorite sau în e-mail (include mereu https://).",
+      "where": "Între pe cine a pus aplicația în producție: IT, furnizorul de găzduire sau verifică unde e publicată (subdomeniul companiei, URL-ul din cloud etc.).",
+      "invites": "E-mailurile de invitație folosesc această adresă în linkuri, ca colegii să ajungă pe site-ul corect la setarea parolei sau acceptarea invitației.",
+      "empty": "Lasă gol dacă serverul are deja un URL public implicit configurat, sau când testezi local doar pentru tine."
+    }
   },
   "pageMeta": {
     "company": { "title": "Companie", "sub": "Setări, prețuri și valori implicite flotă" },
@@ -145,6 +162,7 @@
     "auditLogs": { "title": "Jurnal audit", "sub": "Înregistrare imuabilă a acțiunilor importante" },
     "userDashboard": { "title": "Panou", "sub": "Activitatea flotei tale pe scurt" },
     "userDrivingLicence": { "title": "Permis de conducere", "sub": "Încărcare și stare validare" },
+    "userSecurity": { "title": "Securitate", "sub": "Cod prin e-mail după parolă" },
     "userMyReservations": { "title": "Rezervările mele", "sub": "Rezervări active și viitoare" },
     "userBookingCalendar": { "title": "Calendar rezervări", "sub": "Planifică călătoriile vizual" },
     "userAvailableCars": { "title": "Mașini disponibile", "sub": "Rezervă un vehicul" },
@@ -360,5 +378,18 @@
       "s8Title": "Legea aplicabilă",
       "s8Body": "Acești termeni sunt guvernați de legea aplicabilă entității care operează instanța FleetShare pe care o utilizați, dacă nu prevede altfel un acord separat scris. Instanțele din acea jurisdicție pot avea competență exclusivă acolo unde legea permite."
     }
+  },
+  "userSecurityForm": {
+    "intro": "Dacă este activat, după parolă primești pe e-mail un cod din 6 cifre pentru a te autentifica.",
+    "statusLabel": "Cod prin e-mail la autentificare",
+    "on": "Activat",
+    "off": "Dezactivat",
+    "passwordLabel": "Parola actuală",
+    "enableBtn": "Activează",
+    "disableBtn": "Dezactivează",
+    "saving": "Se salvează…",
+    "enabledOk": "Codul prin e-mail este activat.",
+    "disabledOk": "Codul prin e-mail este dezactivat.",
+    "passwordRequired": "Introdu parola actuală."
   }
 }

@@ -95,6 +95,14 @@ export async function apiDataSourceTablesFetch(body) {
 }
 
 /** POST body: { layer, provider, credentials, tableName? }. Stores credentials for layer+provider. */
+/** POST { mode: "builtin" | "postgres" } — complete first-time admin database onboarding. */
+export async function apiDataSourceSetupComplete(mode) {
+  const res = await fetch("/api/companies/current/data-source-setup", getOpts("POST", { mode }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Could not complete database setup");
+  return data;
+}
+
 export async function apiDataSourceCredentialsSave(body) {
   const res = await fetch("/api/companies/current/data-source-credentials", getOpts("POST", body));
   const data = await res.json().catch(() => ({}));
@@ -114,10 +122,34 @@ export async function apiDataSourceTestFirebase(body) {
 }
 
 export async function apiLogin(email, password) {
+  // Avoid sending a stale X-Web-Session-Id from an old tab/login; cookie + fresh sid must align after login.
+  clearWebTabSessionId();
   const res = await fetch("/api/auth/login", getOpts("POST", { email, password, clientType: "web" }));
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Login failed");
+  if (data.mfaRequired) {
+    return { mfaRequired: true, email: data.email || email };
+  }
   persistWebSessionFromResponse(data);
+  return { mfaRequired: false, ...data };
+}
+
+export async function apiVerifyMfaLogin(email, code) {
+  clearWebTabSessionId();
+  const res = await fetch(
+    "/api/auth/mfa-verify",
+    getOpts("POST", { email, code, clientType: "web" })
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Verification failed");
+  persistWebSessionFromResponse(data);
+  return data;
+}
+
+export async function apiUserMfaUpdate(enabled, password) {
+  const res = await fetch("/api/users/me/mfa", getOpts("PATCH", { enabled, password }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Could not update security settings");
   return data;
 }
 
@@ -137,7 +169,12 @@ export async function apiRegister(email, password, name) {
 }
 
 export async function apiSession() {
-  const res = await fetch("/api/auth/session", getOpts("GET"));
+  let res = await fetch("/api/auth/session", getOpts("GET"));
+  if (res.status === 401) {
+    clearWebTabSessionId();
+    // Stale sessionStorage sid can 401 while the cookie is still valid; retry without X-Web-Session-Id.
+    res = await fetch("/api/auth/session", getOpts("GET"));
+  }
   if (res.status === 401) {
     clearWebTabSessionId();
     return null;

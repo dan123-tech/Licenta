@@ -6,6 +6,7 @@ import { apiSession } from "@/lib/api";
 import NoCompanyView from "@/components/dashboard/NoCompanyView";
 import UserDashboard from "@/components/dashboard/UserDashboard";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
+import DataSourceSetupWizard from "@/components/dashboard/DataSourceSetupWizard";
 import InAppNotificationPoller from "@/components/dashboard/InAppNotificationPoller";
 import WebSessionLiveGuard from "@/components/dashboard/WebSessionLiveGuard";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -15,6 +16,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [session, setSession] = useState(null);
   const [company, setCompany] = useState(null);
+  const [needsDataSourceSetup, setNeedsDataSourceSetup] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function loadSession() {
@@ -26,6 +28,7 @@ export default function DashboardPage() {
       }
       setSession(data.user);
       setCompany(data.company);
+      setNeedsDataSourceSetup(Boolean(data.needsDataSourceSetup));
     } catch {
       router.push("/login");
     } finally {
@@ -45,13 +48,18 @@ export default function DashboardPage() {
           <p className="text-slate-500">{t("common.loading")}</p>
         </div>
       ) : !session ? null : (
-        <DashboardContent session={session} company={company} loadSession={loadSession} />
+        <DashboardContent
+          session={session}
+          company={company}
+          needsDataSourceSetup={needsDataSourceSetup}
+          loadSession={loadSession}
+        />
       )}
     </>
   );
 }
 
-function DashboardContent({ session, company, loadSession }) {
+function DashboardContent({ session, company, needsDataSourceSetup, loadSession }) {
   const notificationShell = (
     <InAppNotificationPoller userId={session.id} initialLicenceStatus={session.drivingLicenceStatus} />
   );
@@ -63,6 +71,15 @@ function DashboardContent({ session, company, loadSession }) {
         <div className="min-h-screen" style={{ background: "var(--main-bg)" }}>
           <NoCompanyView onJoined={loadSession} />
         </div>
+      </>
+    );
+  }
+
+  if (session.role === "ADMIN" && needsDataSourceSetup) {
+    return (
+      <>
+        {notificationShell}
+        <DataSourceSetupWizard companyName={company.name} onCompleted={loadSession} />
       </>
     );
   }

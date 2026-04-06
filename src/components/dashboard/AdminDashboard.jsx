@@ -49,6 +49,11 @@ import LanguageCurrencySwitcher from "@/components/LanguageCurrencySwitcher";
 
 const ICON = { s: "w-4 h-4 shrink-0 stroke-[1.5]" };
 
+/** Admin "Database settings" (external data sources). Set NEXT_PUBLIC_POSTGRES_WEB_SHOW=0 or false to hide. */
+const postgresWebShow =
+  process.env.NEXT_PUBLIC_POSTGRES_WEB_SHOW !== "0" &&
+  process.env.NEXT_PUBLIC_POSTGRES_WEB_SHOW !== "false";
+
 const ADMIN_PAGE_META_KEYS = {
   company: "company",
   statistics: "statistics",
@@ -178,6 +183,10 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
   const [priceDieselPerLiter, setPriceDieselPerLiter] = useState(company?.priceDieselPerLiter ?? "");
   const [priceHybridPerLiter, setPriceHybridPerLiter] = useState(company?.priceHybridPerLiter ?? "");
   const [priceElectricityPerKwh, setPriceElectricityPerKwh] = useState(company?.priceElectricityPerKwh ?? "");
+  const [companyName, setCompanyName] = useState(company?.name ?? "");
+  const [companyDomain, setCompanyDomain] = useState(company?.domain ?? "");
+  const [publicAppUrl, setPublicAppUrl] = useState(company?.publicAppUrl ?? "");
+  const [geminiApiKeyDraft, setGeminiApiKeyDraft] = useState("");
   const [defaultKmSaving, setDefaultKmSaving] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState([]);
@@ -211,7 +220,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
   const [dataSourceNotConfigured, setDataSourceNotConfigured] = useState({ users: false, cars: false, reservations: false });
 
   useEffect(() => {
-    if (POSTGRES_WEB_SHOW && section === "databaseSettings") {
+    if (!postgresWebShow && section === "databaseSettings") {
       setSection("company");
     }
   }, [section]);
@@ -351,6 +360,10 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
 
   async function saveCompanySettings(e) {
     e.preventDefault();
+    if (!companyName.trim()) {
+      setError("Company name is required");
+      return;
+    }
     const kmVal = parseInt(defaultKmUsage, 10);
     if (isNaN(kmVal) || kmVal < 1) {
       setError("Default km must be at least 1");
@@ -365,7 +378,10 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
     setDefaultKmSaving(true);
     setError("");
     try {
-      await apiUpdateCompanyCurrent({
+      const payload = {
+        name: companyName.trim(),
+        domain: companyDomain.trim() || null,
+        publicAppUrl: publicAppUrl.trim() || null,
         defaultKmUsage: kmVal,
         averageFuelPricePerLiter: fuelVal,
         defaultConsumptionL100km: toNum(defaultConsumptionL100km) ?? undefined,
@@ -373,13 +389,29 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
         priceDieselPerLiter: toNum(priceDieselPerLiter) ?? undefined,
         priceHybridPerLiter: toNum(priceHybridPerLiter) ?? undefined,
         priceElectricityPerKwh: toNum(priceElectricityPerKwh) ?? undefined,
-      });
+      };
+      if (geminiApiKeyDraft.trim()) {
+        payload.geminiApiKey = geminiApiKeyDraft.trim();
+      }
+      await apiUpdateCompanyCurrent(payload);
+      setGeminiApiKeyDraft("");
       onCompanyUpdated?.();
       setError("");
     } catch (err) {
       setError(err.message || "Failed to save");
     } finally {
       setDefaultKmSaving(false);
+    }
+  }
+
+  async function clearGeminiKey() {
+    setError("");
+    try {
+      await apiUpdateCompanyCurrent({ clearGeminiApiKey: true });
+      setGeminiApiKeyDraft("");
+      onCompanyUpdated?.();
+    } catch (err) {
+      setError(err.message || "Failed to remove API key");
     }
   }
 
@@ -412,6 +444,9 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
   }, []);
 
   useEffect(() => {
+    if (company?.name != null) setCompanyName(company.name);
+    if (company?.domain !== undefined) setCompanyDomain(company.domain ?? "");
+    if (company?.publicAppUrl !== undefined) setPublicAppUrl(company.publicAppUrl ?? "");
     if (company?.defaultKmUsage != null) setDefaultKmUsage(company.defaultKmUsage);
     if (company?.averageFuelPricePerLiter !== undefined) setAverageFuelPricePerLiter(company.averageFuelPricePerLiter == null ? "" : String(company.averageFuelPricePerLiter));
     if (company?.defaultConsumptionL100km !== undefined) setDefaultConsumptionL100km(company.defaultConsumptionL100km == null ? "" : String(company.defaultConsumptionL100km));
@@ -575,12 +610,14 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
           { id: "users", label: t("nav.items.manageUsers"), icon: <Users className={ICON.s} aria-hidden /> },
           { id: "invites", label: t("nav.items.invites"), icon: <Mail className={ICON.s} aria-hidden /> },
           { id: "aiVerification", label: t("nav.items.aiVerification"), icon: <FileScan className={ICON.s} aria-hidden /> },
-          { id: "databaseSettings", label: t("nav.items.databaseSettings"), icon: <Database className={ICON.s} aria-hidden /> },
+          ...(postgresWebShow
+            ? [{ id: "databaseSettings", label: t("nav.items.databaseSettings"), icon: <Database className={ICON.s} aria-hidden /> }]
+            : []),
           { id: "auditLogs", label: t("nav.items.auditLogs"), icon: <ShieldCheck className={ICON.s} aria-hidden /> },
         ],
       },
     ],
-    [t]
+    [t, postgresWebShow]
   );
 
   const metaKey = ADMIN_PAGE_META_KEYS[section];
@@ -683,6 +720,81 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
             </div>
             <div className="w-full bg-white rounded-[12px] shadow-[0_1px_3px_0_rgb(0_0_0/0.06),0_1px_2px_-1px_rgb(0_0_0/0.06)] p-4 sm:p-6 border border-slate-100/80">
               <form onSubmit={saveCompanySettings} className="space-y-6 max-w-2xl">
+                <div className="border-b border-slate-200 pb-6 space-y-4">
+                  <h3 className="text-sm font-semibold text-slate-800">Company &amp; public URL</h3>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-1">Company name</label>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="w-full max-w-md px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-1">Domain (display)</label>
+                    <p className="text-xs text-slate-500 mb-2">e.g. company.com — informational only.</p>
+                    <input
+                      type="text"
+                      value={companyDomain}
+                      onChange={(e) => setCompanyDomain(e.target.value)}
+                      placeholder="company.com"
+                      className="w-full max-w-md px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-1">
+                      {t("adminCompany.publicAppUrl.label")}
+                    </label>
+                    <div className="mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 space-y-2 text-xs text-slate-600 leading-relaxed">
+                      <p>{t("adminCompany.publicAppUrl.intro")}</p>
+                      <ul className="list-disc pl-4 space-y-1.5 marker:text-slate-400">
+                        <li>{t("adminCompany.publicAppUrl.where")}</li>
+                        <li>{t("adminCompany.publicAppUrl.invites")}</li>
+                        <li>{t("adminCompany.publicAppUrl.empty")}</li>
+                      </ul>
+                    </div>
+                    <input
+                      type="url"
+                      value={publicAppUrl}
+                      onChange={(e) => setPublicAppUrl(e.target.value)}
+                      placeholder="https://fleet.yourcompany.com"
+                      className="w-full max-w-xl px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="border-b border-slate-200 pb-6 space-y-4">
+                  <h3 className="text-sm font-semibold text-slate-800">Driving licence AI (Google Gemini)</h3>
+                  <p className="text-xs text-slate-500">
+                    If set, uploaded licences are checked with Gemini (vision). If empty, the app uses the external AI service URL from server environment (Docker / FastAPI).
+                  </p>
+                  {company?.hasGeminiApiKey && (
+                    <p className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                      A Gemini API key is stored for this company. Enter a new key below to replace it.
+                    </p>
+                  )}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-1">Gemini API key</label>
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={geminiApiKeyDraft}
+                      onChange={(e) => setGeminiApiKeyDraft(e.target.value)}
+                      placeholder={company?.hasGeminiApiKey ? "•••••••• (enter new key to replace)" : "AIza…"}
+                      className="w-full max-w-xl px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white font-mono text-sm focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                    />
+                  </div>
+                  {company?.hasGeminiApiKey && (
+                    <button
+                      type="button"
+                      onClick={clearGeminiKey}
+                      className="text-sm font-semibold text-red-700 hover:text-red-800 underline"
+                    >
+                      Remove stored Gemini key
+                    </button>
+                  )}
+                </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 mb-1">Default km per reservation</label>
                   <p className="text-xs text-slate-500 mb-2">Allowed km per reservation. Users must give a reason if they exceed this.</p>
@@ -1762,7 +1874,7 @@ export default function AdminDashboard({ user, company, onCompanyUpdated, viewAs
           );
         })()}
 
-        {section === "databaseSettings" && (
+        {section === "databaseSettings" && postgresWebShow && (
           <section className="w-full min-w-0">
             <DatabaseSettingsSection />
           </section>

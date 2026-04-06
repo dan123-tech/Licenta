@@ -1,10 +1,13 @@
 /**
- * AI Verification – call the AI Docker service to verify driving licence experience.
- * Base URL: AI_VERIFICATION_URL (default http://localhost:8080)
+ * AI Verification – (1) Google Gemini when company provides API key, else (2) external HTTP service.
+ * External base URL: AI_VERIFICATION_URL (default http://localhost:8080)
  * Form field: AI_VERIFY_FORM_FIELD (default "file") – some services expect "image"
  */
 
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 const DEFAULT_AI_URL = process.env.AI_VERIFICATION_URL || "http://localhost:8080";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 const AI_VERIFY_PATH = process.env.AI_VERIFY_PATH || "/validate";
 const AI_FORM_FIELD = process.env.AI_VERIFY_FORM_FIELD || "file";
 const AI_TIMEOUT_MS = parseInt(process.env.AI_VERIFICATION_TIMEOUT_MS || "30000", 10);
@@ -48,6 +51,58 @@ export function hasTwoPlusYearsFromAIResponse(data) {
   };
 
   return visit(data, 0);
+}
+
+function extractJsonObjectFromModelText(text) {
+  const t = String(text || "").trim();
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const raw = fence ? fence[1].trim() : t;
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(raw.slice(start, end + 1));
+    } catch {
+      /* fall through */
+    }
+  }
+  return JSON.parse(raw);
+}
+
+/**
+ * Driving licence check via Google Gemini (vision).
+ * @param {Buffer} imageBuffer
+ * @param {string} mimeType
+ * @param {string} apiKey
+ * @returns {Promise<{ hasTwoPlusYearsExperience: boolean, raw?: object }>}
+ */
+export async function verifyDrivingLicenceWithGemini(imageBuffer, mimeType, apiKey, filename = "licence.jpg") {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+  const imagePart = {
+    inlineData: {
+      data: imageBuffer.toString("base64"),
+      mimeType: mimeType || "image/jpeg",
+    },
+  };
+  const prompt = `You are analyzing a driving licence or driver's license photo. Based only on visible dates (issue date, first issue, categories) and any stated experience, decide if the holder likely has at least 2 years of legal driving experience.
+
+Respond with ONLY a single JSON object (no markdown), exactly this shape:
+{"hasTwoPlusYearsExperience": true or false, "yearsOfExperience": number or null, "notes": "short string"}`;
+
+  const result = await model.generateContent([prompt, imagePart]);
+  const text = result.response.text();
+  let data;
+  try {
+    data = extractJsonObjectFromModelText(text);
+  } catch {
+    throw new Error("Gemini returned unreadable JSON. Your licence was saved and is pending manual review.");
+  }
+  const hasTwoPlusYearsExperience = hasTwoPlusYearsFromAIResponse(data);
+  return {
+    hasTwoPlusYearsExperience: Boolean(hasTwoPlusYearsExperience),
+    raw: data,
+  };
 }
 
 function buildLicenceFormData(imageBuffer, mimeType, filename, fieldName) {

@@ -1,0 +1,23 @@
+AI driving-licence validator — quick reference
+Repo: https://github.com/dan123-tech/AI_driving-licence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Download installers (from FleetShare /download)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Linux / macOS:
+    chmod +x fleetshare-ai-validator-install.sh
+    ./fleetshare-ai-validator-install.sh
+    ./fleetshare-ai-validator-install.sh ..    # put folder next to current dir
+
+  Windows (PowerShell):
+    .\fleetshare-ai-validator-install.ps1
+    .\fleetshare-ai-validator-install.ps1 -Parent ..   # sibling folder
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Manual
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  git clone https://github.com/dan123-tech/AI_driving-licence.git
+  cd AI_driving-licence
+  # .env with GEMINI_API_KEY
+  docker compose up -d --build
+  curl http://localhost:8080/health

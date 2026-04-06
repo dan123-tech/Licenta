@@ -16,14 +16,16 @@ const ICON_MAP = {
   [PROVIDERS.LOCAL]: Server,
   [PROVIDERS.ENTRA]: Shield,
   [PROVIDERS.SQL_SERVER]: Database,
+  [PROVIDERS.POSTGRES]: Database,
   [PROVIDERS.FIREBASE]: Flame,
   [PROVIDERS.SHAREPOINT]: FileSpreadsheet,
 };
 
 const PROVIDER_LABELS = {
-  [PROVIDERS.LOCAL]: "Local (default)",
+  [PROVIDERS.LOCAL]: "Built-in PostgreSQL",
   [PROVIDERS.ENTRA]: "Microsoft Entra (AD)",
   [PROVIDERS.SQL_SERVER]: "SQL Server",
+  [PROVIDERS.POSTGRES]: "External PostgreSQL",
   [PROVIDERS.FIREBASE]: "Firebase",
   [PROVIDERS.SHAREPOINT]: "SharePoint",
 };
@@ -66,7 +68,8 @@ function ConnectModal({ open, title, providerId, schema, initialValues, initialT
   const [tables, setTables] = useState([]);
   const [selectedTable, setSelectedTable] = useState("");
 
-  const isSqlServer = providerId === PROVIDERS.SQL_SERVER;
+  const needsRelationalTable =
+    providerId === PROVIDERS.SQL_SERVER || providerId === PROVIDERS.POSTGRES;
 
   useEffect(() => {
     if (open) {
@@ -89,7 +92,7 @@ function ConnectModal({ open, title, providerId, schema, initialValues, initialT
     try {
       const result = await (onTest?.(values) ?? Promise.resolve());
       setTestMessage({ ok: true, text: "Connection successful." });
-      if (isSqlServer && Array.isArray(result)) {
+      if (needsRelationalTable && Array.isArray(result)) {
         setTables(result);
         if (result.length > 0 && !tableNameInput.trim()) setSelectedTable(result[0]);
       }
@@ -104,14 +107,14 @@ function ConnectModal({ open, title, providerId, schema, initialValues, initialT
   const handleConnect = async () => {
     setConnectError(null);
     const effectiveTableName = (tableNameInput || "").trim() || selectedTable || "";
-    if (isSqlServer && !effectiveTableName) {
+    if (needsRelationalTable && !effectiveTableName) {
       setConnectError("Enter a data table name or run Test Connection and select a table.");
       return;
     }
     if (!onConnect) return;
     setConnecting(true);
     try {
-      await onConnect(values, isSqlServer ? effectiveTableName : undefined);
+      await onConnect(values, needsRelationalTable ? effectiveTableName : undefined);
       onClose?.();
     } catch (e) {
       const msg = e?.message || (typeof e === "string" ? e : "Connect failed. Try again.");
@@ -148,7 +151,7 @@ function ConnectModal({ open, title, providerId, schema, initialValues, initialT
               {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
             </div>
           ))}
-          {isSqlServer && (
+          {needsRelationalTable && (
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Data table name</label>
               <input
@@ -161,7 +164,7 @@ function ConnectModal({ open, title, providerId, schema, initialValues, initialT
               <p className="mt-1 text-xs text-slate-500">Table from which this layer reads data. Type the name or select below after Test Connection.</p>
             </div>
           )}
-          {isSqlServer && testMessage?.ok && tables.length > 0 && (
+          {needsRelationalTable && testMessage?.ok && tables.length > 0 && (
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Or select from list (after Test Connection)</label>
               <select
@@ -301,6 +304,18 @@ export default function DatabaseSettingsSection() {
       });
       return data.tables || [];
     }
+    if (providerId === PROVIDERS.POSTGRES) {
+      const data = await apiDataSourceTablesFetch({
+        provider: PROVIDERS.POSTGRES,
+        host: values.host,
+        port: values.port,
+        databaseName: values.databaseName,
+        username: values.username,
+        password: values.password,
+        ssl: values.ssl,
+      });
+      return data.tables || [];
+    }
     if (providerId === PROVIDERS.FIREBASE) {
       if (!values?.serviceAccountJson?.trim()) throw new Error("Paste the Service account JSON from Firebase Console → Service accounts → Generate new private key.");
       await apiDataSourceTestFirebase({ credentials: { serviceAccountJson: values.serviceAccountJson } });
@@ -322,7 +337,7 @@ export default function DatabaseSettingsSection() {
   }, []);
 
   const handleConnect = useCallback((layer, providerId) => async (creds, selectedTable) => {
-    if (providerId === PROVIDERS.SQL_SERVER) {
+    if (providerId === PROVIDERS.SQL_SERVER || providerId === PROVIDERS.POSTGRES) {
       await apiDataSourceCredentialsSave({
         layer,
         provider: providerId,
@@ -398,7 +413,7 @@ export default function DatabaseSettingsSection() {
   }, [config, saveConfiguration]);
 
   const handleResetAllToLocal = useCallback(async () => {
-    if (!confirm("Reset all layers (Users, Cars, Reservations) to Local (default) database? This will apply immediately.")) return;
+    if (!confirm("Reset all layers to the built-in PostgreSQL database? This will apply immediately.")) return;
     setSaveError("");
     setResetting(true);
     try {
@@ -434,7 +449,7 @@ export default function DatabaseSettingsSection() {
     const provider = backendConfig?.[layer] ?? config[layer];
     const tableKey = layer === LAYERS.USERS ? "usersTable" : layer === LAYERS.CARS ? "carsTable" : "reservationsTable";
     const tableName = backendConfig?.[tableKey] ?? config[tableKey];
-    if (provider === PROVIDERS.LOCAL) return "Running on Local DB";
+    if (provider === PROVIDERS.LOCAL) return "Running on built-in PostgreSQL";
     if (tableName) return `Running on ${getProviderLabel(provider)} (Table: ${tableName})`;
     return `Running on ${getProviderLabel(provider)}`;
   };
@@ -455,14 +470,14 @@ export default function DatabaseSettingsSection() {
         <div className="mb-8 p-5 sm:p-6 rounded-xl bg-[#1E293B] text-white border border-slate-600/50 shadow-sm">
           <h2 className="text-xl font-bold text-white mb-1">Database Settings</h2>
           <p className="text-sm text-slate-300">
-            Choose one connection per layer (Users, Cars, Reservations). Local DB is the default. For SQL Server, Firebase, Entra, or SharePoint: click the provider button, enter credentials, run Test Connection, then Connect. Connect saves credentials and applies to that layer. Use Save Configuration to persist all three layers or after switching to Local.
+            Choose one connection per layer (Users, Cars, Reservations). Built-in PostgreSQL (FleetShare app database) is the default. For external PostgreSQL, SQL Server, Firebase, Entra, or SharePoint: pick the provider, enter credentials, Test Connection, then Connect. Use Save Configuration to persist all layers.
           </p>
         </div>
 
         <div className="space-y-8 sm:space-y-10">
           <LayerSection
             title="Users Layer"
-            subtitle="Connections: Microsoft Entra (AD), SQL Server, Firebase, SharePoint"
+            subtitle="Built-in PostgreSQL, Entra, SQL Server, external PostgreSQL, Firebase, SharePoint"
             options={usersOptions}
             layer={LAYERS.USERS}
             activeProvider={config[LAYERS.USERS]}
@@ -472,7 +487,7 @@ export default function DatabaseSettingsSection() {
           />
           <LayerSection
             title="Cars Layer"
-            subtitle="Connections: SQL Server, Firebase, SharePoint"
+            subtitle="Built-in PostgreSQL, SQL Server, external PostgreSQL, Firebase, SharePoint"
             options={carsOptions}
             layer={LAYERS.CARS}
             activeProvider={config[LAYERS.CARS]}
@@ -482,7 +497,7 @@ export default function DatabaseSettingsSection() {
           />
           <LayerSection
             title="Reservations Layer"
-            subtitle="Connections: SQL Server, Firebase, SharePoint"
+            subtitle="Built-in PostgreSQL, SQL Server, external PostgreSQL, Firebase, SharePoint"
             options={reservationsOptions}
             layer={LAYERS.RESERVATIONS}
             activeProvider={config[LAYERS.RESERVATIONS]}

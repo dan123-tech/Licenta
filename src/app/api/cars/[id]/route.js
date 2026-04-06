@@ -8,6 +8,7 @@ import { z } from "zod";
 import { getCarById, updateCar, deleteCar } from "@/lib/cars";
 import { getProvider, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
 import { getSqlServerCarById, updateSqlServerCar, deleteSqlServerCar } from "@/lib/connectors/sql-server-cars";
+import { listPostgresCars } from "@/lib/connectors/postgres-cars";
 import { requireCompany, requireAdmin, jsonResponse, errorResponse, dataSourceNotConfiguredResponse } from "@/lib/api-helpers";
 import { writeAuditLog } from "@/lib/audit";
 
@@ -58,6 +59,27 @@ export async function GET(_request, { params }) {
         batteryLevel: car.batteryLevel ?? null,
         batteryCapacityKwh: car.batteryCapacityKwh ?? null,
         lastServiceMileage: car.lastServiceMileage ?? null,
+      });
+    }
+    if (provider === PROVIDERS.POSTGRES) {
+      const cars = await listPostgresCars(out.session.companyId);
+      if (!cars) return dataSourceNotConfiguredResponse(LAYERS.CARS);
+      const car = cars.find((c) => String(c.id) === String(id));
+      if (!car) return errorResponse("Car not found", 404);
+      return jsonResponse({
+        id: car.id,
+        brand: car.brand,
+        model: car.model,
+        registrationNumber: car.registrationNumber,
+        km: car.km,
+        status: car.status,
+        fuelType: car.fuelType ?? "Benzine",
+        averageConsumptionL100km: car.averageConsumptionL100km ?? null,
+        averageConsumptionKwh100km: car.averageConsumptionKwh100km ?? null,
+        batteryLevel: car.batteryLevel ?? null,
+        batteryCapacityKwh: car.batteryCapacityKwh ?? null,
+        lastServiceMileage: car.lastServiceMileage ?? null,
+        lastServiceYearMonth: car.lastServiceYearMonth ?? null,
       });
     }
     if (provider !== PROVIDERS.LOCAL) return dataSourceNotConfiguredResponse(LAYERS.CARS);
@@ -111,6 +133,12 @@ export async function PATCH(request, { params }) {
 
   try {
     const provider = await getProvider(out.session.companyId, LAYERS.CARS);
+    if (provider === PROVIDERS.POSTGRES) {
+      return errorResponse(
+        "Updating cars in external PostgreSQL is not supported from FleetShare. Use built-in PostgreSQL or SQL Server.",
+        501
+      );
+    }
     if (provider === PROVIDERS.SQL_SERVER) {
       const car = await updateSqlServerCar(out.session.companyId, id, data);
       if (!car) return errorResponse("Car not found", 404);
@@ -159,6 +187,12 @@ export async function DELETE(_request, { params }) {
 
   try {
     const provider = await getProvider(out.session.companyId, LAYERS.CARS);
+    if (provider === PROVIDERS.POSTGRES) {
+      return errorResponse(
+        "Deleting cars in external PostgreSQL is not supported from FleetShare. Use built-in PostgreSQL or SQL Server.",
+        501
+      );
+    }
     if (provider === PROVIDERS.SQL_SERVER) {
       const result = await deleteSqlServerCar(out.session.companyId, id);
       if (result.count === 0) return errorResponse("Car not found", 404);

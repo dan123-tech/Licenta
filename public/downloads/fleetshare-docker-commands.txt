@@ -1,0 +1,77 @@
+FleetShare — Docker commands (reference)
+Run from the folder that contains docker-compose.yml.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Full install (rebuild app image + start everything)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Linux / macOS:     ./install.sh
+                     bash scripts/install-server.sh
+
+  Windows:           .\install.ps1
+                     Set-ExecutionPolicy -Scope Process Bypass -Force; .\install.ps1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Flags (bash installer)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ./install.sh --help       Show options
+  ./install.sh --down       Stop stack (volumes kept)
+  ./install.sh --no-build   Start without rebuilding the app image
+  ./install.sh --pull       Pull base images before build
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Flags (PowerShell)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  .\install.ps1 -Help
+  .\install.ps1 -Down
+  .\install.ps1 -NoBuild
+  .\install.ps1 -Pull
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Manual (same as installer)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  docker compose build --no-cache app
+  docker compose up -d
+
+  Stop:    docker compose down
+  Logs:    docker compose logs -f app
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Environment
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • Copy .env.example to .env if missing
+  • AUTH_SECRET — at least 32 characters (openssl rand -base64 32)
+  • NEXT_PUBLIC_APP_URL, NEXTAUTH_URL — match how users open the app
+  • EMAIL_FROM + SMTP_* or RESEND_API_KEY for mail
+
+  Inside Docker, DATABASE_URL uses host @db:5432 (set in docker-compose.yml).
+  On your PC for Prisma CLI, use localhost:5432 in DATABASE_URL.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Optional: AI driving-licence validator (Gemini microservice)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Repo:  https://github.com/dan123-tech/AI_driving-licence
+  Same machine as FleetShare: the app container calls host.docker.internal:8080 (see docker-compose.yml).
+
+  Linux / macOS (after FleetShare install):
+    ./install.sh --ai-validator
+    # or downloaded script:
+    ./fleetshare-docker-install.sh --ai-validator
+
+  Windows (PowerShell):
+    .\install.ps1 -AiValidator
+    .\fleetshare-install.ps1 -AiValidator
+
+  Standalone downloads (from FleetShare /download):
+    fleetshare-ai-validator-install.sh
+    fleetshare-ai-validator-install.ps1
+    fleetshare-ai-validator-commands.txt
+
+  Manual:
+    cd ..   # parent of FleetShare project
+    git clone https://github.com/dan123-tech/AI_driving-licence.git
+    cd AI_driving-licence
+    # Create .env with GEMINI_API_KEY (see repo README)
+    docker compose up -d --build
+    curl http://localhost:8080/health
+
+  Alternative: configure a Gemini API key only in FleetShare (Admin → Company), no separate container.

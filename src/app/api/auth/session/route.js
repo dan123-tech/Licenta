@@ -6,10 +6,12 @@
 import { getSession } from "@/lib/auth";
 import { normalizeClientType } from "@/lib/auth/session-tokens";
 import { getCompanyById } from "@/lib/companies";
+import { companyHasGeminiApiKey } from "@/lib/company-ai-credentials";
 import { getUserById } from "@/lib/users";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function noStore(res) {
   res.headers.set("Cache-Control", "private, no-store, must-revalidate");
@@ -28,19 +30,25 @@ export async function GET() {
     companyId: session.companyId ?? null,
     drivingLicenceStatus: userRow?.drivingLicenceStatus ?? null,
     drivingLicenceUrl: userRow?.drivingLicenceUrl ?? null,
+    mfaEnabled: Boolean(userRow?.mfaEnabled),
   };
   const webExtra =
     normalizeClientType(session.client) === "web" && session.sid ? { webSessionId: session.sid } : {};
   if (!session.companyId) {
-    return noStore(jsonResponse({ user: baseUser, company: null, ...webExtra }));
+    return noStore(jsonResponse({ user: baseUser, company: null, needsDataSourceSetup: false, ...webExtra }));
   }
   const company = await getCompanyById(session.companyId);
+  const hasGeminiApiKey = company ? await companyHasGeminiApiKey(company.id) : false;
+  const needsDataSourceSetup =
+    Boolean(company && baseUser.role === "ADMIN" && company.dataSourceSetupCompletedAt == null);
   return noStore(jsonResponse({
     user: baseUser,
     company: company ? {
       id: company.id,
       name: company.name,
       domain: company.domain,
+      publicAppUrl: company.publicAppUrl ?? null,
+      hasGeminiApiKey,
       joinCode: company.joinCode,
       defaultKmUsage: company.defaultKmUsage ?? 100,
       averageFuelPricePerLiter: company.averageFuelPricePerLiter ?? null,
@@ -50,6 +58,7 @@ export async function GET() {
       priceHybridPerLiter: company.priceHybridPerLiter ?? null,
       priceElectricityPerKwh: company.priceElectricityPerKwh ?? null,
     } : null,
+    needsDataSourceSetup,
     ...webExtra,
   }));
 }

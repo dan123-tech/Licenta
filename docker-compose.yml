@@ -1,5 +1,5 @@
 # Company Car Sharing – database + app + HTTPS (Caddy)
-# Run:  docker compose up -d
+# Run:  docker compose up -d   or   ./install.sh   /   .\install.ps1
 # Stop: docker compose down
 #
 # Rebuild the app image after dependency or UI/i18n changes:
@@ -56,6 +56,18 @@ services:
       AUTH_SECRET: "${AUTH_SECRET}"
       NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
       NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
+      # Email: set in root .env (optional). SMTP is used by the app if SMTP_HOST or SMTP_URL is set.
+      EMAIL_FROM: "${EMAIL_FROM:-}"
+      EMAIL_FROM_NAME: "${EMAIL_FROM_NAME:-}"
+      SMTP_URL: "${SMTP_URL:-}"
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_PASS: "${SMTP_PASS:-}"
+      SMTP_SECURE: "${SMTP_SECURE:-}"
+      SMTP_TLS_REJECT_UNAUTHORIZED: "${SMTP_TLS_REJECT_UNAUTHORIZED:-}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
       AI_VERIFICATION_URL: "http://host.docker.internal:8080"
       AI_VERIFY_PATH: "/validate"
       HELPBOT_URL: "http://host.docker.internal:8501"

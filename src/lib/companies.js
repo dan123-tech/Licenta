@@ -5,6 +5,14 @@
 
 import { prisma } from "@/lib/db";
 import { randomBytes } from "crypto";
+import {
+  saveDataSourceConfig,
+  getProvider,
+  getLayerTable,
+  getStoredCredentials,
+  LAYERS,
+  PROVIDERS,
+} from "@/lib/data-source-manager";
 
 const JOIN_CODE_LENGTH = 8;
 const JOIN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0,O,1,I to avoid confusion
@@ -60,7 +68,7 @@ export async function isCompanyAdmin(userId, companyId) {
  */
 export async function updateCompany(companyId, data) {
   const allowed = [
-    "name", "domain", "joinCode", "defaultKmUsage", "averageFuelPricePerLiter",
+    "name", "domain", "publicAppUrl", "joinCode", "defaultKmUsage", "averageFuelPricePerLiter",
     "defaultConsumptionL100km", "priceBenzinePerLiter", "priceDieselPerLiter", "priceHybridPerLiter", "priceElectricityPerKwh",
     "dataSourceConfig",
   ];
@@ -147,4 +155,45 @@ export async function joinCompanyByCode(userId, joinCode) {
     include: { company: true },
   });
   return member;
+}
+
+/** Mark first-time Database setup as done (admin onboarding). */
+export async function markDataSourceSetupComplete(companyId) {
+  return prisma.company.update({
+    where: { id: companyId },
+    data: { dataSourceSetupCompletedAt: new Date() },
+  });
+}
+
+/** Use Prisma/FleetShare DB for all layers and complete onboarding. */
+export async function applyBuiltinDataSourcesAndCompleteSetup(companyId) {
+  await saveDataSourceConfig(companyId, {
+    users: PROVIDERS.LOCAL,
+    cars: PROVIDERS.LOCAL,
+    reservations: PROVIDERS.LOCAL,
+    usersTable: null,
+    carsTable: null,
+    reservationsTable: null,
+  });
+  return markDataSourceSetupComplete(companyId);
+}
+
+/** All three layers must be External PostgreSQL with credentials + table. */
+export async function verifyExternalPostgresSetup(companyId) {
+  for (const layer of [LAYERS.USERS, LAYERS.CARS, LAYERS.RESERVATIONS]) {
+    const p = await getProvider(companyId, layer);
+    if (p !== PROVIDERS.POSTGRES) {
+      return { ok: false, error: `Layer "${layer}" must use External PostgreSQL, or choose built-in database instead.` };
+    }
+    const table = await getLayerTable(companyId, layer);
+    if (!table || !String(table).trim()) {
+      return { ok: false, error: `Set a table name for the "${layer}" layer.` };
+    }
+    const c = await getStoredCredentials(companyId, layer, PROVIDERS.POSTGRES);
+    const db = c?.databaseName || c?.database;
+    if (!c?.host || !c?.username || !db) {
+      return { ok: false, error: `Incomplete PostgreSQL connection for "${layer}" (host, user, database required).` };
+    }
+  }
+  return { ok: true };
 }

@@ -8,9 +8,9 @@ import { getDataSourceConfig, saveDataSourceConfig } from "@/lib/data-source-man
 import { requireCompany, requireAdmin, jsonResponse, errorResponse } from "@/lib/api-helpers";
 
 const patchSchema = z.object({
-  users: z.enum(["LOCAL", "ENTRA", "SQL_SERVER", "FIREBASE", "SHAREPOINT"]).optional(),
-  cars: z.enum(["LOCAL", "SQL_SERVER", "FIREBASE", "SHAREPOINT"]).optional(),
-  reservations: z.enum(["LOCAL", "SQL_SERVER", "FIREBASE", "SHAREPOINT"]).optional(),
+  users: z.enum(["LOCAL", "ENTRA", "SQL_SERVER", "POSTGRES", "FIREBASE", "SHAREPOINT"]).optional(),
+  cars: z.enum(["LOCAL", "SQL_SERVER", "POSTGRES", "FIREBASE", "SHAREPOINT"]).optional(),
+  reservations: z.enum(["LOCAL", "SQL_SERVER", "POSTGRES", "FIREBASE", "SHAREPOINT"]).optional(),
   usersTable: z.string().nullable().optional(),
   carsTable: z.string().nullable().optional(),
   reservationsTable: z.string().nullable().optional(),

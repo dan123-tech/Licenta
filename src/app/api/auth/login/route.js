@@ -1,24 +1,107 @@
 /**
  * POST /api/auth/login
- * Body: { email, password }
- * Sets session cookie and returns user + company (company null if user has not joined/created one yet).
+ * Body: { email, password, clientType? }
+ * Sets session cookie unless MFA is enabled (then returns mfaRequired + sends email code).
  */
 
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { findUserByEmail } from "@/lib/users";
-import { verifyPassword, createUserSession } from "@/lib/auth";
-import { getCompanyById } from "@/lib/companies";
-import { jsonResponse, errorResponse } from "@/lib/api-helpers";
+import { verifyPassword } from "@/lib/auth";
+import { normalizeClientType } from "@/lib/auth/session-tokens";
+import { errorResponse } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
+import { buildLoginSuccessResponse } from "@/lib/auth/issue-login-session";
+import {
+  generateSixDigitCode,
+  hashMfaOtp,
+  MFA_OTP_TTL_MS,
+} from "@/lib/auth/mfa-otp";
+import { sendMfaLoginCodeEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const bodySchema = z.object({
-  email: z.string().email(),
+  email: z
+    .string()
+    .trim()
+    .email()
+    .transform((s) => s.toLowerCase()),
   password: z.string().min(1),
-  /** "web" (default): one browser session; "mobile": separate slot so phone + laptop can both stay logged in */
   clientType: z.enum(["web", "mobile"]).optional(),
 });
+
+function loginErrorResponse(e) {
+  const msg = String(e?.message ?? e);
+  const code = e?.code;
+  const debugLogin = process.env.API_DEBUG_LOGIN === "1";
+  const debugExtra = debugLogin
+    ? {
+        hint: msg.slice(0, 400),
+        errorName: e?.name || null,
+        cause: e?.cause ? String(e.cause).slice(0, 400) : null,
+        stackTop: typeof e?.stack === "string" ? e.stack.split("\n").slice(0, 6).join("\n") : null,
+      }
+    : {};
+  if (msg.includes("DATABASE_URL is not set")) {
+    return errorResponse(msg, 503, { code: "MISSING_DATABASE_URL", ...debugExtra });
+  }
+  if (msg.includes("AUTH_SECRET")) {
+    return errorResponse(
+      "Server configuration: set AUTH_SECRET in your .env file (at least 32 characters). Example: openssl rand -base64 32 — then restart the dev server.",
+      503
+    );
+  }
+  if (
+    code === "P1001" ||
+    msg.includes("Can't reach database server") ||
+    msg.includes("ECONNREFUSED")
+  ) {
+    return errorResponse(
+      "Database is not running or DATABASE_URL is wrong. On your PC (not inside Docker), use localhost in DATABASE_URL. Start Postgres (e.g. docker compose up -d db) and use: postgresql://postgres:postgres@localhost:5432/company_car_sharing?schema=public",
+      503
+    );
+  }
+  if (
+    code === "P2024" ||
+    code === "P1017" ||
+    code === "P2037" ||
+    msg.includes("Timed out fetching a new connection") ||
+    msg.includes("Server has closed the connection")
+  ) {
+    return errorResponse(
+      "Database connection timed out or pool exhausted. On Vercel + Neon: use Neon’s pooled DATABASE_URL, add ?sslmode=require if missing, redeploy; check Neon project is not paused.",
+      503,
+      { prismaCode: code }
+    );
+  }
+  if (code === "P2021" || code === "P2022") {
+    return errorResponse(
+      "Database schema is out of date. Run: npx prisma migrate deploy (against the same DATABASE_URL as production), then redeploy.",
+      503,
+      { prismaCode: code }
+    );
+  }
+  if (
+    msg.includes("Unknown argument") &&
+    (msg.includes("activeWebSessionToken") || msg.includes("activeMobileSessionToken"))
+  ) {
+    return errorResponse(
+      "Session support is out of date on this server. Stop the app, run: npx prisma generate (and npx prisma migrate deploy if needed), then start again.",
+      503
+    );
+  }
+  const isDev = process.env.NODE_ENV !== "production";
+  const suffix = isDev && msg ? ` — ${msg.slice(0, 400)}` : "";
+  const prismaExtra = code && String(code).startsWith("P") ? { prismaCode: code } : {};
+  const nameExtra =
+    !prismaExtra.prismaCode && e?.name && e.name !== "Error" ? { errorName: e.name } : {};
+  if (prismaExtra.prismaCode) {
+    return errorResponse(`Login failed${suffix}`, 500, { ...prismaExtra, ...debugExtra });
+  }
+  return errorResponse(`Login failed${suffix}`, 500, { ...nameExtra, ...debugExtra });
+}
 
 export async function POST(request) {
   try {
@@ -43,89 +126,41 @@ export async function POST(request) {
     const ok = await verifyPassword(password, user.password);
     if (!ok) return errorResponse("Invalid credentials", 401);
 
-    // If a user belongs to more than one company, prefer the oldest membership (first joined/created).
-    // Use findMany + sort in JS instead of findFirst+orderBy — Turbopack dev bundles have triggered
-    // "Invalid findFirst() invocation" for some setups; this query shape is equivalent and stable.
-    const enrolled = await prisma.companyMember.findMany({
-      where: { userId: user.id, status: "ENROLLED" },
-      include: { company: true },
-    });
-    const member =
-      enrolled.length === 0
-        ? null
-        : [...enrolled].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
+    const client = normalizeClientType(clientType);
 
-    if (member) {
-      const sid = await createUserSession(
-        {
-          userId: user.id,
-          email: user.email,
-          name: user.name,
-          companyId: member.companyId,
-          role: member.role,
-        },
-        clientType,
-        request
-      );
-      const company = await getCompanyById(member.companyId);
-      const payload = {
-        user: { id: user.id, email: user.email, name: user.name, role: member.role, companyId: member.companyId },
-        company: company ? { id: company.id, name: company.name, domain: company.domain, joinCode: company.joinCode } : null,
-      };
-      if (clientType === "web") payload.webSessionId = sid;
-      return jsonResponse(payload);
+    if (user.mfaEnabled) {
+      const code = generateSixDigitCode();
+      const hash = hashMfaOtp(user.id, code);
+      const expires = new Date(Date.now() + MFA_OTP_TTL_MS);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { mfaOtpHash: hash, mfaOtpExpiresAt: expires, mfaOtpAttempts: 0 },
+      });
+      const sent = await sendMfaLoginCodeEmail({ to: user.email, code });
+      if (!sent.ok) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { mfaOtpHash: null, mfaOtpExpiresAt: null, mfaOtpAttempts: 0 },
+        });
+        return errorResponse(
+          "Could not send sign-in code. Set EMAIL_FROM and company SMTP (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) or RESEND_API_KEY, then try again.",
+          503
+        );
+      }
+      return NextResponse.json({
+        mfaRequired: true,
+        email: user.email,
+        clientType: client,
+      });
     }
 
-    const sid = await createUserSession(
-      {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        companyId: null,
-        role: null,
-      },
+    return buildLoginSuccessResponse(
+      { id: user.id, email: user.email, name: user.name },
       clientType,
       request
     );
-    const payload = {
-      user: { id: user.id, email: user.email, name: user.name, role: null, companyId: null },
-      company: null,
-    };
-    if (clientType === "web") payload.webSessionId = sid;
-    return jsonResponse(payload);
   } catch (e) {
     console.error("[auth/login]", e);
-    const msg = String(e?.message ?? e);
-    const code = e?.code;
-    if (msg.includes("AUTH_SECRET")) {
-      return errorResponse(
-        "Server configuration: set AUTH_SECRET in your .env file (at least 32 characters). Example: openssl rand -base64 32 — then restart the dev server.",
-        503
-      );
-    }
-    if (
-      code === "P1001" ||
-      msg.includes("Can't reach database server") ||
-      msg.includes("ECONNREFUSED")
-    ) {
-      return errorResponse(
-        "Database is not running or DATABASE_URL is wrong. On your PC (not inside Docker), use localhost in DATABASE_URL. Start Postgres (e.g. docker compose up -d db) and use: postgresql://postgres:postgres@localhost:5432/company_car_sharing?schema=public",
-        503
-      );
-    }
-    if (
-      msg.includes("Unknown argument") &&
-      (msg.includes("activeWebSessionToken") || msg.includes("activeMobileSessionToken"))
-    ) {
-      return errorResponse(
-        "Session support is out of date on this server. Stop the app, run: npx prisma generate (and npx prisma migrate deploy if needed), then start again.",
-        503
-      );
-    }
-    // In development, surface the real error in JSON so the browser / Network tab shows the cause
-    // (AUTH_SECRET, DB, Prisma, etc.). Production stays generic.
-    const isDev = process.env.NODE_ENV !== "production";
-    const suffix = isDev && msg ? ` — ${msg.slice(0, 400)}` : "";
-    return errorResponse(`Login failed${suffix}`, 500);
+    return loginErrorResponse(e);
   }
 }

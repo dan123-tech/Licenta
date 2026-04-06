@@ -273,6 +273,7 @@ export async function getUserById(userId) {
       name: true,
       drivingLicenceStatus: true,
       drivingLicenceUrl: true,
+      mfaEnabled: true,
     },
   });
 }

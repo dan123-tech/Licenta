@@ -9,7 +9,7 @@ import { requireAdmin, jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { saveStoredCredentials, LAYERS, PROVIDERS } from "@/lib/data-source-manager";
 
 const LAYER_VALS = [LAYERS.USERS, LAYERS.CARS, LAYERS.RESERVATIONS];
-const PROVIDER_VALS = [PROVIDERS.SQL_SERVER, PROVIDERS.FIREBASE, PROVIDERS.ENTRA, PROVIDERS.SHAREPOINT];
+const PROVIDER_VALS = [PROVIDERS.SQL_SERVER, PROVIDERS.POSTGRES, PROVIDERS.FIREBASE, PROVIDERS.ENTRA, PROVIDERS.SHAREPOINT];
 const MAX_CREDENTIALS_JSON_BYTES = 512 * 1024;
 
 function sanitizePayload(credentials, tableName) {
@@ -67,7 +67,7 @@ export async function POST(request) {
       return errorResponse("Invalid request: layer must be one of users, cars, reservations", 422);
     }
     if (!PROVIDER_VALS.includes(provider)) {
-      return errorResponse("Invalid request: provider must be one of SQL_SERVER, FIREBASE, ENTRA, SHAREPOINT", 422);
+      return errorResponse("Invalid request: provider must be one of SQL_SERVER, POSTGRES, FIREBASE, ENTRA, SHAREPOINT", 422);
     }
 
     let payload;

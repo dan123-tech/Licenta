@@ -7,6 +7,7 @@
  */
 
 import { cookies, headers } from "next/headers";
+import { NextResponse } from "next/server";
 import {
   clearUserSessionToken,
   normalizeClientType,
@@ -94,27 +95,33 @@ async function readRawSessionPayload() {
   return null;
 }
 
-async function writeCookieValue(payloadObj, request) {
+async function writeCookieValue(payloadObj, request, nextResponse) {
   const payloadStr = JSON.stringify(payloadObj);
   const signature = sign(payloadStr);
   const value = Buffer.from(JSON.stringify({ p: payloadStr, s: signature })).toString("base64");
-  const cookieStore = await cookies();
   const { name, secure, sameSite } = resolveCookieBinding(request);
-  cookieStore.set(name, value, {
+  const opts = {
     httpOnly: true,
     secure,
     sameSite,
     maxAge: MAX_AGE,
     path: "/",
-  });
+  };
+  if (nextResponse instanceof NextResponse) {
+    nextResponse.cookies.set(name, value, opts);
+    return;
+  }
+  const cookieStore = await cookies();
+  cookieStore.set(name, value, opts);
 }
 
 /**
  * Full cookie write. Requires userId, email, name, companyId, role, client, sid.
  * @param {Object} p
  * @param {Request} [request]
+ * @param {import("next/server").NextResponse} [nextResponse] — when set, cookie is attached to this response (Route Handler pattern).
  */
-export async function writeSessionCookie(p, request) {
+export async function writeSessionCookie(p, request, nextResponse) {
   const client = normalizeClientType(p.client);
   const payload = {
     userId: p.userId,
@@ -128,7 +135,7 @@ export async function writeSessionCookie(p, request) {
   if (!payload.userId || !payload.email || !payload.sid) {
     throw new Error("writeSessionCookie: missing userId, email, or sid");
   }
-  await writeCookieValue(payload, request);
+  await writeCookieValue(payload, request, nextResponse);
 }
 
 /**

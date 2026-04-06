@@ -27,6 +27,12 @@ export async function PATCH(request, { params }) {
 
   try {
     const provider = await getProvider(out.session.companyId, LAYERS.USERS);
+    if (provider === PROVIDERS.POSTGRES) {
+      return errorResponse(
+        "Editing users in external PostgreSQL is not supported from FleetShare. Use built-in PostgreSQL or SQL Server.",
+        501
+      );
+    }
     if (provider === PROVIDERS.SQL_SERVER) {
       const payload = {};
       if (data.role !== undefined) payload.role = data.role;
@@ -89,6 +95,12 @@ export async function DELETE(_request, { params }) {
 
   try {
     const provider = await getProvider(out.session.companyId, LAYERS.USERS);
+    if (provider === PROVIDERS.POSTGRES) {
+      return errorResponse(
+        "Removing users in external PostgreSQL is not supported from FleetShare. Use built-in PostgreSQL or SQL Server.",
+        501
+      );
+    }
     if (provider === PROVIDERS.SQL_SERVER) {
       const result = await deleteSqlServerUser(out.session.companyId, userId);
       if (result.count === 0) return errorResponse("User not found", 404);

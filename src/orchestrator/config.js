@@ -13,14 +13,15 @@ export const PROVIDERS = {
   LOCAL: "LOCAL",
   ENTRA: "ENTRA",
   SQL_SERVER: "SQL_SERVER",
+  POSTGRES: "POSTGRES",
   FIREBASE: "FIREBASE",
   SHAREPOINT: "SHAREPOINT",
 };
 
 export const LAYER_PROVIDERS = {
-  [LAYERS.USERS]: [PROVIDERS.LOCAL, PROVIDERS.ENTRA, PROVIDERS.SQL_SERVER, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT],
-  [LAYERS.CARS]: [PROVIDERS.LOCAL, PROVIDERS.SQL_SERVER, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT],
-  [LAYERS.RESERVATIONS]: [PROVIDERS.LOCAL, PROVIDERS.SQL_SERVER, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT],
+  [LAYERS.USERS]: [PROVIDERS.LOCAL, PROVIDERS.ENTRA, PROVIDERS.SQL_SERVER, PROVIDERS.POSTGRES, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT],
+  [LAYERS.CARS]: [PROVIDERS.LOCAL, PROVIDERS.SQL_SERVER, PROVIDERS.POSTGRES, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT],
+  [LAYERS.RESERVATIONS]: [PROVIDERS.LOCAL, PROVIDERS.SQL_SERVER, PROVIDERS.POSTGRES, PROVIDERS.FIREBASE, PROVIDERS.SHAREPOINT],
 };
 
 export const DEFAULT_CONFIG = {
@@ -79,6 +80,14 @@ export const CREDENTIAL_SCHEMAS = {
     { key: "username", label: "Username", type: "text", hint: "SQL login, e.g. sa or app user" },
     { key: "password", label: "Password", type: "password", hint: "Password for the SQL login" },
   ],
+  [PROVIDERS.POSTGRES]: [
+    { key: "host", label: "Host", type: "text", hint: "PostgreSQL host, e.g. localhost or db.internal" },
+    { key: "port", label: "Port", type: "text", hint: "5432 by default", placeholder: "5432" },
+    { key: "databaseName", label: "Database name", type: "text", hint: "Database containing your tables (often public schema)" },
+    { key: "username", label: "Username", type: "text", hint: "PostgreSQL user" },
+    { key: "password", label: "Password", type: "password", hint: "PostgreSQL password (can be empty for local trust auth)" },
+    { key: "ssl", label: "SSL (1 = on)", type: "text", hint: "Optional: type 1 to enable SSL (e.g. cloud Postgres)", placeholder: "0" },
+  ],
   [PROVIDERS.FIREBASE]: [
     {
       key: "serviceAccountJson",
@@ -127,9 +136,10 @@ export function saveCredentials(credentials) {
 
 export function getProviderLabel(provider) {
   const labels = {
-    [PROVIDERS.LOCAL]: "Local DB",
+    [PROVIDERS.LOCAL]: "Built-in PostgreSQL",
     [PROVIDERS.ENTRA]: "Microsoft Entra (AD)",
     [PROVIDERS.SQL_SERVER]: "SQL Server",
+    [PROVIDERS.POSTGRES]: "External PostgreSQL",
     [PROVIDERS.FIREBASE]: "Firebase",
     [PROVIDERS.SHAREPOINT]: "SharePoint",
   };
