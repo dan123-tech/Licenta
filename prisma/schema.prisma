@@ -56,6 +56,25 @@ enum FuelType {
 }
 
 // ---------------------------------------------------------------------------
+// Incidents & ITP (stored in built-in Postgres only)
+// Note: FleetShare supports external DB providers for Cars/Users/Reservations.
+// These tables are stored in the built-in DB as a sidecar so features work
+// regardless of the chosen provider.
+// ---------------------------------------------------------------------------
+
+enum IncidentSeverity {
+  A
+  B
+  C
+}
+
+enum IncidentStatus {
+  SUBMITTED
+  IN_REVIEW
+  RESOLVED
+}
+
+// ---------------------------------------------------------------------------
 // User – global account (email, password, name)
 // ---------------------------------------------------------------------------
 
@@ -269,4 +288,61 @@ model AuditLog {
   @@index([companyId, createdAt(sort: Desc)])
   @@index([companyId, action])
   @@index([companyId, entityType, entityId])
+}
+
+model CarItpMeta {
+  id              String   @id @default(cuid())
+  companyId        String
+  carId            String
+  itpExpiresAt     DateTime?
+  itpLastNotifiedAt DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, carId])
+  @@index([companyId])
+  @@index([itpExpiresAt])
+}
+
+model IncidentReport {
+  id          String           @id @default(cuid())
+  companyId   String
+  carId       String
+  userId      String
+  reservationId String?
+  occurredAt  DateTime?
+  severity    IncidentSeverity @default(C)
+  title       String
+  description String?
+  location    String?
+  status      IncidentStatus   @default(SUBMITTED)
+  adminNotes  String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments IncidentAttachment[]
+
+  @@index([companyId, createdAt(sort: Desc)])
+  @@index([companyId, status])
+  @@index([companyId, carId])
+  @@index([userId])
+}
+
+model IncidentAttachment {
+  id          String   @id @default(cuid())
+  incidentId  String
+  kind        String   // "photo" | "document" | "file"
+  filename    String
+  contentType String?
+  sizeBytes   Int?
+  url         String
+  createdAt   DateTime @default(now())
+
+  incident IncidentReport @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, createdAt(sort: Desc)])
 }

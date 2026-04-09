@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Fragment, useMemo } from "react";
-import { LayoutGrid, IdCard, Car, Wrench, Calendar, History, CalendarDays, Shield } from "lucide-react";
+import { LayoutGrid, IdCard, Car, Wrench, Calendar, History, CalendarDays, Shield, AlertTriangle } from "lucide-react";
 import { Sidebar, NavItem, NavSection, NavLabel } from "./Sidebar";
 import FleetBookingCalendar from "./FleetBookingCalendar";
 import AccessCodeQRButton, { ACCESS_CODE_SLOT_CLASS } from "./AccessCodeQRButton";
@@ -17,6 +17,9 @@ import {
   apiUploadDrivingLicence,
   apiDeleteDrivingLicence,
   apiUserMfaUpdate,
+  apiIncidentsList,
+  apiIncidentCreate,
+  apiIncidentAddAttachments,
 } from "@/lib/api";
 import { useI18n } from "@/i18n/I18nProvider";
 import LanguageCurrencySwitcher from "@/components/LanguageCurrencySwitcher";
@@ -32,6 +35,7 @@ const USER_PAGE_META_KEYS = {
   availableCars: "userAvailableCars",
   unavailableCars: "userUnavailableCars",
   history: "userHistory",
+  incidents: "userIncidents",
 };
 
 function formatDate(d) {
@@ -82,6 +86,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
   const [cars, setCars] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [history, setHistory] = useState([]);
+  const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reservingCarId, setReservingCarId] = useState(null);
@@ -104,6 +109,17 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
   const [mfaPassword, setMfaPassword] = useState("");
   const [mfaSaving, setMfaSaving] = useState(false);
   const [mfaNotice, setMfaNotice] = useState(null);
+  const [incidentCarId, setIncidentCarId] = useState("");
+  const [incidentOccurredAt, setIncidentOccurredAt] = useState("");
+  const [incidentSeverity, setIncidentSeverity] = useState("C");
+  const [incidentTitle, setIncidentTitle] = useState("");
+  const [incidentLocation, setIncidentLocation] = useState("");
+  const [incidentDescription, setIncidentDescription] = useState("");
+  const [incidentFiles, setIncidentFiles] = useState([]);
+  const [incidentSubmitting, setIncidentSubmitting] = useState(false);
+  const [incidentNotice, setIncidentNotice] = useState(null);
+  const [incidentFilesInputKey, setIncidentFilesInputKey] = useState(0);
+  const [incidentUploadBusyId, setIncidentUploadBusyId] = useState(null);
   const dlStatus = user?.drivingLicenceStatus ?? null;
   const canReserve = dlStatus === "APPROVED";
 
@@ -111,18 +127,29 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
     setLoading(true);
     setError("");
     try {
-      const [carsRes, resRes, histRes] = await Promise.all([
+      const [carsRes, resRes, histRes, incRes] = await Promise.all([
         apiCars(),
         apiReservations(),
         apiReservationHistory(),
+        apiIncidentsList().catch(() => []),
       ]);
       setCars(Array.isArray(carsRes) ? carsRes : []);
       setReservations(Array.isArray(resRes) ? resRes : []);
       setHistory(Array.isArray(histRes) ? histRes : []);
+      setIncidents(Array.isArray(incRes) ? incRes : []);
     } catch (err) {
       setError(err.message || "Failed to load data");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function reloadIncidents() {
+    try {
+      const incRes = await apiIncidentsList();
+      setIncidents(Array.isArray(incRes) ? incRes : []);
+    } catch (e) {
+      setIncidentNotice({ type: "error", message: e?.message || "Failed to load incidents" });
     }
   }
 
@@ -387,6 +414,7 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
         items: [
           { id: "myReservations", label: t("nav.items.myReservations"), icon: <Calendar className={UICON.s} aria-hidden /> },
           { id: "bookingCalendar", label: t("nav.items.bookingCalendar"), icon: <CalendarDays className={UICON.s} aria-hidden /> },
+          { id: "incidents", label: t("nav.items.incidents"), icon: <AlertTriangle className={UICON.s} aria-hidden /> },
           { id: "history", label: t("nav.items.history"), icon: <History className={UICON.s} aria-hidden /> },
         ],
       },
@@ -960,6 +988,262 @@ export default function UserDashboard({ user, company, onUserUpdated, viewAs, se
                   )}
                 </tbody>
               </table>
+            </div>
+          </section>
+        )}
+
+        {section === "incidents" && (
+          <section className="w-full min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 sm:mb-6">{t("incidents.user.title")}</h2>
+
+            {incidentNotice && (
+              <div
+                className={`mb-4 p-3 rounded-xl text-sm border ${
+                  incidentNotice.type === "error"
+                    ? "bg-red-50 text-red-700 border-red-100"
+                    : "bg-emerald-50 text-emerald-800 border-emerald-100"
+                }`}
+              >
+                {incidentNotice.message}
+              </div>
+            )}
+
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-5 mb-6">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">{t("incidents.user.reportTitle")}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t("incidents.fields.car")}</label>
+                  <select
+                    value={incidentCarId}
+                    onChange={(e) => setIncidentCarId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white"
+                  >
+                    <option value="">{t("common.select")}</option>
+                    {cars.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.brand} {c.registrationNumber}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t("incidents.fields.gravity")}</label>
+                  <select
+                    value={incidentSeverity}
+                    onChange={(e) => setIncidentSeverity(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white"
+                  >
+                    <option value="A">{t("incidents.gravity.A")}</option>
+                    <option value="B">{t("incidents.gravity.B")}</option>
+                    <option value="C">{t("incidents.gravity.C")}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t("incidents.fields.title")}</label>
+                  <input
+                    value={incidentTitle}
+                    onChange={(e) => setIncidentTitle(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white"
+                    placeholder={t("incidents.placeholders.title")}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t("incidents.fields.occurredAt")}</label>
+                  <input
+                    type="datetime-local"
+                    value={incidentOccurredAt}
+                    onChange={(e) => setIncidentOccurredAt(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t("incidents.fields.location")}</label>
+                  <input
+                    value={incidentLocation}
+                    onChange={(e) => setIncidentLocation(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white"
+                    placeholder={t("incidents.placeholders.location")}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t("incidents.fields.files")}</label>
+                  <input
+                    key={incidentFilesInputKey}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      setIncidentFiles((prev) => [...(prev || []), ...files]);
+                      setIncidentFilesInputKey((x) => x + 1);
+                    }}
+                    className="w-full text-sm"
+                  />
+                </div>
+              </div>
+
+              {incidentFiles?.length > 0 && (
+                <div className="mt-3 text-xs text-slate-600">
+                  <div className="font-semibold mb-1">{t("incidents.selectedFiles")}</div>
+                  <ul className="space-y-1">
+                    {incidentFiles.map((f, idx) => (
+                      <li key={`${f.name}-${idx}`} className="flex items-center justify-between gap-3">
+                        <span className="truncate">{f.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setIncidentFiles((prev) => prev.filter((_, i) => i !== idx))}
+                          className="text-red-700 hover:underline shrink-0"
+                        >
+                          {t("common.remove")}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => setIncidentFiles([])}
+                    className="mt-2 text-slate-700 hover:underline"
+                  >
+                    {t("common.clear")}
+                  </button>
+                </div>
+              )}
+
+              <div className="mt-3">
+                <label className="block text-xs font-semibold text-slate-600 mb-1">{t("incidents.fields.description")}</label>
+                <textarea
+                  value={incidentDescription}
+                  onChange={(e) => setIncidentDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 bg-white min-h-[96px]"
+                  placeholder={t("incidents.placeholders.description")}
+                />
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  disabled={incidentSubmitting}
+                  onClick={async () => {
+                    setIncidentNotice(null);
+                    if (!incidentCarId || !incidentTitle.trim()) {
+                      setIncidentNotice({ type: "error", message: t("incidents.errors.carAndTitle") });
+                      return;
+                    }
+                    setIncidentSubmitting(true);
+                    try {
+                      const fd = new FormData();
+                      fd.append("carId", incidentCarId);
+                      fd.append("title", incidentTitle.trim());
+                      fd.append("severity", incidentSeverity);
+                      if (incidentOccurredAt) fd.append("occurredAt", new Date(incidentOccurredAt).toISOString());
+                      if (incidentLocation.trim()) fd.append("location", incidentLocation.trim());
+                      if (incidentDescription.trim()) fd.append("description", incidentDescription.trim());
+                      (incidentFiles || []).forEach((f) => fd.append("files", f));
+                      await apiIncidentCreate(fd);
+                      setIncidentNotice({ type: "success", message: t("incidents.success.created") });
+                      setIncidentCarId("");
+                      setIncidentOccurredAt("");
+                      setIncidentSeverity("C");
+                      setIncidentTitle("");
+                      setIncidentLocation("");
+                      setIncidentDescription("");
+                      setIncidentFiles([]);
+                      setIncidentFilesInputKey((x) => x + 1);
+                      await reloadIncidents();
+                    } catch (e) {
+                      setIncidentNotice({ type: "error", message: e?.message || t("incidents.errors.createFailed") });
+                    } finally {
+                      setIncidentSubmitting(false);
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#1E293B] text-white font-semibold rounded-xl hover:bg-[#334155] disabled:opacity-50 shadow-sm transition-colors"
+                >
+                  {incidentSubmitting ? t("common.saving") : t("incidents.actions.submit")}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+              <div className="px-4 sm:px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-700">{t("incidents.user.myReports")}</h3>
+                <button type="button" onClick={reloadIncidents} className="text-xs font-semibold text-slate-700 hover:underline">
+                  {t("common.refresh")}
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[560px]">
+                  <thead>
+                    <tr className="bg-slate-50 text-left">
+                      <th className="py-3 px-4 text-xs font-semibold text-slate-600">{t("incidents.fields.gravity")}</th>
+                      <th className="py-3 px-4 text-xs font-semibold text-slate-600">{t("incidents.fields.title")}</th>
+                      <th className="py-3 px-4 text-xs font-semibold text-slate-600">{t("incidents.fields.car")}</th>
+                      <th className="py-3 px-4 text-xs font-semibold text-slate-600">{t("incidents.fields.status")}</th>
+                      <th className="py-3 px-4 text-xs font-semibold text-slate-600">{t("incidents.fields.date")}</th>
+                      <th className="py-3 px-4 text-xs font-semibold text-slate-600">{t("incidents.fields.attachments")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-slate-800">
+                    {(incidents || []).map((r) => (
+                      <tr key={r.id} className="border-t border-slate-100">
+                        <td className="py-3 px-4 text-sm font-semibold">{r.severity || "C"}</td>
+                        <td className="py-3 px-4">{r.title || "—"}</td>
+                        <td className="py-3 px-4 text-sm">{r.car?.brand ? `${r.car.brand} ${r.car.registrationNumber}` : r.carId}</td>
+                        <td className="py-3 px-4 text-sm">{r.status || "SUBMITTED"}</td>
+                        <td className="py-3 px-4 text-sm">{r.occurredAt ? formatDate(r.occurredAt) : formatDate(r.createdAt)}</td>
+                        <td className="py-3 px-4 text-xs">
+                          <div className="space-y-1">
+                            {(r.attachments || []).map((a) => (
+                              <a key={a.id} className="block text-[var(--primary)] hover:underline" href={a.url} target="_blank" rel="noreferrer">
+                                {a.filename || a.url}
+                              </a>
+                            ))}
+                            <div className="pt-1">
+                              <input
+                                type="file"
+                                multiple
+                                accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                disabled={incidentUploadBusyId === r.id}
+                                onChange={async (e) => {
+                                  const files = Array.from(e.target.files || []);
+                                  e.target.value = "";
+                                  if (!files.length) return;
+                                  setIncidentUploadBusyId(r.id);
+                                  setIncidentNotice(null);
+                                  try {
+                                    const fd = new FormData();
+                                    files.forEach((f) => fd.append("files", f));
+                                    await apiIncidentAddAttachments(r.id, fd);
+                                    await reloadIncidents();
+                                    setIncidentNotice({ type: "success", message: t("incidents.success.filesAdded") });
+                                  } catch (err) {
+                                    setIncidentNotice({ type: "error", message: err?.message || t("incidents.errors.uploadFailed") });
+                                  } finally {
+                                    setIncidentUploadBusyId(null);
+                                  }
+                                }}
+                                className="block text-xs"
+                              />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {(!incidents || incidents.length === 0) && (
+                      <tr>
+                        <td colSpan={6} className="py-10 px-4 text-center text-slate-500">
+                          {t("incidents.user.empty")}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
         )}

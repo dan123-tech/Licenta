@@ -4,6 +4,11 @@
     "save": "Salvează",
     "cancel": "Anulează",
     "close": "Închide",
+    "select": "Selectează…",
+    "remove": "Elimină",
+    "clear": "Șterge",
+    "refresh": "Reîmprospătează",
+    "saving": "Se salvează…",
     "user": "Utilizator",
     "perLiter": "/L",
     "perKwh": "/kWh",
@@ -122,6 +127,7 @@
       "fleetCalendar": "Calendar flotă",
       "reservations": "Rezervări",
       "history": "Istoric",
+      "incidents": "Incidente",
       "verifyCode": "Verificare cod preluare",
       "manageUsers": "Gestionare utilizatori",
       "invites": "Invitații",
@@ -167,7 +173,51 @@
     "userBookingCalendar": { "title": "Calendar rezervări", "sub": "Planifică călătoriile vizual" },
     "userAvailableCars": { "title": "Mașini disponibile", "sub": "Rezervă un vehicul" },
     "userUnavailableCars": { "title": "Mașini indisponibile", "sub": "Rezervate sau în mentenanță" },
-    "userHistory": { "title": "Istoric", "sub": "Rezervări anterioare" }
+    "userHistory": { "title": "Istoric", "sub": "Rezervări anterioare" },
+    "userIncidents": { "title": "Incidente", "sub": "Raportează probleme și urmărește rapoartele tale" }
+  },
+  "incidents": {
+    "user": {
+      "title": "Incidente",
+      "reportTitle": "Raportează un incident",
+      "myReports": "Incidentele mele",
+      "empty": "Nu ai raportat incidente încă."
+    },
+    "fields": {
+      "car": "Mașină",
+      "gravity": "Gravitate",
+      "title": "Titlu",
+      "occurredAt": "Data/ora",
+      "location": "Locație",
+      "description": "Descriere",
+      "files": "Fișiere",
+      "status": "Status",
+      "date": "Dată",
+      "attachments": "Atașamente"
+    },
+    "gravity": {
+      "A": "A — Critic / Ridicat (mașina devine indisponibilă)",
+      "B": "B — Mediu",
+      "C": "C — Scăzut"
+    },
+    "placeholders": {
+      "title": "ex. Zgârietură pe bara spate",
+      "location": "ex. Parcare",
+      "description": "Descrie ce s-a întâmplat…"
+    },
+    "actions": {
+      "submit": "Trimite"
+    },
+    "selectedFiles": "Fișiere selectate",
+    "success": {
+      "created": "Incident trimis.",
+      "filesAdded": "Fișiere încărcate."
+    },
+    "errors": {
+      "carAndTitle": "Selectează o mașină și introdu un titlu.",
+      "createFailed": "Nu s-a putut crea incidentul.",
+      "uploadFailed": "Nu s-au putut încărca fișierele."
+    }
   },
   "stats": {
     "title": "Statistici și rapoarte",

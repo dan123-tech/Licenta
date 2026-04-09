@@ -4,6 +4,11 @@
     "save": "Save",
     "cancel": "Cancel",
     "close": "Close",
+    "select": "Select…",
+    "remove": "Remove",
+    "clear": "Clear",
+    "refresh": "Refresh",
+    "saving": "Saving…",
     "user": "User",
     "perLiter": "/L",
     "perKwh": "/kWh",
@@ -122,6 +127,7 @@
       "fleetCalendar": "Fleet calendar",
       "reservations": "Reservations",
       "history": "History",
+      "incidents": "Incidents",
       "verifyCode": "Verify pickup code",
       "manageUsers": "Manage users",
       "invites": "Invites",
@@ -167,7 +173,51 @@
     "userBookingCalendar": { "title": "Booking calendar", "sub": "Plan trips on a visual timeline" },
     "userAvailableCars": { "title": "Available cars", "sub": "Reserve a vehicle" },
     "userUnavailableCars": { "title": "Unavailable cars", "sub": "Reserved or in maintenance" },
-    "userHistory": { "title": "History", "sub": "Past reservations" }
+    "userHistory": { "title": "History", "sub": "Past reservations" },
+    "userIncidents": { "title": "Incidents", "sub": "Report issues and track your reports" }
+  },
+  "incidents": {
+    "user": {
+      "title": "Incidents",
+      "reportTitle": "Report an incident",
+      "myReports": "My incident reports",
+      "empty": "No incidents reported yet."
+    },
+    "fields": {
+      "car": "Car",
+      "gravity": "Gravity",
+      "title": "Title",
+      "occurredAt": "Occurred at",
+      "location": "Location",
+      "description": "Description",
+      "files": "Files",
+      "status": "Status",
+      "date": "Date",
+      "attachments": "Attachments"
+    },
+    "gravity": {
+      "A": "A — Critical / High (car becomes unavailable)",
+      "B": "B — Medium",
+      "C": "C — Low"
+    },
+    "placeholders": {
+      "title": "e.g. Scratch on rear bumper",
+      "location": "e.g. Parking lot",
+      "description": "Describe what happened…"
+    },
+    "actions": {
+      "submit": "Submit"
+    },
+    "selectedFiles": "Selected files",
+    "success": {
+      "created": "Incident submitted.",
+      "filesAdded": "Files uploaded."
+    },
+    "errors": {
+      "carAndTitle": "Select a car and enter a title.",
+      "createFailed": "Failed to create incident.",
+      "uploadFailed": "Failed to upload files."
+    }
   },
   "stats": {
     "title": "Statistics & Reports",

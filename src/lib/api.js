@@ -452,6 +452,54 @@ export async function apiAuditLogs({ page = 1, limit = 50, action, entityType } 
   return data;
 }
 
+// Incidents
+export async function apiIncidentsList() {
+  const res = await fetch(`/api/incidents`, getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load incidents");
+  return data;
+}
+
+export async function apiIncidentGet(id) {
+  const res = await fetch(`/api/incidents/${encodeURIComponent(id)}`, getOpts("GET"));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load incident");
+  return data;
+}
+
+export async function apiIncidentAdminUpdate(id, payload) {
+  const res = await fetch(`/api/incidents/${encodeURIComponent(id)}`, getOpts("PATCH", payload));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to update incident");
+  return data;
+}
+
+export async function apiIncidentCreate(formData) {
+  const res = await fetch(`/api/incidents`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+    cache: "no-store",
+    headers: { ...getWebTabSidHeaders() },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to create incident");
+  return data;
+}
+
+export async function apiIncidentAddAttachments(id, formData) {
+  const res = await fetch(`/api/incidents/${encodeURIComponent(id)}/attachments`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+    cache: "no-store",
+    headers: { ...getWebTabSidHeaders() },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to upload files");
+  return data;
+}
+
 /**
  * Any 401 from /api (except login/register) clears the tab session and notifies the UI — no full page refresh needed.
  */

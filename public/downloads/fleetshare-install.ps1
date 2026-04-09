@@ -127,6 +127,8 @@ Write-Host "  Stack is up" -ForegroundColor Green
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
 Write-Host "  App:   http://localhost:3000  (or http://THIS_PC_IP:3000)"
 Write-Host "  HTTPS: https://localhost:8443  if Caddy + deploy/certs are set"
+Write-Host "  DB:    postgresql://postgres:postgres@localhost:5432/company_car_sharing" -ForegroundColor DarkGray
+Write-Host "        (Admin can connect using DBeaver / pgAdmin / DataGrip — host=localhost port=5432 user=postgres pass=postgres db=company_car_sharing)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Next:" -ForegroundColor DarkGray
 Write-Host "  • Edit .env: NEXT_PUBLIC_APP_URL, NEXTAUTH_URL, SMTP/RESEND, EMAIL_FROM"
