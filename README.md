@@ -12,6 +12,21 @@ Next.js + PostgreSQL app for company car sharing: login, invite users, manage ca
 
 ## Setup commands (in order)
 
+### Quick start (Windows) — run the installer script
+
+If you want the **Company server** running quickly via Docker Compose:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass -Force
+.\install.ps1
+```
+
+Stop containers (keeps DB data):
+
+```powershell
+.\install.ps1 -Down
+```
+
 1. **Install dependencies** (already done if you cloned after scaffold)
 
    ```bash
