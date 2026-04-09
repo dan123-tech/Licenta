@@ -4,9 +4,9 @@
  * First-time admin: choose built-in PostgreSQL or configure External PostgreSQL for Users / Cars / Reservations.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Database, CheckCircle2, Shield } from "lucide-react";
-import { LAYERS, PROVIDERS, CREDENTIAL_SCHEMAS } from "@/orchestrator/config";
+import { LAYERS, PROVIDERS, CREDENTIAL_SCHEMAS, getProviderLabel } from "@/orchestrator/config";
 import {
   apiDataSourceConfigGet,
   apiDataSourceCredentialsSave,
@@ -17,6 +17,9 @@ import {
 
 const PG_SCHEMA = CREDENTIAL_SCHEMAS[PROVIDERS.POSTGRES] || [];
 const ENTRA_SCHEMA = CREDENTIAL_SCHEMAS[PROVIDERS.ENTRA] || [];
+const SQL_SCHEMA = CREDENTIAL_SCHEMAS[PROVIDERS.SQL_SERVER] || [];
+const FIREBASE_SCHEMA = CREDENTIAL_SCHEMAS[PROVIDERS.FIREBASE] || [];
+const SHAREPOINT_SCHEMA = CREDENTIAL_SCHEMAS[PROVIDERS.SHAREPOINT] || [];
 
 const STEPS = [
   { layer: LAYERS.USERS, title: "Users", desc: "Table with user / member columns (email, name, role, …)." },
@@ -34,17 +37,28 @@ export default function DataSourceSetupWizard({ companyName, onCompleted }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [builtinBusy, setBuiltinBusy] = useState(false);
-  const [entraBusy, setEntraBusy] = useState(false);
+  const [usersExternalBusy, setUsersExternalBusy] = useState(false);
   const [valuesByLayer, setValuesByLayer] = useState({
     [LAYERS.USERS]: emptyPgValues(),
     [LAYERS.CARS]: emptyPgValues(),
     [LAYERS.RESERVATIONS]: emptyPgValues(),
   });
-  const [entraValues, setEntraValues] = useState(() => {
-    const o = {};
-    for (const f of ENTRA_SCHEMA) o[f.key] = "";
-    return o;
-  });
+  const [usersProvider, setUsersProvider] = useState(PROVIDERS.ENTRA);
+  const [usersCreds, setUsersCreds] = useState(() => ({}));
+  const [usersTable, setUsersTable] = useState("");
+  const [usersTables, setUsersTables] = useState([]);
+  const [usersTestOk, setUsersTestOk] = useState(false);
+
+  const usersSchema = useMemo(() => {
+    if (usersProvider === PROVIDERS.ENTRA) return ENTRA_SCHEMA;
+    if (usersProvider === PROVIDERS.SQL_SERVER) return SQL_SCHEMA;
+    if (usersProvider === PROVIDERS.POSTGRES) return PG_SCHEMA;
+    if (usersProvider === PROVIDERS.FIREBASE) return FIREBASE_SCHEMA;
+    if (usersProvider === PROVIDERS.SHAREPOINT) return SHAREPOINT_SCHEMA;
+    return [];
+  }, [usersProvider]);
+
+  const usersNeedsTable = usersProvider === PROVIDERS.SQL_SERVER || usersProvider === PROVIDERS.POSTGRES;
   const [tableByLayer, setTableByLayer] = useState({
     [LAYERS.USERS]: "",
     [LAYERS.CARS]: "",
@@ -109,6 +123,27 @@ export default function DataSourceSetupWizard({ companyName, onCompleted }) {
     });
   }, [valuesByLayer, tableByLayer]);
 
+  const testUsersExternal = useCallback(async () => {
+    setError("");
+    setUsersTestOk(false);
+    setUsersTables([]);
+    if (!usersNeedsTable) return;
+    const v = usersCreds || {};
+    const data = await apiDataSourceTablesFetch({
+      provider: usersProvider,
+      host: v.host,
+      port: v.port,
+      databaseName: v.databaseName,
+      username: v.username,
+      password: v.password,
+      ssl: v.ssl,
+    });
+    const tables = data.tables || [];
+    setUsersTables(tables);
+    setUsersTestOk(true);
+    if (!usersTable && tables.length) setUsersTable(tables[0]);
+  }, [usersNeedsTable, usersCreds, usersProvider, usersTable]);
+
   async function handleBuiltin() {
     setError("");
     setBuiltinBusy(true);
@@ -137,31 +172,32 @@ export default function DataSourceSetupWizard({ companyName, onCompleted }) {
     }
   }
 
-  async function handleEntraUsers() {
+  async function handleUsersExternal() {
     setError("");
-    setEntraBusy(true);
+    setUsersExternalBusy(true);
     try {
       // Save credentials + config (Users=ENTRA; others=LOCAL) then complete onboarding.
       await apiDataSourceCredentialsSave({
         layer: LAYERS.USERS,
-        provider: PROVIDERS.ENTRA,
-        credentials: entraValues,
+        provider: usersProvider,
+        credentials: usersCreds,
+        ...(usersNeedsTable ? { tableName: (usersTable || "").trim() } : {}),
       });
       await apiDataSourceConfigSave({
-        users: PROVIDERS.ENTRA,
+        users: usersProvider,
         cars: PROVIDERS.LOCAL,
         reservations: PROVIDERS.LOCAL,
-        usersTable: null,
+        usersTable: usersNeedsTable ? (usersTable || "").trim() || null : null,
         carsTable: null,
         reservationsTable: null,
       });
-      await apiDataSourceSetupComplete("entra");
+      await apiDataSourceSetupComplete("usersExternal");
       if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("dataSourceConfigSaved"));
       onCompleted?.();
     } catch (e) {
-      setError(e?.message || "Could not apply Entra SSO. Check clientId, tenantId, and client secret.");
+      setError(e?.message || "Could not apply external Users provider.");
     } finally {
-      setEntraBusy(false);
+      setUsersExternalBusy(false);
     }
   }
 
@@ -208,19 +244,40 @@ export default function DataSourceSetupWizard({ companyName, onCompleted }) {
               <Shield className="w-5 h-5" aria-hidden />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-slate-800 mb-2">Option B — Microsoft Entra (SSO) for Users</h2>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">Option B — SSO / external providers for Users</h2>
               <p className="text-sm text-slate-600 mb-4">
-                Use Microsoft Entra to read company users (SSO directory). Cars and reservations will use the built-in PostgreSQL
-                database by default. You can fine-tune all layers later in <strong>Database settings</strong>.
+                Choose how FleetShare reads <strong>users</strong> from your company directory or external source (Entra, Firebase, SQL Server,
+                Postgres, SharePoint). Cars and reservations will use the built-in PostgreSQL database by default. You can fine-tune all layers later in <strong>Database settings</strong>.
               </p>
+              <div className="mb-3">
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Users provider</label>
+                <select
+                  value={usersProvider}
+                  onChange={(e) => {
+                    const p = e.target.value;
+                    setUsersProvider(p);
+                    setUsersCreds({});
+                    setUsersTable("");
+                    setUsersTables([]);
+                    setUsersTestOk(false);
+                  }}
+                  className="w-full sm:max-w-[420px] px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-800"
+                >
+                  {[PROVIDERS.ENTRA, PROVIDERS.FIREBASE, PROVIDERS.SQL_SERVER, PROVIDERS.POSTGRES, PROVIDERS.SHAREPOINT].map((p) => (
+                    <option key={p} value={p}>
+                      {getProviderLabel(p)}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {ENTRA_SCHEMA.map(({ key, label, type, hint, placeholder }) => (
-                  <div key={key} className={key === "clientSecret" ? "sm:col-span-2" : ""}>
+                {usersSchema.map(({ key, label, type, hint, placeholder }) => (
+                  <div key={key} className={key === "clientSecret" || key === "serviceAccountJson" ? "sm:col-span-2" : ""}>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">{label}</label>
                     <input
                       type={type === "password" ? "password" : "text"}
-                      value={entraValues[key] ?? ""}
-                      onChange={(e) => setEntraValues((p) => ({ ...p, [key]: e.target.value }))}
+                      value={usersCreds[key] ?? ""}
+                      onChange={(e) => setUsersCreds((p) => ({ ...p, [key]: e.target.value }))}
                       placeholder={placeholder}
                       autoComplete="off"
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-800 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
@@ -229,14 +286,46 @@ export default function DataSourceSetupWizard({ companyName, onCompleted }) {
                   </div>
                 ))}
               </div>
+              {usersNeedsTable && (
+                <div className="mt-3">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Users table</label>
+                  <input
+                    type="text"
+                    value={usersTable}
+                    onChange={(e) => setUsersTable(e.target.value)}
+                    placeholder="e.g. Users"
+                    className="w-full sm:max-w-[420px] px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono text-slate-800"
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={testUsersExternal}
+                      className="px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 hover:bg-slate-50"
+                    >
+                      Test connection (list tables)
+                    </button>
+                    {usersTestOk && usersTables.length > 0 && (
+                      <select
+                        value={usersTable}
+                        onChange={(e) => setUsersTable(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-800"
+                      >
+                        {usersTables.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="mt-4">
                 <button
                   type="button"
-                  disabled={entraBusy}
-                  onClick={handleEntraUsers}
+                  disabled={usersExternalBusy}
+                  onClick={handleUsersExternal}
                   className="w-full sm:w-auto px-5 py-3 rounded-xl font-semibold bg-[#1E293B] text-white hover:bg-[#334155] disabled:opacity-50"
                 >
-                  {entraBusy ? "Applying…" : "Use Entra for Users (SSO)"}
+                  {usersExternalBusy ? "Applying…" : "Use this Users provider"}
                 </button>
               </div>
             </div>

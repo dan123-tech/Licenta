@@ -198,28 +198,42 @@ export async function verifyExternalPostgresSetup(companyId) {
   return { ok: true };
 }
 
-/** Users layer must be Microsoft Entra with required credentials. */
-export async function verifyEntraUsersSetup(companyId) {
+/** Users layer must be an external provider with required credentials (Entra/Firebase/SQL Server/Postgres/SharePoint). */
+export async function verifyUsersExternalSetup(companyId) {
   const p = await getProvider(companyId, LAYERS.USERS);
-  if (p !== PROVIDERS.ENTRA) {
-    return { ok: false, error: `Users layer must use Microsoft Entra (AD), or choose built-in database instead.` };
+  if (![PROVIDERS.ENTRA, PROVIDERS.FIREBASE, PROVIDERS.SQL_SERVER, PROVIDERS.POSTGRES, PROVIDERS.SHAREPOINT].includes(p)) {
+    return { ok: false, error: `Users layer must use an external provider (Entra/Firebase/SQL Server/Postgres/SharePoint).` };
   }
-  const c = await getStoredCredentials(companyId, LAYERS.USERS, PROVIDERS.ENTRA);
-  if (!c?.clientId || !c?.tenantId || !c?.clientSecret) {
-    return { ok: false, error: "Incomplete Entra credentials (clientId, tenantId, clientSecret required)." };
-  }
-  return { ok: true };
-}
 
-/** Apply Entra for Users and built-in DB for other layers; mark onboarding complete. */
-export async function applyEntraUsersAndCompleteSetup(companyId) {
-  await saveDataSourceConfig(companyId, {
-    users: PROVIDERS.ENTRA,
-    cars: PROVIDERS.LOCAL,
-    reservations: PROVIDERS.LOCAL,
-    usersTable: null,
-    carsTable: null,
-    reservationsTable: null,
-  });
-  return markDataSourceSetupComplete(companyId);
+  const c = await getStoredCredentials(companyId, LAYERS.USERS, p);
+  if (p === PROVIDERS.ENTRA) {
+    if (!c?.clientId || !c?.tenantId || !c?.clientSecret) {
+      return { ok: false, error: "Incomplete Entra credentials (clientId, tenantId, clientSecret required)." };
+    }
+    return { ok: true };
+  }
+  if (p === PROVIDERS.FIREBASE) {
+    if (!c?.serviceAccountJson || !String(c.serviceAccountJson).trim()) {
+      return { ok: false, error: "Incomplete Firebase credentials (serviceAccountJson required)." };
+    }
+    return { ok: true };
+  }
+  if (p === PROVIDERS.SHAREPOINT) {
+    if (!c?.siteUrl || !c?.clientId || !c?.clientSecret) {
+      return { ok: false, error: "Incomplete SharePoint credentials (siteUrl, clientId, clientSecret required)." };
+    }
+    return { ok: true };
+  }
+  if (p === PROVIDERS.SQL_SERVER || p === PROVIDERS.POSTGRES) {
+    const db = c?.databaseName || c?.database;
+    if (!c?.host || !c?.username || !db) {
+      return { ok: false, error: `Incomplete ${p === PROVIDERS.SQL_SERVER ? "SQL Server" : "PostgreSQL"} connection (host, username, databaseName required).` };
+    }
+    const table = await getLayerTable(companyId, LAYERS.USERS);
+    if (!table || !String(table).trim()) {
+      return { ok: false, error: "Set a table name for the Users layer." };
+    }
+    return { ok: true };
+  }
+  return { ok: false, error: "Unsupported provider." };
 }

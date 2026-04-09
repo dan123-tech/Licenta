@@ -3,7 +3,7 @@
  * Admin: finish first-time database onboarding.
  * Body: { mode: "builtin" } — use FleetShare Prisma DB for all layers.
  *       { mode: "postgres" } — all layers already saved as External PostgreSQL with credentials + tables.
- *       { mode: "entra" } — Users layer uses Microsoft Entra (SSO); other layers default to built-in DB.
+ *       { mode: "usersExternal" } — Users layer uses an external provider (Entra/Firebase/SQL Server/Postgres/SharePoint).
  */
 
 import { z } from "zod";
@@ -12,15 +12,14 @@ import {
   applyBuiltinDataSourcesAndCompleteSetup,
   verifyExternalPostgresSetup,
   markDataSourceSetupComplete,
-  verifyEntraUsersSetup,
-  applyEntraUsersAndCompleteSetup,
+  verifyUsersExternalSetup,
 } from "@/lib/companies";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const bodySchema = z.object({
-  mode: z.enum(["builtin", "postgres", "entra"]),
+  mode: z.enum(["builtin", "postgres", "usersExternal"]),
 });
 
 export async function POST(request) {
@@ -28,17 +27,17 @@ export async function POST(request) {
     const out = await requireAdmin();
     if ("response" in out) return out.response;
     const parsed = bodySchema.safeParse(await request.json());
-    if (!parsed.success) return errorResponse("Invalid body: use { \"mode\": \"builtin\" } or \"postgres\"", 422);
+    if (!parsed.success) return errorResponse("Invalid body: use { \"mode\": \"builtin\" } | \"usersExternal\" | \"postgres\"", 422);
     const companyId = out.session.companyId;
     if (parsed.data.mode === "builtin") {
       await applyBuiltinDataSourcesAndCompleteSetup(companyId);
       return jsonResponse({ ok: true, mode: "builtin" });
     }
-    if (parsed.data.mode === "entra") {
-      const v = await verifyEntraUsersSetup(companyId);
+    if (parsed.data.mode === "usersExternal") {
+      const v = await verifyUsersExternalSetup(companyId);
       if (!v.ok) return errorResponse(v.error, 422);
-      await applyEntraUsersAndCompleteSetup(companyId);
-      return jsonResponse({ ok: true, mode: "entra" });
+      await markDataSourceSetupComplete(companyId);
+      return jsonResponse({ ok: true, mode: "usersExternal" });
     }
     const v = await verifyExternalPostgresSetup(companyId);
     if (!v.ok) return errorResponse(v.error, 422);

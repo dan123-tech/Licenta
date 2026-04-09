@@ -95,7 +95,7 @@ export async function apiDataSourceTablesFetch(body) {
 }
 
 /** POST body: { layer, provider, credentials, tableName? }. Stores credentials for layer+provider. */
-/** POST { mode: "builtin" | "postgres" | "entra" } — complete first-time admin database onboarding. */
+/** POST { mode: "builtin" | "postgres" | "usersExternal" } — complete first-time admin database onboarding. */
 export async function apiDataSourceSetupComplete(mode) {
   const res = await fetch("/api/companies/current/data-source-setup", getOpts("POST", { mode }));
   const data = await res.json().catch(() => ({}));
