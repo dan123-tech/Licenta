@@ -3,6 +3,7 @@
  * Admin: finish first-time database onboarding.
  * Body: { mode: "builtin" } — use FleetShare Prisma DB for all layers.
  *       { mode: "postgres" } — all layers already saved as External PostgreSQL with credentials + tables.
+ *       { mode: "entra" } — Users layer uses Microsoft Entra (SSO); other layers default to built-in DB.
  */
 
 import { z } from "zod";
@@ -11,13 +12,15 @@ import {
   applyBuiltinDataSourcesAndCompleteSetup,
   verifyExternalPostgresSetup,
   markDataSourceSetupComplete,
+  verifyEntraUsersSetup,
+  applyEntraUsersAndCompleteSetup,
 } from "@/lib/companies";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const bodySchema = z.object({
-  mode: z.enum(["builtin", "postgres"]),
+  mode: z.enum(["builtin", "postgres", "entra"]),
 });
 
 export async function POST(request) {
@@ -30,6 +33,12 @@ export async function POST(request) {
     if (parsed.data.mode === "builtin") {
       await applyBuiltinDataSourcesAndCompleteSetup(companyId);
       return jsonResponse({ ok: true, mode: "builtin" });
+    }
+    if (parsed.data.mode === "entra") {
+      const v = await verifyEntraUsersSetup(companyId);
+      if (!v.ok) return errorResponse(v.error, 422);
+      await applyEntraUsersAndCompleteSetup(companyId);
+      return jsonResponse({ ok: true, mode: "entra" });
     }
     const v = await verifyExternalPostgresSetup(companyId);
     if (!v.ok) return errorResponse(v.error, 422);

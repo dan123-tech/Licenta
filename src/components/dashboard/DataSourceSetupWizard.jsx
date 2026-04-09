@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback } from "react";
-import { Database, CheckCircle2 } from "lucide-react";
+import { Database, CheckCircle2, Shield } from "lucide-react";
 import { LAYERS, PROVIDERS, CREDENTIAL_SCHEMAS } from "@/orchestrator/config";
 import {
   apiDataSourceConfigGet,
@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 
 const PG_SCHEMA = CREDENTIAL_SCHEMAS[PROVIDERS.POSTGRES] || [];
+const ENTRA_SCHEMA = CREDENTIAL_SCHEMAS[PROVIDERS.ENTRA] || [];
 
 const STEPS = [
   { layer: LAYERS.USERS, title: "Users", desc: "Table with user / member columns (email, name, role, …)." },
@@ -33,10 +34,16 @@ export default function DataSourceSetupWizard({ companyName, onCompleted }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [builtinBusy, setBuiltinBusy] = useState(false);
+  const [entraBusy, setEntraBusy] = useState(false);
   const [valuesByLayer, setValuesByLayer] = useState({
     [LAYERS.USERS]: emptyPgValues(),
     [LAYERS.CARS]: emptyPgValues(),
     [LAYERS.RESERVATIONS]: emptyPgValues(),
+  });
+  const [entraValues, setEntraValues] = useState(() => {
+    const o = {};
+    for (const f of ENTRA_SCHEMA) o[f.key] = "";
+    return o;
   });
   const [tableByLayer, setTableByLayer] = useState({
     [LAYERS.USERS]: "",
@@ -130,6 +137,34 @@ export default function DataSourceSetupWizard({ companyName, onCompleted }) {
     }
   }
 
+  async function handleEntraUsers() {
+    setError("");
+    setEntraBusy(true);
+    try {
+      // Save credentials + config (Users=ENTRA; others=LOCAL) then complete onboarding.
+      await apiDataSourceCredentialsSave({
+        layer: LAYERS.USERS,
+        provider: PROVIDERS.ENTRA,
+        credentials: entraValues,
+      });
+      await apiDataSourceConfigSave({
+        users: PROVIDERS.ENTRA,
+        cars: PROVIDERS.LOCAL,
+        reservations: PROVIDERS.LOCAL,
+        usersTable: null,
+        carsTable: null,
+        reservationsTable: null,
+      });
+      await apiDataSourceSetupComplete("entra");
+      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("dataSourceConfigSaved"));
+      onCompleted?.();
+    } catch (e) {
+      setError(e?.message || "Could not apply Entra SSO. Check clientId, tenantId, and client secret.");
+    } finally {
+      setEntraBusy(false);
+    }
+  }
+
   return (
     <div className="min-h-screen w-full overflow-y-auto" style={{ background: "var(--main-bg)" }}>
       <div className="max-w-3xl mx-auto px-4 py-10 sm:py-14">
@@ -165,6 +200,47 @@ export default function DataSourceSetupWizard({ companyName, onCompleted }) {
           >
             {builtinBusy ? "Applying…" : "Use built-in PostgreSQL"}
           </button>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-6 mb-8">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-100">
+              <Shield className="w-5 h-5" aria-hidden />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">Option B — Microsoft Entra (SSO) for Users</h2>
+              <p className="text-sm text-slate-600 mb-4">
+                Use Microsoft Entra to read company users (SSO directory). Cars and reservations will use the built-in PostgreSQL
+                database by default. You can fine-tune all layers later in <strong>Database settings</strong>.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {ENTRA_SCHEMA.map(({ key, label, type, hint, placeholder }) => (
+                  <div key={key} className={key === "clientSecret" ? "sm:col-span-2" : ""}>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">{label}</label>
+                    <input
+                      type={type === "password" ? "password" : "text"}
+                      value={entraValues[key] ?? ""}
+                      onChange={(e) => setEntraValues((p) => ({ ...p, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      autoComplete="off"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-800 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] outline-none"
+                    />
+                    {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  disabled={entraBusy}
+                  onClick={handleEntraUsers}
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl font-semibold bg-[#1E293B] text-white hover:bg-[#334155] disabled:opacity-50"
+                >
+                  {entraBusy ? "Applying…" : "Use Entra for Users (SSO)"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="relative text-center text-xs text-slate-400 mb-8">

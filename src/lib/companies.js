@@ -197,3 +197,29 @@ export async function verifyExternalPostgresSetup(companyId) {
   }
   return { ok: true };
 }
+
+/** Users layer must be Microsoft Entra with required credentials. */
+export async function verifyEntraUsersSetup(companyId) {
+  const p = await getProvider(companyId, LAYERS.USERS);
+  if (p !== PROVIDERS.ENTRA) {
+    return { ok: false, error: `Users layer must use Microsoft Entra (AD), or choose built-in database instead.` };
+  }
+  const c = await getStoredCredentials(companyId, LAYERS.USERS, PROVIDERS.ENTRA);
+  if (!c?.clientId || !c?.tenantId || !c?.clientSecret) {
+    return { ok: false, error: "Incomplete Entra credentials (clientId, tenantId, clientSecret required)." };
+  }
+  return { ok: true };
+}
+
+/** Apply Entra for Users and built-in DB for other layers; mark onboarding complete. */
+export async function applyEntraUsersAndCompleteSetup(companyId) {
+  await saveDataSourceConfig(companyId, {
+    users: PROVIDERS.ENTRA,
+    cars: PROVIDERS.LOCAL,
+    reservations: PROVIDERS.LOCAL,
+    usersTable: null,
+    carsTable: null,
+    reservationsTable: null,
+  });
+  return markDataSourceSetupComplete(companyId);
+}
